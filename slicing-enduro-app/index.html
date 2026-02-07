@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Endure | Performance Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              background: '#09090b', // zinc-950
+              surface: '#18181b', // zinc-900
+              border: '#27272a', // zinc-800
+              
+              // Semantic Sport Colors
+              sport: {
+                swim: '#38bdf8', // sky-400
+                bike: '#a78bfa', // violet-400
+                run: '#fb7185', // rose-400
+                gym: '#fbbf24', // amber-400
+                rest: '#71717a', // zinc-500
+              },
+              
+              // Semantic Status Colors
+              status: {
+                completed: '#10b981', // emerald-500
+                planned: '#52525b', // zinc-600
+                skipped: '#ef4444', // red-500
+                warning: '#f59e0b', // amber-500
+              },
+
+              // Base Palette References
+              primary: '#fafafa', // zinc-50
+              secondary: '#a1a1aa', // zinc-400
+              accent: '#3b82f6', // blue-500
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom scrollbar for that industrial feel */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #09090b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #27272a;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #3f3f46;
+      }
+      body {
+        background-color: #09090b;
+        color: #fafafa;
+      }
+      
+      /* Utility for consistent chart gradients */
+      .chart-gradient-mask {
+        mask-image: linear-gradient(to bottom, black, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "clsx": "https://esm.sh/clsx@^2.1.1",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "tailwind-merge": "https://esm.sh/tailwind-merge@^3.4.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
