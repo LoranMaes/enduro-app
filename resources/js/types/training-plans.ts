@@ -12,6 +12,7 @@ export type TrainingSessionApi = {
 export type TrainingWeekApi = {
     id: number;
     starts_at: string;
+    ends_at: string;
     training_sessions: TrainingSessionApi[];
 };
 
@@ -39,10 +40,11 @@ export type ApiPaginationMeta = {
     total: number;
 };
 
-export type ApiPaginatedCollectionResponse<TData> = ApiCollectionResponse<TData> & {
-    links?: unknown;
-    meta?: ApiPaginationMeta;
-};
+export type ApiPaginatedCollectionResponse<TData> =
+    ApiCollectionResponse<TData> & {
+        links?: unknown;
+        meta?: ApiPaginationMeta;
+    };
 
 export type TrainingSessionView = {
     id: number;
@@ -50,11 +52,15 @@ export type TrainingSessionView = {
     sport: string;
     status: string;
     durationMinutes: number;
+    plannedTss: number | null;
+    actualTss: number | null;
+    notes: string | null;
 };
 
 export type TrainingWeekView = {
     id: number;
     startsAt: string;
+    endsAt: string;
     sessions: TrainingSessionView[];
 };
 

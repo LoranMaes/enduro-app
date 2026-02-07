@@ -1,12 +1,11 @@
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { TrainingWeekView } from '@/types/training-plans';
 import { DayColumn } from './day-column';
+import { WeekSummary } from './week-summary';
 
 type WeekSectionProps = {
     week: TrainingWeekView;
 };
-
-const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const dateKey = (date: Date): string => {
     const year = date.getFullYear();
@@ -30,56 +29,120 @@ const dayToken = (date: Date): string => {
 
 export function WeekSection({ week }: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
-    const today = dateKey(new Date());
+    const todayKey = dateKey(new Date());
 
-    const sessionsByDay = week.sessions.reduce<Record<string, typeof week.sessions>>(
-        (carry, session) => {
-            const key = session.scheduledDate;
+    const sessionsByDay = week.sessions.reduce<
+        Record<string, typeof week.sessions>
+    >((carry, session) => {
+        const key = session.scheduledDate;
 
-            if (!carry[key]) {
-                carry[key] = [];
-            }
+        if (!carry[key]) {
+            carry[key] = [];
+        }
 
-            carry[key].push(session);
+        carry[key].push(session);
 
-            return carry;
-        },
-        {},
+        return carry;
+    }, {});
+
+    const durationMinutes = week.sessions.reduce(
+        (total, session) => total + session.durationMinutes,
+        0,
     );
+    const plannedLoad = week.sessions.reduce(
+        (total, session) => total + (session.plannedTss ?? 0),
+        0,
+    );
+    const actualLoad = week.sessions.reduce((total, session) => {
+        if (session.status !== 'completed') {
+            return total;
+        }
+
+        return total + (session.actualTss ?? session.plannedTss ?? 0);
+    }, 0);
+    const completedSessions = week.sessions.filter(
+        (session) => session.status === 'completed',
+    ).length;
+    const isCurrentWeek = isDateInWeek(weekStart, new Date());
 
     return (
-        <section className="bg-surface/40 rounded-lg border border-border">
-            <header className="bg-background/70 border-b border-border px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium">
-                        Week starting {week.startsAt}
-                    </h4>
-                    <Badge variant="outline" className="font-mono">
-                        {week.sessions.length} session
-                        {week.sessions.length === 1 ? '' : 's'}
-                    </Badge>
-                </div>
+        <section
+            className={cn(
+                'flex flex-col border-b border-border transition-colors',
+                isCurrentWeek ? 'bg-zinc-900/10' : 'bg-background',
+            )}
+        >
+            <header
+                className={cn(
+                    'sticky top-[var(--calendar-week-sticky)] z-20 flex w-full items-center justify-between border-b border-border bg-background/95 px-4 py-1.5 backdrop-blur-sm',
+                    isCurrentWeek && 'border-l-2 border-l-accent',
+                )}
+            >
+                <p
+                    className={cn(
+                        'font-sans text-[10px] font-medium tracking-wider text-zinc-500 uppercase',
+                        isCurrentWeek && 'text-zinc-200',
+                    )}
+                >
+                    Week of {formatWeekRange(weekStart)}
+                </p>
+                {isCurrentWeek ? (
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
+                ) : null}
             </header>
 
-            <div className="overflow-x-auto">
-                <div className="grid min-w-[940px] grid-cols-7 divide-x divide-border">
-                    {dayLabels.map((label, index) => {
-                        const currentDay = addDays(weekStart, index);
-                        const currentDayKey = dateKey(currentDay);
-                        const sessions = sessionsByDay[currentDayKey] ?? [];
+            <div className="flex flex-col md:grid md:grid-cols-[repeat(7,minmax(0,1fr))_140px] md:divide-x md:divide-border">
+                {Array.from({ length: 7 }, (_, index) => {
+                    const currentDay = addDays(weekStart, index);
+                    const currentDayKey = dateKey(currentDay);
+                    const sessions = sessionsByDay[currentDayKey] ?? [];
 
-                        return (
+                    return (
+                        <div
+                            key={`${week.id}-${currentDayKey}`}
+                            className="min-h-[100px] border-b border-border md:min-h-[160px] md:border-b-0"
+                        >
                             <DayColumn
-                                key={`${week.id}-${label}`}
-                                label={label}
                                 dayNumber={dayToken(currentDay)}
-                                isToday={today === currentDayKey}
+                                isToday={todayKey === currentDayKey}
+                                isPast={
+                                    currentDay < new Date() &&
+                                    todayKey !== currentDayKey
+                                }
                                 sessions={sessions}
                             />
-                        );
-                    })}
-                </div>
+                        </div>
+                    );
+                })}
+
+                <aside className="border-t border-border bg-surface/30 md:border-t-0 md:bg-transparent">
+                    <WeekSummary
+                        totalDuration={durationMinutes}
+                        totalTss={actualLoad}
+                        plannedTss={plannedLoad}
+                        completedSessions={completedSessions}
+                        plannedSessions={week.sessions.length}
+                        isCurrentWeek={isCurrentWeek}
+                    />
+                </aside>
             </div>
         </section>
     );
+}
+
+function formatWeekRange(weekStart: Date): string {
+    const weekEnd = addDays(weekStart, 6);
+
+    const formatOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric',
+    };
+
+    return `${weekStart.toLocaleDateString('en-US', formatOptions)} — ${weekEnd.toLocaleDateString('en-US', formatOptions)}`;
+}
+
+function isDateInWeek(weekStart: Date, currentDate: Date): boolean {
+    const weekEndExclusive = addDays(weekStart, 7);
+
+    return weekStart <= currentDate && currentDate < weekEndExclusive;
 }
