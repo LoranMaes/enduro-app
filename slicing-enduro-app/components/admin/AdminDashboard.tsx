@@ -1,11 +1,11 @@
 
+import { Search, Eye, MoreHorizontal, Shield, User as UserIcon, Users as UsersIcon } from 'lucide-react';
 import React from 'react';
-import { Heading, Label, DataValue } from '../ui/Typography';
+import { cn } from '../../lib/utils';
+import type { User } from '../../types';
 import { MetricCard } from '../ui/MetricCard';
 import { StatusBadge } from '../ui/StatusBadge';
-import { User } from '../../types';
-import { Search, Eye, MoreHorizontal, Shield, User as UserIcon, Users as UsersIcon } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface AdminDashboardProps {
   users: User[];

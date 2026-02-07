@@ -1,8 +1,8 @@
+import { Check, Clock, Activity, FileText } from 'lucide-react';
 import React, { useState } from 'react';
-import { Session, SportType } from '../../types';
 import { SPORT_ICONS } from '../../constants';
 import { cn } from '../../lib/utils';
-import { Check, Clock, Activity, FileText } from 'lucide-react';
+import type { Session, SportType } from '../../types';
 
 interface SessionFormProps {
   initialDate?: Date;

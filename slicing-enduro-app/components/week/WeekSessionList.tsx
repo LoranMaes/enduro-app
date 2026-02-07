@@ -1,8 +1,8 @@
 import React from 'react';
-import { DayData, Session } from '../../types';
+import { cn } from '../../lib/utils';
+import type { DayData, Session } from '../../types';
 import { SessionCard } from '../calendar/SessionCard';
 import { Heading, Label } from '../ui/Typography';
-import { cn } from '../../lib/utils';
 
 interface WeekSessionListProps {
   days: DayData[];

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { WeekData } from '../../types';
 import { cn } from '../../lib/utils';
+import type { WeekData } from '../../types';
 
 interface LoadTrendChartProps {
   weeks: WeekData[];

@@ -1,5 +1,6 @@
 import React from 'react';
-import { MetricCard, MetricCardProps } from '../ui/MetricCard';
+import type { MetricCardProps } from '../ui/MetricCard';
+import { MetricCard } from '../ui/MetricCard';
 
 interface SessionMetricsGridProps {
   metrics: MetricCardProps[];

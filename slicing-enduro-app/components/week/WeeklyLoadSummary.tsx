@@ -1,6 +1,6 @@
 import React from 'react';
-import { MetricCard } from '../ui/MetricCard';
 import { formatDuration } from '../../lib/utils';
+import { MetricCard } from '../ui/MetricCard';
 import { Heading } from '../ui/Typography';
 
 interface WeeklyLoadSummaryProps {

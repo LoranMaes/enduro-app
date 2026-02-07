@@ -1,11 +1,11 @@
 
+import { ArrowLeft, MoreHorizontal, Share2 } from 'lucide-react';
 import React from 'react';
-import { Session } from '../../types';
 import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
+import { cn, formatDuration, formatDate } from '../../lib/utils';
+import type { Session } from '../../types';
 import { StatusBadge } from '../ui/StatusBadge';
 import { Heading, Label, DataValue } from '../ui/Typography';
-import { ArrowLeft, MoreHorizontal, Share2 } from 'lucide-react';
-import { cn, formatDuration, formatDate } from '../../lib/utils';
 
 interface SessionAnalysisHeaderProps {
   session: Session;

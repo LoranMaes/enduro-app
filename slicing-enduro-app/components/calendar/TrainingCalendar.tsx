@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { WeekSection } from './WeekSection';
-import { WeekData, Session, DayData } from '../../types';
-import { getStartOfWeek, addDays, formatDate } from '../../lib/utils';
-import { SessionDetailModal } from '../session/SessionDetailModal';
-import { PlanOverlayToggle } from './PlanOverlayToggle';
-import { Label } from '../ui/Typography';
 import { Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getStartOfWeek, addDays, formatDate } from '../../lib/utils';
+import type { WeekData, Session, DayData } from '../../types';
+import { SessionDetailModal } from '../session/SessionDetailModal';
+import { Label } from '../ui/Typography';
+import { PlanOverlayToggle } from './PlanOverlayToggle';
+import { WeekSection } from './WeekSection';
 
 // Initial dummy data generator
 const generateMockData = (startWeek: Date, numWeeks: number): WeekData[] => {

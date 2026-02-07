@@ -1,11 +1,11 @@
+import { Check, Clock, Activity, FileText, BarChart3, ChevronRight } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { Session, SportType, WorkoutStep } from '../../types';
 import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
 import { cn } from '../../lib/utils';
+import type { Session, SportType, WorkoutStep } from '../../types';
 import { Modal } from '../ui/Modal';
-import { WorkoutBuilder } from './WorkoutBuilder';
 import { StatusBadge } from '../ui/StatusBadge';
-import { Check, Clock, Activity, FileText, BarChart3, ChevronRight } from 'lucide-react';
+import { WorkoutBuilder } from './WorkoutBuilder';
 
 interface SessionDetailModalProps {
   isOpen: boolean;

@@ -1,13 +1,13 @@
 
+import { BarChart2 } from 'lucide-react';
 import React from 'react';
-import { Session, TelemetryPoint } from '../../types';
+import type { Session, TelemetryPoint } from '../../types';
+import type { MetricCardProps } from '../ui/MetricCard';
+import { Heading, Label } from '../ui/Typography';
+import { PerformanceChart } from './PerformanceChart';
 import { SessionAnalysisHeader } from './SessionAnalysisHeader';
 import { SessionMetricsGrid } from './SessionMetricsGrid';
 import { SessionNotes } from './SessionNotes';
-import { PerformanceChart } from './PerformanceChart';
-import { Heading, Label } from '../ui/Typography';
-import { MetricCardProps } from '../ui/MetricCard';
-import { BarChart2 } from 'lucide-react';
 
 interface SessionAnalysisViewProps {
   session: Session;

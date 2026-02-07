@@ -1,12 +1,12 @@
 
-import React from 'react';
-import { TrainingPlan } from '../../types';
-import { Heading, Label, DataValue } from '../ui/Typography';
-import { StatusBadge } from '../ui/StatusBadge';
-import { WeeklyStructureTable } from './WeeklyStructureTable';
-import { LoadProgressionMiniChart } from './LoadProgressionMiniChart';
 import { ArrowLeft, Clock, BarChart3, Tag, Activity } from 'lucide-react';
+import React from 'react';
 import { cn } from '../../lib/utils';
+import type { TrainingPlan } from '../../types';
+import { StatusBadge } from '../ui/StatusBadge';
+import { Heading, Label, DataValue } from '../ui/Typography';
+import { LoadProgressionMiniChart } from './LoadProgressionMiniChart';
+import { WeeklyStructureTable } from './WeeklyStructureTable';
 
 interface PlanDetailViewProps {
   plan: TrainingPlan;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { WeekData } from '../../types';
+import type { WeekData } from '../../types';
 import { MetricCard } from '../ui/MetricCard';
 
 interface ConsistencySummaryProps {

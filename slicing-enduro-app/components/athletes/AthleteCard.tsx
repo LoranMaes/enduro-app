@@ -1,10 +1,10 @@
 
+import { ChevronRight, Activity, Clock } from 'lucide-react';
 import React from 'react';
-import { Athlete } from '../../types';
-import { Heading, Label, DataValue } from '../ui/Typography';
 import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
 import { cn } from '../../lib/utils';
-import { ChevronRight, Activity, Clock } from 'lucide-react';
+import type { Athlete } from '../../types';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface AthleteCardProps {
   athlete: Athlete;

@@ -1,7 +1,7 @@
 
+import { Calendar, Activity, BarChart3 } from 'lucide-react';
 import React from 'react';
 import { Heading, Label } from '../ui/Typography';
-import { Calendar, Activity, BarChart3 } from 'lucide-react';
 
 export const CorePillars: React.FC = () => {
   const pillars = [

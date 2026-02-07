@@ -1,7 +1,7 @@
-import React from 'react';
-import { WorkoutStep } from '../../types';
-import { cn } from '../../lib/utils';
 import { GripVertical, Trash2, Plus } from 'lucide-react';
+import React from 'react';
+import { cn } from '../../lib/utils';
+import type { WorkoutStep } from '../../types';
 
 interface WorkoutBuilderProps {
   steps: WorkoutStep[];

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { SessionStatus } from '../../types';
+import type { SessionStatus } from '../../types';
 
 interface StatusBadgeProps {
   status: SessionStatus;

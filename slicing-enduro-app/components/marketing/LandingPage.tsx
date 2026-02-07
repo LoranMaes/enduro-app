@@ -1,14 +1,14 @@
 
+import { ArrowRight } from 'lucide-react';
 import React from 'react';
-import { ManifestoHero } from './ManifestoHero';
-import { TrainingLoop } from './TrainingLoop';
-import { ProductSurfacePreview } from './ProductSurfacePreview';
-import { AudienceFit } from './AudienceFit';
 import { AccessSection } from './AccessSection';
-import { PhilosophyBlock } from './PhilosophyBlock';
+import { AudienceFit } from './AudienceFit';
+import { ManifestoHero } from './ManifestoHero';
 import { MarketingClosing } from './MarketingClosing';
 import { MarketingFooter } from './MarketingFooter';
-import { ArrowRight } from 'lucide-react';
+import { PhilosophyBlock } from './PhilosophyBlock';
+import { ProductSurfacePreview } from './ProductSurfacePreview';
+import { TrainingLoop } from './TrainingLoop';
 
 interface LandingPageProps {
   onEnterApp: () => void;

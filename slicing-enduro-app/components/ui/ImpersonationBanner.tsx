@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { User } from '../../types';
 import { Eye, X, ShieldAlert } from 'lucide-react';
+import React from 'react';
 import { cn } from '../../lib/utils';
+import type { User } from '../../types';
 
 interface ImpersonationBannerProps {
   user: User;

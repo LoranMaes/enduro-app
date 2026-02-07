@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
-import { Heading, Label } from '../ui/Typography';
-import { cn } from '../../lib/utils';
 import { User, Activity, Link2, CreditCard, Shield, Sliders } from 'lucide-react';
-import { UserRole } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { cn } from '../../lib/utils';
+import type { UserRole } from '../../types';
+import { Heading, Label } from '../ui/Typography';
 
 interface SettingsViewProps {
   userRole: UserRole;

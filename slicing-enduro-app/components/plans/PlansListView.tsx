@@ -1,10 +1,10 @@
 
+import { Search, Plus, Filter } from 'lucide-react';
 import React, { useState } from 'react';
-import { TrainingPlan, UserRole } from '../../types';
+import type { TrainingPlan, UserRole } from '../../types';
 import { Heading, Label } from '../ui/Typography';
 import { PlanCard } from './PlanCard';
 import { PlanDetailView } from './PlanDetailView';
-import { Search, Plus, Filter } from 'lucide-react';
 
 // Mock Data for Plans (kept same for demo)
 const MOCK_PLANS: TrainingPlan[] = [

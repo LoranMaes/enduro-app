@@ -1,19 +1,19 @@
 
+import { LogOut, Eye } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { TrainingCalendar } from './components/calendar/TrainingCalendar';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { SessionAnalysisView } from './components/analysis/SessionAnalysisView';
 import { WeekOverview } from './components/analysis/WeekOverview';
-import { ProgressView } from './components/progress/ProgressView';
-import { PlansListView } from './components/plans/PlansListView';
 import { AthletesListView } from './components/athletes/AthletesListView';
-import { SettingsView } from './components/settings/SettingsView';
-import { AdminDashboard } from './components/admin/AdminDashboard';
+import { TrainingCalendar } from './components/calendar/TrainingCalendar';
 import { LandingPage } from './components/marketing/LandingPage';
+import { PlansListView } from './components/plans/PlansListView';
+import { ProgressView } from './components/progress/ProgressView';
+import { SettingsView } from './components/settings/SettingsView';
 import { ImpersonationBanner } from './components/ui/ImpersonationBanner';
 import { getNavItemsForRole, NAV_ITEMS_ATHLETE } from './constants';
 import { cn } from './lib/utils';
-import { LogOut, Eye } from 'lucide-react';
-import { Session, WeekData, User } from './types';
+import type { Session, WeekData, User } from './types';
 
 // Mock Users Database
 const MOCK_USERS: User[] = [

@@ -1,7 +1,8 @@
 
-import React from 'react';
 import { Activity, Droplets, Bike, Footprints, Dumbbell, Calendar, LayoutDashboard, Settings, User, BookOpen, Users, Shield } from 'lucide-react';
-import { SportType, UserRole } from './types';
+import React from 'react';
+import type { UserRole } from './types';
+import { SportType } from './types';
 
 export const SPORT_ICONS: Record<string, React.ReactNode> = {
   swim: <Droplets className="w-3 h-3" />,

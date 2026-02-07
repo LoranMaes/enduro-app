@@ -1,7 +1,7 @@
 
+import { Check, X } from 'lucide-react';
 import React from 'react';
 import { Heading, Label } from '../ui/Typography';
-import { Check, X } from 'lucide-react';
 
 export const AudienceFit: React.FC = () => {
   return (

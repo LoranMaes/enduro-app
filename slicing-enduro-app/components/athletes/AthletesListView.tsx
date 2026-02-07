@@ -1,10 +1,10 @@
 
+import { Search, Plus, Users } from 'lucide-react';
 import React, { useState } from 'react';
-import { Athlete } from '../../types';
+import type { Athlete } from '../../types';
 import { Heading, Label } from '../ui/Typography';
 import { AthleteCard } from './AthleteCard';
 import { AthleteDetailView } from './AthleteDetailView';
-import { Search, Plus, Users } from 'lucide-react';
 
 // Mock Data (Empty for demo to show empty state, or use MOCK_ATHLETES from previous file to show list)
 // Using data from previous context but ensuring we handle empty list.

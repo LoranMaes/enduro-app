@@ -1,8 +1,8 @@
 import React from 'react';
-import { DayData, SportType } from '../../types';
 import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
-import { Heading, Label, DataValue } from '../ui/Typography';
 import { cn, formatDuration } from '../../lib/utils';
+import type { DayData, SportType } from '../../types';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface SportDistributionProps {
   days: DayData[];

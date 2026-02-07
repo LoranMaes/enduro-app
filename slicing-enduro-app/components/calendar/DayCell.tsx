@@ -1,9 +1,9 @@
 
-import React from 'react';
-import { DayData, Session } from '../../types';
-import { SessionCard } from './SessionCard';
-import { cn } from '../../lib/utils';
 import { Plus } from 'lucide-react';
+import React from 'react';
+import { cn } from '../../lib/utils';
+import type { DayData, Session } from '../../types';
+import { SessionCard } from './SessionCard';
 
 interface DayCellProps {
   day: DayData;

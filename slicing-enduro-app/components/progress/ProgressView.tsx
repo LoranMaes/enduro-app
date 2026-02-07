@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { WeekData, DayData } from '../../types';
 import { addDays, getStartOfWeek } from '../../lib/utils';
-import { ProgressHeader } from './ProgressHeader';
-import { LoadTrendChart } from './LoadTrendChart';
-import { ConsistencySummary } from './ConsistencySummary';
-import { WeeklyListItem } from './WeeklyListItem';
+import type { WeekData, DayData } from '../../types';
 import { Heading, Label } from '../ui/Typography';
+import { ConsistencySummary } from './ConsistencySummary';
+import { LoadTrendChart } from './LoadTrendChart';
+import { ProgressHeader } from './ProgressHeader';
+import { WeeklyListItem } from './WeeklyListItem';
 
 interface ProgressViewProps {
   onNavigateToWeek: (week: WeekData) => void;

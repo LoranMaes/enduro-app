@@ -1,10 +1,10 @@
 
-import React from 'react';
-import { TrainingPlan } from '../../types';
-import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
-import { Heading, Label, DataValue } from '../ui/Typography';
-import { cn } from '../../lib/utils';
 import { ChevronRight, Clock, Activity } from 'lucide-react';
+import React from 'react';
+import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
+import { cn } from '../../lib/utils';
+import type { TrainingPlan } from '../../types';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface PlanCardProps {
   plan: TrainingPlan;

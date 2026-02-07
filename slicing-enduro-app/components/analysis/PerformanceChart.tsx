@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { TelemetryPoint } from '../../types';
+import type { TelemetryPoint } from '../../types';
 
 interface PerformanceChartProps {
   data: TelemetryPoint[];

@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { DayData, Session } from '../../types';
-import { DayCell } from './DayCell';
-import { WeekSummary, WeekSummaryProps } from './WeekSummary';
 import { cn, formatDate } from '../../lib/utils';
+import type { DayData, Session } from '../../types';
 import { Label } from '../ui/Typography';
+import { DayCell } from './DayCell';
+import type { WeekSummaryProps } from './WeekSummary';
+import { WeekSummary } from './WeekSummary';
 
 export interface WeekSectionProps {
   weekStart: Date;

@@ -21,6 +21,17 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 1.5 — Backend Domain Spine (COMPLETE)
+
+- Core domain models scaffolded
+- Migrations created for V1 entities
+- Policy scaffolding created and registered
+- API resources created
+- API controllers created as structural stubs
+- API routes added under authenticated middleware
+
+---
+
 ## Phase 2 — Calendar Backbone
 
 - Real data models
@@ -33,7 +44,7 @@ This follows the **design-first → Codex → backend** approach.
 ## Phase 3 — Training Sessions
 
 - CRUD planned sessions
-- Garmin sync ingestion
+- Garmin sync ingestion (placeholder only in V1 scaffold)
 - Planned ↔ completed linking
 
 ---

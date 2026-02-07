@@ -1,11 +1,11 @@
 
-import React from 'react';
-import { Athlete } from '../../types';
-import { Heading, Label, DataValue } from '../ui/Typography';
-import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
-import { StatusBadge } from '../ui/StatusBadge';
 import { ArrowLeft, User, Activity, FileText, Link2, CheckCircle2, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { SPORT_ICONS, SPORT_COLORS } from '../../constants';
 import { cn } from '../../lib/utils';
+import type { Athlete } from '../../types';
+import { StatusBadge } from '../ui/StatusBadge';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface AthleteDetailViewProps {
   athlete: Athlete;

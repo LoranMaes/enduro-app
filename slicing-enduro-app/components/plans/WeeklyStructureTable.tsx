@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { PlanWeekStructure } from '../../types';
-import { Heading, Label, DataValue } from '../ui/Typography';
-import { cn } from '../../lib/utils';
 import { SPORT_COLORS, SPORT_ICONS } from '../../constants';
+import { cn } from '../../lib/utils';
+import type { PlanWeekStructure } from '../../types';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface WeeklyStructureTableProps {
   structure: PlanWeekStructure[];

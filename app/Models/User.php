@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -22,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -47,6 +50,32 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'role' => UserRole::class,
         ];
+    }
+
+    public function athleteProfile(): HasOne
+    {
+        return $this->hasOne(AthleteProfile::class);
+    }
+
+    public function coachProfile(): HasOne
+    {
+        return $this->hasOne(CoachProfile::class);
+    }
+
+    public function isAthlete(): bool
+    {
+        return $this->role === UserRole::Athlete;
+    }
+
+    public function isCoach(): bool
+    {
+        return $this->role === UserRole::Coach;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
     }
 }

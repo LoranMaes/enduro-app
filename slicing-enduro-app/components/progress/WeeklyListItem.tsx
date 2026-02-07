@@ -1,8 +1,8 @@
-import React from 'react';
-import { WeekData } from '../../types';
-import { cn } from '../../lib/utils';
-import { DataValue } from '../ui/Typography';
 import { ChevronRight } from 'lucide-react';
+import React from 'react';
+import { cn } from '../../lib/utils';
+import type { WeekData } from '../../types';
+import { DataValue } from '../ui/Typography';
 
 interface WeeklyListItemProps {
   week: WeekData;

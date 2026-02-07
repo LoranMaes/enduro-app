@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Heading, Label, DataValue } from '../ui/Typography';
 import { cn } from '../../lib/utils';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 const CapabilityList: React.FC<{ items: string[]; className?: string }> = ({ items, className }) => (
   <ul className={cn("space-y-3 font-mono text-xs text-zinc-400", className)}>

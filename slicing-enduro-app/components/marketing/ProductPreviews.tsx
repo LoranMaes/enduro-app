@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Heading, Label, DataValue } from '../ui/Typography';
-import { SessionCard } from '../calendar/SessionCard';
 import { PerformanceChart } from '../analysis/PerformanceChart';
+import { SessionCard } from '../calendar/SessionCard';
 import { LoadTrendChart } from '../progress/LoadTrendChart';
 import { MetricCard } from '../ui/MetricCard';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 export const ProductPreviews: React.FC = () => {
   return (

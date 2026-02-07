@@ -1,9 +1,9 @@
 
-import React from 'react';
-import { WeekData } from '../../types';
-import { Heading, Label, DataValue } from '../ui/Typography';
 import { ArrowLeft } from 'lucide-react';
+import React from 'react';
 import { cn } from '../../lib/utils';
+import type { WeekData } from '../../types';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface WeekOverviewHeaderProps {
   week: WeekData;

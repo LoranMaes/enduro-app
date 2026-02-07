@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { WeekData, Session } from '../../types';
-import { WeekOverviewHeader } from '../week/WeekOverviewHeader';
-import { WeeklyLoadSummary } from '../week/WeeklyLoadSummary';
-import { SportDistribution } from '../week/SportDistribution';
-import { WeekSessionList } from '../week/WeekSessionList';
+import type { WeekData, Session } from '../../types';
 import { SessionDetailModal } from '../session/SessionDetailModal';
+import { SportDistribution } from '../week/SportDistribution';
+import { WeeklyLoadSummary } from '../week/WeeklyLoadSummary';
+import { WeekOverviewHeader } from '../week/WeekOverviewHeader';
+import { WeekSessionList } from '../week/WeekSessionList';
 import { SessionAnalysisView } from './SessionAnalysisView';
 
 interface WeekOverviewProps {

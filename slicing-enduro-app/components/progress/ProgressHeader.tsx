@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Heading, Label, DataValue } from '../ui/Typography';
 import { cn } from '../../lib/utils';
+import { Heading, Label, DataValue } from '../ui/Typography';
 
 interface ProgressHeaderProps {
   range: number; // number of weeks

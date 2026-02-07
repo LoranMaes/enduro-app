@@ -1,9 +1,9 @@
 
+import { Activity, Droplets, Bike, Footprints, Dumbbell, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import React from 'react';
 import { cn, formatDuration } from '../../lib/utils';
-import { Activity, Droplets, Bike, Footprints, Dumbbell, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import type { Session, SportType, SessionStatus } from '../../types';
 import { Heading, DataValue, Label } from '../ui/Typography';
-import { Session, SportType, SessionStatus } from '../../types';
 
 export interface SessionCardProps {
   sport?: SportType;
