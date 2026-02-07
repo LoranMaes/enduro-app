@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ListTrainingPlanRequest;
 use App\Http\Requests\Api\StoreTrainingPlanRequest;
 use App\Http\Requests\Api\UpdateTrainingPlanRequest;
 use App\Http\Resources\TrainingPlanResource;
@@ -10,7 +11,6 @@ use App\Models\TrainingPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,11 +21,21 @@ class TrainingPlanController extends Controller
      *
      * @todo Implement training plan listing with policy-aware query scoping.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(ListTrainingPlanRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', TrainingPlan::class);
+        $validated = $request->validated();
+        $perPage = (int) ($validated['per_page'] ?? 20);
 
         $plans = $this->queryForUser($request->user())
+            ->when(
+                isset($validated['starts_from']),
+                fn (Builder $query) => $query->whereDate('ends_at', '>=', $validated['starts_from']),
+            )
+            ->when(
+                isset($validated['ends_to']),
+                fn (Builder $query) => $query->whereDate('starts_at', '<=', $validated['ends_to']),
+            )
             ->with([
                 'trainingWeeks' => function ($query): void {
                     $query->orderBy('starts_at')->with([
@@ -36,7 +46,8 @@ class TrainingPlanController extends Controller
                 },
             ])
             ->orderByDesc('starts_at')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         return TrainingPlanResource::collection($plans);
     }

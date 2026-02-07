@@ -34,3 +34,5 @@ LOCKED for MVP
 - Domain entities, migrations, policies, API resources, and API route scaffolding are in place.
 - Authentication remains Fortify-based; API routes currently use `auth` middleware.
 - Sanctum is not installed in the current project baseline.
+- Dashboard now receives training plan data from server-side Inertia props (policy-scoped, paginated).
+- TrainingWeek read API endpoints are implemented with nested session payloads.

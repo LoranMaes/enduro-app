@@ -66,7 +66,7 @@ class User extends Authenticatable
 
     public function isAthlete(): bool
     {
-        return $this->role === UserRole::Athlete;
+        return $this->role === null || $this->role === UserRole::Athlete;
     }
 
     public function isCoach(): bool

@@ -73,3 +73,51 @@ it('returns an empty list for coaches until assignment logic is implemented', fu
     $response->assertOk();
     $response->assertJsonCount(0, 'data');
 });
+
+it('supports training plan pagination and keeps stable response shape', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    TrainingPlan::factory()->for($athlete)->count(3)->create();
+
+    $response = $this
+        ->actingAs($athlete)
+        ->getJson('/api/training-plans?per_page=2');
+
+    $response->assertOk();
+    $response->assertJsonCount(2, 'data');
+    $response->assertJsonPath('meta.per_page', 2);
+    $response->assertJsonPath('meta.total', 3);
+    $response->assertJsonStructure([
+        'data',
+        'links',
+        'meta' => [
+            'current_page',
+            'last_page',
+            'per_page',
+            'total',
+        ],
+    ]);
+});
+
+it('supports training plan date range filters', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    TrainingPlan::factory()->for($athlete)->create([
+        'starts_at' => '2026-01-01',
+        'ends_at' => '2026-01-31',
+        'title' => 'January Plan',
+    ]);
+    TrainingPlan::factory()->for($athlete)->create([
+        'starts_at' => '2026-03-01',
+        'ends_at' => '2026-03-31',
+        'title' => 'March Plan',
+    ]);
+
+    $response = $this
+        ->actingAs($athlete)
+        ->getJson('/api/training-plans?starts_from=2026-03-01&ends_to=2026-03-31');
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.title', 'March Plan');
+});

@@ -25,9 +25,12 @@ class TrainingWeekFactory extends Factory
      */
     public function definition(): array
     {
+        $startsAt = fake()->dateTimeBetween('-1 month', '+2 months');
+
         return [
             'training_plan_id' => TrainingPlan::factory(),
-            'starts_at' => fake()->dateTimeBetween('-1 month', '+2 months'),
+            'starts_at' => $startsAt,
+            'ends_at' => (clone $startsAt)->modify('+6 days'),
         ];
     }
 }

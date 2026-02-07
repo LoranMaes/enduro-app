@@ -17,6 +17,7 @@ class TrainingWeek extends Model
     protected $fillable = [
         'training_plan_id',
         'starts_at',
+        'ends_at',
     ];
 
     /**
@@ -26,6 +27,7 @@ class TrainingWeek extends Model
     {
         return [
             'starts_at' => 'date',
+            'ends_at' => 'date',
         ];
     }
 

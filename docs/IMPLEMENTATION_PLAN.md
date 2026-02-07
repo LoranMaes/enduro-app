@@ -38,6 +38,9 @@ This follows the **design-first → Codex → backend** approach.
 - Week/day/session relationships
 - Infinite scroll performance
 - Memoized rendering
+- TrainingWeek read endpoints implemented (index/show)
+- TrainingSession read endpoints implemented (index/show)
+- Calendar read filters/pagination in place for plan/week/session collections
 
 ---
 
@@ -46,6 +49,10 @@ This follows the **design-first → Codex → backend** approach.
 - CRUD planned sessions
 - Garmin sync ingestion (placeholder only in V1 scaffold)
 - Planned ↔ completed linking
+
+Status update:
+- TrainingWeek CRUD is now implemented and validated.
+- Calendar UX wiring for week writes is intentionally deferred to a later step.
 
 ---
 

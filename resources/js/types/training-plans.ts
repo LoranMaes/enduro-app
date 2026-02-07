@@ -29,6 +29,21 @@ export type ApiCollectionResponse<TData> = {
     data: TData[];
 };
 
+export type ApiPaginationMeta = {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    path: string;
+    per_page: number;
+    to: number | null;
+    total: number;
+};
+
+export type ApiPaginatedCollectionResponse<TData> = ApiCollectionResponse<TData> & {
+    links?: unknown;
+    meta?: ApiPaginationMeta;
+};
+
 export type TrainingSessionView = {
     id: number;
     scheduledDate: string;

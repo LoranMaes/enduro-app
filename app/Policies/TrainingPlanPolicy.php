@@ -18,7 +18,7 @@ class TrainingPlanPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->isAthlete() || $user->isCoach();
+        return true;
     }
 
     public function view(User $user, TrainingPlan $trainingPlan): bool
