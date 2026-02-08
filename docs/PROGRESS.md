@@ -257,5 +257,60 @@
   - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/DomainSpineRoutesTest.php` (14 passed)
   - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/CoachCalendarReadAccessTest.php` (39 passed)
 
+- Implemented provider-agnostic OAuth connection and sync backbone (Strava first):
+  - added OAuth provider contract:
+    - `app/Services/ActivityProviders/Contracts/OAuthProvider.php`
+  - added normalized OAuth token DTO:
+    - `app/Data/OAuthProviderTokensDTO.php`
+  - extended provider manager to resolve both:
+    - activity providers
+    - OAuth providers
+- Added durable provider connection persistence:
+  - new table + model:
+    - `activity_provider_connections`
+    - `App\Models\ActivityProviderConnection`
+  - stores:
+    - encrypted `access_token`
+    - encrypted `refresh_token`
+    - `token_expires_at`
+    - provider athlete id
+    - sync tracking (`last_synced_at`, `last_sync_status`, `last_sync_reason`)
+- Implemented Strava OAuth provider (read scopes, connect/callback/refresh support):
+  - `app/Services/ActivityProviders/Strava/StravaOAuthProvider.php`
+  - OAuth endpoints wired against:
+    - `https://www.strava.com/oauth/authorize`
+    - `https://www.strava.com/oauth/token`
+- Implemented centralized token lifecycle management:
+  - `ActivityProviderTokenManager` detects near-expiry and refreshes tokens through OAuth provider abstractions
+  - `ActivityProviderConnectionStore` handles upsert/disconnect/sync status updates and legacy Strava token compatibility
+- Implemented sync orchestration:
+  - `ActivitySyncService` fetches provider activities, persists via `ExternalActivityPersister`, and tracks sync status
+  - added API endpoint:
+    - `POST /api/activity-providers/{provider}/sync`
+  - role behavior:
+    - athlete/admin allowed
+    - coach forbidden
+- Implemented web OAuth routes/controllers (auth-protected):
+  - connect redirect
+  - callback exchange/store
+  - disconnect
+  - routes under `settings/connections/*`
+- Added Settings → Connections UI (Inertia, real backend state, no mock data):
+  - `resources/js/pages/settings/connections.tsx`
+  - shows connection status + last sync + connect/disconnect + sync now
+  - wired into settings navigation and settings overview links
+- Config/environment updates:
+  - expanded `config/services.php` for OAuth provider map + Strava OAuth credentials/scopes + sync refresh settings
+  - added required env variables to `.env.example`
+- Added test coverage:
+  - `tests/Feature/Settings/ActivityProviderConnectionsTest.php`
+  - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
+  - `tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php`
+  - updated `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php` for OAuth provider resolution
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (27 passed)
+
 Next milestone:
 → Wire admin users table and impersonation controls tighter to final slicing parity (table density/labels), then implement role-management actions in a separate scoped phase (still no training-data admin writes).

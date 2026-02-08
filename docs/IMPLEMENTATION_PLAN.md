@@ -85,11 +85,22 @@ Status update:
 - Minimal persistence into `activities` (COMPLETE, no session-linking/metrics)
 - Read-only activities API with role-scoped access + pagination/filtering (COMPLETE)
 - Test coverage for provider resolution, mapping, token failures, and activity read access (COMPLETE)
+- OAuth/connect contract + provider-specific auth handler resolution (COMPLETE)
+- Strava OAuth connect/callback/disconnect flow (COMPLETE)
+- Token lifecycle refresh management behind provider abstractions (COMPLETE)
+- Manual sync entrypoint with status tracking (COMPLETE):
+  - `POST /api/activity-providers/{provider}/sync`
+- Settings → Connections page (COMPLETE):
+  - real connection status
+  - connect/disconnect actions
+  - sync-now action
+- Idempotent provider activity persistence during sync (COMPLETE)
 
 Status update:
 - External provider scaffolding is now production-safe and swappable by provider key.
-- Strava is wired as the first provider with explicit error handling and no write-back behavior.
-- OAuth UI, background sync/webhooks, and derived load metrics remain intentionally out of scope.
+- Strava is wired as the first provider with explicit read-only sync behavior, token refresh handling, and no write-back behavior.
+- OAuth + sync is now structured for future provider extensions (Garmin/Suunto/Polar) without changing activity read contracts.
+- Background sync scheduling, webhooks, and derived load metrics remain intentionally out of scope.
 
 ---
 

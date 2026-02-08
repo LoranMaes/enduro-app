@@ -9,6 +9,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
+import { connections } from '@/routes/settings';
 import { show as showTwoFactor } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
 import type { BreadcrumbItem } from '@/types';
@@ -40,6 +41,11 @@ const settingsLinks = [
         title: 'Appearance',
         description: 'Theme and interface preferences',
         href: editAppearance(),
+    },
+    {
+        title: 'Connections',
+        description: 'Connect activity providers and run manual syncs',
+        href: connections(),
     },
 ];
 

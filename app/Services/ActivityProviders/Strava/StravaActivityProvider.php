@@ -5,6 +5,7 @@ namespace App\Services\ActivityProviders\Strava;
 use App\Data\Collections\ActivityCollection;
 use App\Data\ExternalActivityDTO;
 use App\Models\User;
+use App\Services\ActivityProviders\ActivityProviderTokenManager;
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderInvalidTokenException;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderRateLimitedException;
@@ -19,6 +20,10 @@ use Throwable;
 class StravaActivityProvider implements ActivityProvider
 {
     private const PROVIDER = 'strava';
+
+    public function __construct(
+        private readonly ActivityProviderTokenManager $tokenManager,
+    ) {}
 
     public function provider(): string
     {
@@ -135,7 +140,10 @@ class StravaActivityProvider implements ActivityProvider
 
     private function resolveAccessToken(User $user): string
     {
-        $token = trim((string) ($user->strava_access_token ?? ''));
+        $token = trim((string) $this->tokenManager->validAccessToken(
+            user: $user,
+            provider: self::PROVIDER,
+        ));
 
         if ($token === '') {
             throw new ActivityProviderTokenMissingException(self::PROVIDER);

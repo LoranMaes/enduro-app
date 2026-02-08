@@ -27,21 +27,28 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ActivityProviderManager::class, function ($app): ActivityProviderManager {
-            /** @var array<string, class-string<ActivityProvider>> $providerClasses */
-            $providerClasses = (array) config('services.activity_providers.providers', []);
+            /** @var array<string, class-string<ActivityProvider>> $activityProviderClasses */
+            $activityProviderClasses = (array) config('services.activity_providers.providers', []);
+
+            /** @var array<string, class-string<\App\Services\ActivityProviders\Contracts\OAuthProvider>> $oauthProviderClasses */
+            $oauthProviderClasses = (array) config('services.activity_providers.oauth_providers', []);
 
             /** @var list<string> $allowedProviders */
             $allowedProviders = array_values(array_filter(
                 (array) config(
                     'services.activity_providers.allowed',
-                    array_keys($providerClasses),
+                    array_values(array_unique(array_merge(
+                        array_keys($activityProviderClasses),
+                        array_keys($oauthProviderClasses),
+                    ))),
                 ),
                 static fn (mixed $provider): bool => is_string($provider) && trim($provider) !== '',
             ));
 
             return new ActivityProviderManager(
                 container: $app,
-                providerClasses: $providerClasses,
+                activityProviderClasses: $activityProviderClasses,
+                oauthProviderClasses: $oauthProviderClasses,
                 allowedProviders: $allowedProviders,
             );
         });

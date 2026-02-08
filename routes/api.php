@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ActivityController;
+use App\Http\Controllers\Api\ActivityProviderSyncController;
 use App\Http\Controllers\Api\TrainingPlanController;
 use App\Http\Controllers\Api\TrainingSessionController;
 use App\Http\Controllers\Api\TrainingWeekController;
@@ -22,4 +23,6 @@ Route::middleware([
         'index',
         'show',
     ]);
+    Route::post('activity-providers/{provider}/sync', ActivityProviderSyncController::class)
+        ->name('activity-providers.sync');
 });

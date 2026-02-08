@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Settings\ActivityProviderCallbackController;
+use App\Http\Controllers\Settings\ActivityProviderConnectController;
+use App\Http\Controllers\Settings\ActivityProviderConnectionIndexController;
+use App\Http\Controllers\Settings\ActivityProviderDisconnectController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -28,4 +32,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    Route::get('settings/connections', ActivityProviderConnectionIndexController::class)
+        ->name('settings.connections');
+    Route::get('settings/connections/{provider}/connect', ActivityProviderConnectController::class)
+        ->name('settings.connections.connect');
+    Route::get('settings/connections/{provider}/callback', ActivityProviderCallbackController::class)
+        ->name('settings.connections.callback');
+    Route::delete('settings/connections/{provider}', ActivityProviderDisconnectController::class)
+        ->name('settings.connections.disconnect');
 });

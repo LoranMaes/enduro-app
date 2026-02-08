@@ -102,6 +102,11 @@ class User extends Authenticatable
         return $this->hasMany(Activity::class, 'athlete_id');
     }
 
+    public function activityProviderConnections(): HasMany
+    {
+        return $this->hasMany(ActivityProviderConnection::class);
+    }
+
     public function isAthlete(): bool
     {
         return $this->role === null || $this->role === UserRole::Athlete;
@@ -115,5 +120,10 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    public function canManageActivityProviderConnections(): bool
+    {
+        return $this->isAthlete() || $this->isAdmin();
     }
 }

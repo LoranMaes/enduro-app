@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ActivityProviders\Strava\StravaActivityProvider;
+use App\Services\ActivityProviders\Strava\StravaOAuthProvider;
 
 return [
 
@@ -45,10 +46,23 @@ return [
         'providers' => [
             'strava' => StravaActivityProvider::class,
         ],
+        'oauth_providers' => [
+            'strava' => StravaOAuthProvider::class,
+        ],
+        'sync_lookback_days' => (int) env('ACTIVITY_PROVIDER_SYNC_LOOKBACK_DAYS', 90),
+        'token_refresh_buffer_seconds' => (int) env('ACTIVITY_PROVIDER_TOKEN_REFRESH_BUFFER_SECONDS', 300),
     ],
 
     'strava' => [
         'base_url' => env('STRAVA_BASE_URL', 'https://www.strava.com/api/v3'),
+        'oauth_base_url' => env('STRAVA_OAUTH_BASE_URL', 'https://www.strava.com'),
+        'client_id' => env('STRAVA_CLIENT_ID'),
+        'client_secret' => env('STRAVA_CLIENT_SECRET'),
+        'redirect_uri' => env('STRAVA_REDIRECT_URI'),
+        'scopes' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            (string) env('STRAVA_SCOPES', 'read,activity:read_all'),
+        )))),
     ],
 
 ];
