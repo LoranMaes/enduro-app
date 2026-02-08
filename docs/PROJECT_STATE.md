@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Design complete + backend domain spine scaffolded + read-only API integration started in frontend dashboard
+Backend spine + calendar read/write foundation complete, with frontend in slicing-convergence mode (athlete calendar + sidebar)
 
 ## Confidence Level
 
@@ -14,8 +14,8 @@ High — UX validated, backend structure in place
 - Garmin data normalization
 - Overcomplicating early admin tools
 - Coach-athlete assignment model not implemented yet
-- API controllers are currently structural stubs (no business logic yet)
-- Read integration is currently limited to dashboard view; broader calendar surfaces still pending
+- Session write APIs not yet implemented (store/update/destroy)
+- Remaining visual drift risk from starter-kit primitives still present in non-calendar surfaces
 
 ## Mitigations
 
@@ -32,7 +32,19 @@ LOCKED for MVP
 ## Backend Status
 
 - Domain entities, migrations, policies, API resources, and API route scaffolding are in place.
-- Authentication remains Fortify-based; API routes currently use `auth` middleware.
-- Sanctum is not installed in the current project baseline.
-- Dashboard now receives training plan data from server-side Inertia props (policy-scoped, paginated).
-- TrainingWeek read API endpoints are implemented with nested session payloads.
+- Authentication remains Fortify-based; API routes use `auth` middleware.
+- TrainingPlan CRUD is implemented and tested.
+- TrainingWeek read + CRUD is implemented and tested (including overlap/date validation).
+- TrainingSession read endpoints are implemented and tested with policy scoping + filters.
+- Visual verification seeders are available via `VisualSeeder` for deterministic UI snapshots.
+
+## Frontend Status
+
+- Athlete calendar uses real backend data and is read-only.
+- Calendar composition now follows slicing structure:
+  - fixed calendar header
+  - fixed weekday axis
+  - sticky week labels
+  - aligned day columns + summary rail
+- Sidebar is now slicing-style fixed icon rail with role-aware entries.
+- Core theme tokens/fonts were hardened to slicing palette + typography baselines.

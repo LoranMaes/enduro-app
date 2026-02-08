@@ -2,11 +2,6 @@
 
 ## 2026-02-07
 
-- Calendar-first UX finalized
-- Analysis UX hardened
-- Progress view implemented
-- Admin / coach vision aligned
-- Design system stabilized
 - Backend domain spine generated:
   - models + relationships
   - migrations
@@ -49,6 +44,33 @@
   - date ordering (`starts_at < ends_at`)
   - non-overlapping weeks within the same training plan
 - Added focused TrainingWeek CRUD API tests for auth, ownership, admin, overlap, and invalid date ranges
+- Added deterministic visual verification seeders:
+  - `VisualSeeder`
+  - `Visual/AdminVisualSeeder`
+  - `Visual/CoachVisualSeeder`
+  - `Visual/AthleteVisualSeeder`
+  - deterministic role users + predictable plan/week/session calendar data
+- Implemented role-aware navigation shells (athlete/coach/admin/settings route surfaces)
+- Refactored athlete calendar to slicing-first composition using real backend data:
+  - single calendar canvas
+  - fixed top calendar header
+  - fixed weekday row
+  - sticky week headers
+  - 7 aligned day columns + right weekly summary rail
+  - read-only interaction posture preserved
+- Reworked sidebar from starter-kit panel navigation to slicing-style fixed icon rail:
+  - icon stack + active blue indicator dot
+  - role-aware nav visibility retained
+  - role badge + sign-out controls aligned to slicing layout
+- Removed/neutralized starter-kit visual token drift:
+  - slicing-aligned dark tokens in `resources/css/app.css`
+  - Inter + JetBrains Mono font loading in app shell
+  - bootstrap background set to slicing dark to avoid initial flash mismatch
+- Updated calendar session visuals toward slicing `SessionCard` behavior:
+  - removed planned badge
+  - status icon rules aligned
+  - mono metric row + left sport accent strip + density/rhythm parity updates
+- Updated docs to track frontend slicing convergence and backend readiness
 
 Next milestone:
-→ Build dedicated calendar pages/components on top of server-provided read models, then expand Week/Session backend beyond read-only
+→ Lock remaining pixel-level slicing parity in athlete calendar + sidebar shell, then begin controlled Session write backend phase (store/update/destroy + tests) without changing coach assignment scope

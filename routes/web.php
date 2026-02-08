@@ -1,13 +1,13 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
-Route::get('/', function () {
-    return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
+Route::get('/', function (Request $request) {
+    return Inertia::render('landing', [
+        'enterLabUrl' => $request->user() ? route('dashboard') : route('login'),
     ]);
 })->name('home');
 

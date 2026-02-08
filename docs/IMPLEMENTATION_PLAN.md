@@ -34,25 +34,30 @@ This follows the **design-first → Codex → backend** approach.
 
 ## Phase 2 — Calendar Backbone
 
-- Real data models
-- Week/day/session relationships
-- Infinite scroll performance
-- Memoized rendering
-- TrainingWeek read endpoints implemented (index/show)
-- TrainingSession read endpoints implemented (index/show)
-- Calendar read filters/pagination in place for plan/week/session collections
+- Real data models (COMPLETE)
+- Week/day/session relationships (COMPLETE)
+- TrainingWeek read endpoints (COMPLETE)
+- TrainingSession read endpoints (COMPLETE)
+- Calendar read filters/pagination for plan/week/session collections (COMPLETE)
+- TrainingWeek CRUD backend (COMPLETE)
+- Athlete calendar slicing convergence pass (IN PROGRESS):
+  - fixed header + fixed day axis + sticky weeks
+  - slicing-aligned session/day/week composition
+  - slicing-style sidebar rail integration
+  - token/typography hardening
 
 ---
 
 ## Phase 3 — Training Sessions
 
-- CRUD planned sessions
+- CRUD planned sessions (NEXT)
 - Garmin sync ingestion (placeholder only in V1 scaffold)
 - Planned ↔ completed linking
 
 Status update:
-- TrainingWeek CRUD is now implemented and validated.
-- Calendar UX wiring for week writes is intentionally deferred to a later step.
+- TrainingWeek CRUD is implemented and validated.
+- Calendar is read-only and now mapped to slicing-first layout using real API data.
+- Session write logic is still intentionally deferred and is the next backend milestone.
 
 ---
 
