@@ -97,6 +97,11 @@ class User extends Authenticatable
         return $this->hasMany(TrainingPlan::class);
     }
 
+    public function trainingSessions(): HasMany
+    {
+        return $this->hasMany(TrainingSession::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class, 'athlete_id');

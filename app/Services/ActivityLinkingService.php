@@ -39,6 +39,10 @@ class ActivityLinkingService
 
     private function resolveAthleteId(TrainingSession $session): ?int
     {
+        if ($session->user_id !== null) {
+            return $session->user_id;
+        }
+
         $trainingWeek = $session->relationLoaded('trainingWeek')
             ? $session->trainingWeek
             : $session->trainingWeek()

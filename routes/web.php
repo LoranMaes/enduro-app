@@ -36,6 +36,14 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('coaches', CoachAthleteIndexController::class)
         ->name('coaches.index');
 
+    Route::get('progress', function () {
+        return Inertia::render('progress/index');
+    })->name('progress.index');
+
+    Route::get('plans', function () {
+        return Inertia::render('plans/index');
+    })->name('plans.index');
+
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', AdminConsoleController::class)->name('index');
         Route::get('/users', AdminUserIndexController::class)->name('users.index');

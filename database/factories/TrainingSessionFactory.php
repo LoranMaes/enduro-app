@@ -42,4 +42,24 @@ class TrainingSessionFactory extends Factory
             'notes' => fake()->optional()->sentence(),
         ];
     }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (TrainingSession $trainingSession): void {
+            if ($trainingSession->user_id !== null) {
+                return;
+            }
+
+            $trainingSession->loadMissing('trainingWeek.trainingPlan');
+            $athleteId = $trainingSession->trainingWeek?->trainingPlan?->user_id;
+
+            if ($athleteId === null) {
+                return;
+            }
+
+            $trainingSession->forceFill([
+                'user_id' => $athleteId,
+            ])->save();
+        });
+    }
 }

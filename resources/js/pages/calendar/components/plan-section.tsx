@@ -4,8 +4,8 @@ import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
 import type {
-    TrainingPlanView,
     TrainingSessionView,
+    TrainingWeekView,
 } from '@/types/training-plans';
 import {
     SessionEditorModal,
@@ -14,20 +14,16 @@ import {
 import { WeekSection } from './week-section';
 
 type PlanSectionProps = {
-    plan: TrainingPlanView;
-    additionalPlanCount: number;
+    weeks: TrainingWeekView[];
     viewingAthleteName?: string | null;
 };
 
 const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function PlanSection({
-    plan,
-    additionalPlanCount,
+    weeks,
     viewingAthleteName = null,
 }: PlanSectionProps) {
-    void additionalPlanCount;
-
     const { auth } = usePage<SharedData>().props;
     const [sessionEditorContext, setSessionEditorContext] =
         useState<SessionEditorContext | null>(null);
@@ -43,14 +39,14 @@ export function PlanSection({
     const canManageSessionLinks = auth.user.role === 'athlete';
 
     const openCreateSessionModal = useCallback(
-        (trainingWeekId: number, date: string): void => {
+        (date: string): void => {
             if (!canManageSessionWrites) {
                 return;
             }
 
             setSessionEditorContext({
                 mode: 'create',
-                trainingWeekId,
+                trainingWeekId: null,
                 date,
             });
         },
@@ -58,14 +54,14 @@ export function PlanSection({
     );
 
     const openEditSessionModal = useCallback(
-        (trainingWeekId: number, session: TrainingSessionView): void => {
+        (session: TrainingSessionView): void => {
             if (!canManageSessionLinks) {
                 return;
             }
 
             setSessionEditorContext({
                 mode: 'edit',
-                trainingWeekId,
+                trainingWeekId: session.trainingWeekId,
                 date: session.scheduledDate,
                 session,
             });
@@ -81,7 +77,7 @@ export function PlanSection({
         setIsRefreshing(true);
 
         router.reload({
-            only: ['trainingPlans'],
+            only: ['trainingPlans', 'trainingSessions'],
             onFinish: () => {
                 setIsRefreshing(false);
             },
@@ -162,7 +158,7 @@ export function PlanSection({
                     isRefreshing && 'opacity-80',
                 )}
             >
-                {plan.weeks.map((week) => (
+                {weeks.map((week) => (
                     <WeekSection
                         key={week.id}
                         week={week}

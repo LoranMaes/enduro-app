@@ -2,9 +2,11 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
     Eye,
+    FileText,
     LogOut,
     Settings,
     ShieldCheck,
+    TrendingUp,
     UsersRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -58,6 +60,23 @@ export function AppSidebar() {
                   icon: CalendarDays,
                   isActive: (path: string) => path.startsWith('/dashboard'),
               },
+              ...(role === 'athlete'
+                  ? [
+                        {
+                            title: 'Training Progress',
+                            href: '/progress',
+                            icon: TrendingUp,
+                            isActive: (path: string) =>
+                                path.startsWith('/progress'),
+                        } satisfies SidebarItem,
+                        {
+                            title: 'Training Plans',
+                            href: '/plans',
+                            icon: FileText,
+                            isActive: (path: string) => path.startsWith('/plans'),
+                        } satisfies SidebarItem,
+                    ]
+                  : []),
               ...(role === 'coach'
                   ? [
                         {

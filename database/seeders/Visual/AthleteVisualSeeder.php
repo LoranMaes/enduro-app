@@ -203,8 +203,12 @@ class AthleteVisualSeeder extends Seeder
      */
     private function createPlannedSessions(TrainingWeek $trainingWeek, array $sessions): void
     {
+        $trainingWeek->loadMissing('trainingPlan:id,user_id');
+        $athleteId = $trainingWeek->trainingPlan?->user_id;
+
         foreach ($sessions as $session) {
             TrainingSession::query()->create([
+                'user_id' => $athleteId,
                 'training_week_id' => $trainingWeek->id,
                 'scheduled_date' => $session['scheduled_date'],
                 'sport' => $session['sport'],

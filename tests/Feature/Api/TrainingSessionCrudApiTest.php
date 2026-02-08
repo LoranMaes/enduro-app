@@ -53,6 +53,7 @@ it('allows athletes to create update and delete their own sessions', function ()
 
     $this->assertDatabaseHas('training_sessions', [
         'id' => $sessionId,
+        'user_id' => $athlete->id,
         'training_week_id' => $week->id,
         'scheduled_date' => '2026-07-03',
         'sport' => 'run',
@@ -81,11 +82,60 @@ it('allows athletes to create update and delete their own sessions', function ()
 
     $this
         ->actingAs($athlete)
+        ->putJson("/api/training-sessions/{$sessionId}", [
+            'training_week_id' => null,
+            'date' => '2026-07-05',
+            'sport' => 'run',
+            'planned_duration_minutes' => 70,
+            'planned_tss' => 50,
+            'notes' => 'Standalone session',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.training_week_id', null)
+        ->assertJsonPath('data.scheduled_date', '2026-07-05');
+
+    $this->assertDatabaseHas('training_sessions', [
+        'id' => $sessionId,
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => '2026-07-05',
+    ]);
+
+    $this
+        ->actingAs($athlete)
         ->deleteJson("/api/training-sessions/{$sessionId}")
         ->assertNoContent();
 
     $this->assertDatabaseMissing('training_sessions', [
         'id' => $sessionId,
+    ]);
+});
+
+it('allows athletes to create sessions without assigning a training week', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    $created = $this
+        ->actingAs($athlete)
+        ->postJson('/api/training-sessions', [
+            'training_week_id' => null,
+            'date' => '2026-07-05',
+            'sport' => 'run',
+            'planned_duration_minutes' => 50,
+            'planned_tss' => 40,
+            'notes' => 'Standalone easy run',
+        ]);
+
+    $created->assertCreated()
+        ->assertJsonPath('data.training_week_id', null)
+        ->assertJsonPath('data.scheduled_date', '2026-07-05')
+        ->assertJsonPath('data.duration_minutes', 50);
+
+    $this->assertDatabaseHas('training_sessions', [
+        'id' => $created->json('data.id'),
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => '2026-07-05',
+        'sport' => 'run',
     ]);
 });
 
@@ -253,7 +303,6 @@ it('validates training session write payloads', function () {
         ->postJson('/api/training-sessions', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors([
-            'training_week_id',
             'date',
             'sport',
             'planned_duration_minutes',

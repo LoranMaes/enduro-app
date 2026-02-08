@@ -1,16 +1,20 @@
 import type {
     ApiCollectionResponse,
     TrainingPlanApi,
+    TrainingSessionApi,
     TrainingPlanView,
     TrainingSessionView,
     TrainingWeekView,
 } from '@/types/training-plans';
 
-const mapSession = (
-    session: TrainingPlanApi['training_weeks'][number]['training_sessions'][number],
+export const mapTrainingSession = (
+    session:
+        | TrainingPlanApi['training_weeks'][number]['training_sessions'][number]
+        | TrainingSessionApi,
 ): TrainingSessionView => {
     return {
         id: session.id,
+        trainingWeekId: session.training_week_id ?? null,
         scheduledDate: session.scheduled_date,
         sport: session.sport,
         status: session.status,
@@ -54,7 +58,7 @@ const mapWeek = (
         id: week.id,
         startsAt: week.starts_at,
         endsAt: week.ends_at,
-        sessions: week.training_sessions.map(mapSession),
+        sessions: week.training_sessions.map(mapTrainingSession),
     };
 };
 
@@ -73,4 +77,10 @@ export const mapTrainingPlanCollection = (
     response: ApiCollectionResponse<TrainingPlanApi>,
 ): TrainingPlanView[] => {
     return response.data.map(mapPlan);
+};
+
+export const mapTrainingSessionCollection = (
+    response: ApiCollectionResponse<TrainingSessionApi>,
+): TrainingSessionView[] => {
+    return response.data.map(mapTrainingSession);
 };

@@ -16,6 +16,7 @@ class TrainingSession extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'user_id',
         'training_week_id',
         'scheduled_date',
         'sport',
@@ -43,6 +44,11 @@ class TrainingSession extends Model
     public function trainingWeek(): BelongsTo
     {
         return $this->belongsTo(TrainingWeek::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function activity(): HasOne

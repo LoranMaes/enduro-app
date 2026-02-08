@@ -27,7 +27,7 @@ class StoreTrainingSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'training_week_id' => ['required', 'integer', 'exists:training_weeks,id'],
+            'training_week_id' => ['nullable', 'integer', 'exists:training_weeks,id'],
             'date' => ['required', 'date'],
             'sport' => ['required', Rule::enum(TrainingSessionSport::class)],
             'planned_duration_minutes' => ['required', 'integer', 'min:1'],
@@ -43,6 +43,10 @@ class StoreTrainingSessionRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if ($this->input('training_week_id') === null) {
                 return;
             }
 

@@ -63,7 +63,7 @@ type ValidationField =
 type ValidationErrors = Partial<Record<ValidationField, string>>;
 
 type SessionWritePayload = {
-    training_week_id: number;
+    training_week_id: number | null;
     date: string;
     sport: Sport;
     planned_duration_minutes: number;
@@ -74,12 +74,12 @@ type SessionWritePayload = {
 export type SessionEditorContext =
     | {
           mode: 'create';
-          trainingWeekId: number;
+          trainingWeekId: number | null;
           date: string;
       }
     | {
           mode: 'edit';
-          trainingWeekId: number;
+          trainingWeekId: number | null;
           date: string;
           session: TrainingSessionView;
       };
@@ -661,7 +661,9 @@ export function SessionEditorModal({
                                     Week
                                 </p>
                                 <p className="mt-1 font-mono text-xs text-zinc-200">
-                                    #{context.trainingWeekId}
+                                    {context.trainingWeekId !== null
+                                        ? `#${context.trainingWeekId}`
+                                        : 'Unassigned'}
                                 </p>
                             </div>
                         </div>
@@ -1068,7 +1070,7 @@ function toSport(value: string): Sport {
 }
 
 function buildPayload(data: {
-    trainingWeekId: number;
+    trainingWeekId: number | null;
     date: string;
     sport: Sport;
     plannedDurationMinutes: string;
@@ -1144,6 +1146,7 @@ function extractMessage(payload: unknown): string | null {
 function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
     return {
         id: session.id,
+        trainingWeekId: session.training_week_id ?? null,
         scheduledDate: session.scheduled_date,
         sport: session.sport,
         status: session.status,

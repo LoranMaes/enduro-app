@@ -72,13 +72,26 @@ class TrainingSessionController extends Controller
         $this->authorize('create', TrainingSession::class);
         $validated = $request->validated();
 
-        $trainingWeek = TrainingWeek::query()->findOrFail(
-            (int) $validated['training_week_id'],
-        );
-        $this->authorize('update', $trainingWeek);
+        $trainingWeek = null;
+
+        if (isset($validated['training_week_id']) && $validated['training_week_id'] !== null) {
+            $trainingWeek = TrainingWeek::query()
+                ->with('trainingPlan:id,user_id')
+                ->findOrFail((int) $validated['training_week_id']);
+            $this->authorize('update', $trainingWeek);
+        }
+
+        $ownerId = $trainingWeek?->trainingPlan?->user_id ?? $request->user()?->id;
+
+        if ($ownerId === null) {
+            throw ValidationException::withMessages([
+                'training_week_id' => 'Unable to determine session owner.',
+            ]);
+        }
 
         $trainingSession = TrainingSession::query()->create([
-            'training_week_id' => $trainingWeek->id,
+            'user_id' => $ownerId,
+            'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
             'status' => TrainingSessionStatus::Planned->value,
@@ -118,13 +131,28 @@ class TrainingSessionController extends Controller
         $this->authorize('update', $trainingSession);
         $validated = $request->validated();
 
-        $trainingWeek = TrainingWeek::query()->findOrFail(
-            (int) $validated['training_week_id'],
-        );
-        $this->authorize('update', $trainingWeek);
+        $trainingWeek = null;
+
+        if (isset($validated['training_week_id']) && $validated['training_week_id'] !== null) {
+            $trainingWeek = TrainingWeek::query()
+                ->with('trainingPlan:id,user_id')
+                ->findOrFail((int) $validated['training_week_id']);
+            $this->authorize('update', $trainingWeek);
+        }
+
+        $ownerId = $trainingWeek?->trainingPlan?->user_id
+            ?? $trainingSession->user_id
+            ?? $request->user()?->id;
+
+        if ($ownerId === null) {
+            throw ValidationException::withMessages([
+                'training_week_id' => 'Unable to determine session owner.',
+            ]);
+        }
 
         $trainingSession->update([
-            'training_week_id' => $trainingWeek->id,
+            'user_id' => $ownerId,
+            'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
             'duration_minutes' => $validated['planned_duration_minutes'],
@@ -318,18 +346,14 @@ class TrainingSessionController extends Controller
         }
 
         if ($user->isAthlete()) {
-            return TrainingSession::query()->whereHas('trainingWeek.trainingPlan', function (Builder $query) use ($user): void {
-                $query->where('user_id', $user->id);
-            });
+            return TrainingSession::query()->where('user_id', $user->id);
         }
 
         if ($user->isCoach()) {
-            return TrainingSession::query()->whereHas('trainingWeek.trainingPlan', function (Builder $query) use ($user): void {
-                $query->whereIn(
-                    'user_id',
-                    $user->coachedAthletes()->select('users.id'),
-                );
-            });
+            return TrainingSession::query()->whereIn(
+                'user_id',
+                $user->coachedAthletes()->select('users.id'),
+            );
         }
 
         return TrainingSession::query()->whereRaw('1 = 0');

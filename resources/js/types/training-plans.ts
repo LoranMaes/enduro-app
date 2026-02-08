@@ -16,6 +16,7 @@ export type SuggestedActivityApi = {
 
 export type TrainingSessionApi = {
     id: number;
+    training_week_id: number | null;
     scheduled_date: string;
     sport: string;
     status: 'planned' | 'completed' | 'skipped' | 'partial' | string;
@@ -70,6 +71,7 @@ export type ApiPaginatedCollectionResponse<TData> =
 
 export type TrainingSessionView = {
     id: number;
+    trainingWeekId: number | null;
     scheduledDate: string;
     sport: string;
     status: string;

@@ -10,11 +10,8 @@ type WeekSectionProps = {
     week: TrainingWeekView;
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
-    onCreateSession: (trainingWeekId: number, date: string) => void;
-    onEditSession: (
-        trainingWeekId: number,
-        session: TrainingSessionView,
-    ) => void;
+    onCreateSession: (date: string) => void;
+    onEditSession: (session: TrainingSessionView) => void;
 };
 
 const dateKey = (date: Date): string => {
@@ -123,7 +120,6 @@ export function WeekSection({
                             <DayColumn
                                 dayNumber={dayToken(currentDay)}
                                 dayDate={currentDayKey}
-                                trainingWeekId={week.id}
                                 isToday={todayKey === currentDayKey}
                                 isPast={
                                     currentDay < new Date() &&

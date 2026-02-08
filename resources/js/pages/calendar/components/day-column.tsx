@@ -6,23 +6,18 @@ import { SessionRow } from './session-row';
 type DayColumnProps = {
     dayNumber: string;
     dayDate: string;
-    trainingWeekId: number;
     isToday: boolean;
     isPast: boolean;
     sessions: TrainingSessionView[];
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
-    onCreateSession: (trainingWeekId: number, date: string) => void;
-    onEditSession: (
-        trainingWeekId: number,
-        session: TrainingSessionView,
-    ) => void;
+    onCreateSession: (date: string) => void;
+    onEditSession: (session: TrainingSessionView) => void;
 };
 
 export function DayColumn({
     dayNumber,
     dayDate,
-    trainingWeekId,
     isToday,
     isPast,
     sessions,
@@ -40,7 +35,7 @@ export function DayColumn({
             return;
         }
 
-        onCreateSession(trainingWeekId, dayDate);
+        onCreateSession(dayDate);
     };
 
     return (
@@ -94,7 +89,7 @@ export function DayColumn({
                         onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            onCreateSession(trainingWeekId, dayDate);
+                            onCreateSession(dayDate);
                         }}
                         className={cn(
                             'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100 hover:text-white',
@@ -119,7 +114,7 @@ export function DayColumn({
                         isInteractive={canOpenEditModal}
                         onClick={() => {
                             if (canOpenEditModal) {
-                                onEditSession(trainingWeekId, session);
+                                onEditSession(session);
                             }
                         }}
                     />

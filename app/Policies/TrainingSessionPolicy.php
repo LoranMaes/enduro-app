@@ -34,14 +34,18 @@ class TrainingSessionPolicy
 
     public function view(User $user, TrainingSession $trainingSession): bool
     {
-        $athlete = $trainingSession->trainingWeek->trainingPlan->user;
+        $athleteId = $this->resolveAthleteId($trainingSession);
+
+        if ($athleteId === null) {
+            return false;
+        }
 
         if ($user->isAthlete()) {
-            return $athlete->is($user);
+            return $athleteId === $user->id;
         }
 
         if ($user->isCoach()) {
-            return $this->canCoachAccessAthlete($user, $athlete);
+            return $this->canCoachAccessAthleteId($user, $athleteId);
         }
 
         return false;
@@ -68,7 +72,7 @@ class TrainingSessionPolicy
         }
 
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -81,7 +85,7 @@ class TrainingSessionPolicy
         }
 
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -94,7 +98,7 @@ class TrainingSessionPolicy
         }
 
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -112,7 +116,7 @@ class TrainingSessionPolicy
     public function linkActivity(User $user, TrainingSession $trainingSession): bool
     {
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -121,7 +125,7 @@ class TrainingSessionPolicy
     public function unlinkActivity(User $user, TrainingSession $trainingSession): bool
     {
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -130,7 +134,7 @@ class TrainingSessionPolicy
     public function complete(User $user, TrainingSession $trainingSession): bool
     {
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
@@ -139,18 +143,34 @@ class TrainingSessionPolicy
     public function revertCompletion(User $user, TrainingSession $trainingSession): bool
     {
         if ($user->isAthlete()) {
-            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $this->resolveAthleteId($trainingSession) === $user->id;
         }
 
         return false;
     }
 
-    private function canCoachAccessAthlete(User $coach, User $athlete): bool
+    private function canCoachAccessAthleteId(User $coach, int $athleteId): bool
     {
         return $coach
             ->coachedAthletes()
-            ->whereKey($athlete->id)
+            ->whereKey($athleteId)
             ->exists();
+    }
+
+    private function resolveAthleteId(TrainingSession $trainingSession): ?int
+    {
+        if ($trainingSession->user_id !== null) {
+            return $trainingSession->user_id;
+        }
+
+        $trainingWeek = $trainingSession->relationLoaded('trainingWeek')
+            ? $trainingSession->trainingWeek
+            : $trainingSession->trainingWeek()
+                ->select('id', 'training_plan_id')
+                ->with('trainingPlan:id,user_id')
+                ->first();
+
+        return $trainingWeek?->trainingPlan?->user_id;
     }
 
     private function isImpersonating(): bool
