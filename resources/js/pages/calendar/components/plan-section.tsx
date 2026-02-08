@@ -31,6 +31,7 @@ export function PlanSection({
     const { auth } = usePage<SharedData>().props;
     const [sessionEditorContext, setSessionEditorContext] =
         useState<SessionEditorContext | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const avatarInitials = auth.user.name
         .split(' ')
         .filter(Boolean)
@@ -76,8 +77,13 @@ export function PlanSection({
     }, []);
 
     const refreshCalendarData = useCallback((): void => {
+        setIsRefreshing(true);
+
         router.reload({
             only: ['trainingPlans'],
+            onFinish: () => {
+                setIsRefreshing(false);
+            },
         });
     }, []);
 
@@ -92,10 +98,20 @@ export function PlanSection({
                         {viewingAthleteName !== null
                             ? `Viewing athlete: ${viewingAthleteName}`
                             : 'Season 2024 • Build Phase 1'}
+                        {!canManageSessions ? ' • Read-only' : null}
                     </p>
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {isRefreshing ? (
+                        <p
+                            className="flex items-center gap-1.5 text-[11px] text-zinc-500"
+                            aria-live="polite"
+                        >
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500" />
+                            Refreshing
+                        </p>
+                    ) : null}
                     <div className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                         <span className="text-zinc-400">
@@ -139,7 +155,12 @@ export function PlanSection({
                 </div>
             </div>
 
-            <div className="flex-1">
+            <div
+                className={cn(
+                    'flex-1 transition-opacity',
+                    isRefreshing && 'opacity-80',
+                )}
+            >
                 {plan.weeks.map((week) => (
                     <WeekSection
                         key={week.id}

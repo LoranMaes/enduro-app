@@ -14,7 +14,7 @@ export function ImpersonationBanner() {
     const roleLabel = (impersonatedUser.role ?? 'athlete').toString();
 
     return (
-        <div className="pointer-events-none fixed right-0 bottom-0 left-16 z-50 border-t border-amber-900/40 bg-amber-950/90 px-6 py-3 backdrop-blur-md">
+        <div className="pointer-events-none fixed right-0 bottom-0 left-16 z-30 border-t border-amber-900/40 bg-amber-950/90 px-6 py-3 backdrop-blur-md">
             <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3 text-amber-100">
                     <span className="inline-flex shrink-0 items-center gap-2 rounded-md border border-amber-800/60 bg-amber-900/60 px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">

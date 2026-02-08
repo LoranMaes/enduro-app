@@ -6,7 +6,14 @@ import {
     Footprints,
     Trash2,
 } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+    FormEvent,
+    KeyboardEvent,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -98,14 +105,17 @@ export function SessionEditorModal({
     onOpenChange,
     onSaved,
 }: SessionEditorModalProps) {
+    const plannedDurationInputRef = useRef<HTMLInputElement | null>(null);
     const [sport, setSport] = useState<Sport>('run');
     const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('60');
     const [plannedTss, setPlannedTss] = useState('');
     const [notes, setNotes] = useState('');
-    const [processing, setProcessing] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
+    const isBusy = isSubmitting || isDeleting;
 
     const isEditMode = context?.mode === 'edit';
     const dialogTitle = isEditMode ? 'Edit Session' : 'Create Session';
@@ -155,14 +165,62 @@ export function SessionEditorModal({
         setConfirmingDelete(false);
     }, [open, context]);
 
-    const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-        event.preventDefault();
-
-        if (!context) {
+    useEffect(() => {
+        if (!open) {
             return;
         }
 
-        setProcessing(true);
+        const animationFrame = window.requestAnimationFrame(() => {
+            plannedDurationInputRef.current?.focus();
+        });
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+        };
+    }, [open, context]);
+
+    const clearFieldError = (field: keyof ValidationErrors): void => {
+        setErrors((currentErrors) => {
+            if (currentErrors[field] === undefined) {
+                return currentErrors;
+            }
+
+            return {
+                ...currentErrors,
+                [field]: undefined,
+            };
+        });
+        setGeneralError(null);
+    };
+
+    const handleFormKeyDown = (event: KeyboardEvent<HTMLFormElement>): void => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        if (event.target instanceof HTMLTextAreaElement) {
+            return;
+        }
+
+        if (event.target instanceof HTMLButtonElement) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (!isBusy) {
+            event.currentTarget.requestSubmit();
+        }
+    };
+
+    const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault();
+
+        if (!context || isBusy) {
+            return;
+        }
+
+        setIsSubmitting(true);
         setErrors({});
         setGeneralError(null);
         setConfirmingDelete(false);
@@ -222,12 +280,12 @@ export function SessionEditorModal({
                 );
             }
         } finally {
-            setProcessing(false);
+            setIsSubmitting(false);
         }
     };
 
     const deleteSession = async (): Promise<void> => {
-        if (!context || context.mode !== 'edit') {
+        if (!context || context.mode !== 'edit' || isBusy) {
             return;
         }
 
@@ -236,7 +294,7 @@ export function SessionEditorModal({
             return;
         }
 
-        setProcessing(true);
+        setIsDeleting(true);
         setErrors({});
         setGeneralError(null);
 
@@ -262,13 +320,32 @@ export function SessionEditorModal({
                 extractMessage(responsePayload) ?? 'Unable to delete session.',
             );
         } finally {
-            setProcessing(false);
+            setIsDeleting(false);
         }
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl border-border bg-surface p-0 text-zinc-200">
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (isBusy && !nextOpen) {
+                    return;
+                }
+
+                onOpenChange(nextOpen);
+            }}
+        >
+            <DialogContent
+                className="max-w-xl border-border bg-surface p-0 text-zinc-200"
+                onEscapeKeyDown={(event) => {
+                    if (isBusy) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    onOpenChange(false);
+                }}
+            >
                 <DialogHeader className="border-b border-border px-6 py-4">
                     <DialogTitle className="font-sans text-base font-medium text-white">
                         {dialogTitle}
@@ -281,8 +358,19 @@ export function SessionEditorModal({
                 {context ? (
                     <form
                         onSubmit={submit}
+                        onKeyDown={handleFormKeyDown}
+                        aria-busy={isBusy}
                         className="flex flex-col gap-5 px-6 pt-5 pb-6"
                     >
+                        {generalError !== null ? (
+                            <p
+                                role="alert"
+                                className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                            >
+                                {generalError}
+                            </p>
+                        ) : null}
+
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-md border border-border bg-background/60 px-3 py-2">
                                 <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
@@ -314,11 +402,12 @@ export function SessionEditorModal({
                                         <button
                                             key={option.value}
                                             type="button"
-                                            onClick={() =>
-                                                setSport(option.value)
-                                            }
+                                            onClick={() => {
+                                                setSport(option.value);
+                                                clearFieldError('sport');
+                                            }}
                                             className={cn(
-                                                'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors',
+                                                'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
                                                 sport === option.value
                                                     ? 'border border-zinc-700 bg-zinc-800 text-white'
                                                     : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
@@ -343,14 +432,18 @@ export function SessionEditorModal({
                                 </Label>
                                 <Input
                                     id="planned-duration-minutes"
+                                    ref={plannedDurationInputRef}
                                     type="number"
                                     min={1}
                                     value={plannedDurationMinutes}
-                                    onChange={(event) =>
+                                    onChange={(event) => {
                                         setPlannedDurationMinutes(
                                             event.target.value,
-                                        )
-                                    }
+                                        );
+                                        clearFieldError(
+                                            'planned_duration_minutes',
+                                        );
+                                    }}
                                     className="border-border bg-background font-mono text-sm text-zinc-200"
                                 />
                                 <InputError
@@ -370,9 +463,10 @@ export function SessionEditorModal({
                                     type="number"
                                     min={0}
                                     value={plannedTss}
-                                    onChange={(event) =>
-                                        setPlannedTss(event.target.value)
-                                    }
+                                    onChange={(event) => {
+                                        setPlannedTss(event.target.value);
+                                        clearFieldError('planned_tss');
+                                    }}
                                     className="border-border bg-background font-mono text-sm text-zinc-200"
                                 />
                                 <InputError message={errors.planned_tss} />
@@ -390,9 +484,10 @@ export function SessionEditorModal({
                                 id="session-notes"
                                 rows={4}
                                 value={notes}
-                                onChange={(event) =>
-                                    setNotes(event.target.value)
-                                }
+                                onChange={(event) => {
+                                    setNotes(event.target.value);
+                                    clearFieldError('notes');
+                                }}
                                 className={cn(
                                     'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
                                     'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -400,12 +495,6 @@ export function SessionEditorModal({
                             />
                             <InputError message={errors.notes} />
                         </div>
-
-                        {generalError !== null ? (
-                            <p className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                                {generalError}
-                            </p>
-                        ) : null}
 
                         <DialogFooter className="gap-2 sm:justify-between">
                             {isEditMode ? (
@@ -423,13 +512,15 @@ export function SessionEditorModal({
                                                 ? ''
                                                 : 'text-red-400 hover:text-red-300'
                                         }
-                                        disabled={processing}
+                                        disabled={isBusy}
                                         onClick={deleteSession}
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
-                                        {confirmingDelete
-                                            ? 'Confirm Delete'
-                                            : 'Delete'}
+                                        {isDeleting
+                                            ? 'Deleting...'
+                                            : confirmingDelete
+                                              ? 'Confirm Delete'
+                                              : 'Delete'}
                                     </Button>
 
                                     {confirmingDelete ? (
@@ -437,7 +528,7 @@ export function SessionEditorModal({
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            disabled={processing}
+                                            disabled={isBusy}
                                             onClick={() =>
                                                 setConfirmingDelete(false)
                                             }
@@ -454,14 +545,14 @@ export function SessionEditorModal({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    disabled={processing}
+                                    disabled={isBusy}
                                     onClick={() => onOpenChange(false)}
                                 >
                                     Cancel
                                 </Button>
 
-                                <Button type="submit" disabled={processing}>
-                                    {processing
+                                <Button type="submit" disabled={isBusy}>
+                                    {isSubmitting
                                         ? 'Saving...'
                                         : isEditMode
                                           ? 'Save Changes'
@@ -469,6 +560,17 @@ export function SessionEditorModal({
                                 </Button>
                             </div>
                         </DialogFooter>
+
+                        {isBusy ? (
+                            <p
+                                aria-live="polite"
+                                className="text-right text-[11px] text-zinc-500"
+                            >
+                                {isDeleting
+                                    ? 'Deleting session...'
+                                    : 'Saving session...'}
+                            </p>
+                        ) : null}
                     </form>
                 ) : null}
             </DialogContent>

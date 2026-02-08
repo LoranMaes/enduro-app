@@ -30,21 +30,45 @@ export function DayColumn({
     onEditSession,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
+    const isReadOnly = !canManageSessions;
+
+    const openCreateSession = (): void => {
+        if (!canOpenCreateModal) {
+            return;
+        }
+
+        onCreateSession(trainingWeekId, dayDate);
+    };
 
     return (
         <div
-            onClick={() => {
-                if (canOpenCreateModal) {
-                    onCreateSession(trainingWeekId, dayDate);
+            onClick={openCreateSession}
+            onKeyDown={(event) => {
+                if (!canOpenCreateModal) {
+                    return;
+                }
+
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openCreateSession();
                 }
             }}
+            role={canOpenCreateModal ? 'button' : undefined}
+            tabIndex={canOpenCreateModal ? 0 : undefined}
             className={cn(
                 'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 transition-all duration-200',
                 isToday
                     ? 'bg-zinc-900/40 ring-1 ring-white/5 ring-inset'
                     : 'bg-transparent',
-                !isToday && isPast ? 'bg-zinc-950/30' : 'hover:bg-zinc-900/30',
+                !isToday && isPast ? 'bg-zinc-950/30' : 'bg-transparent',
+                canManageSessions &&
+                    !isPast &&
+                    !isToday &&
+                    'hover:bg-zinc-900/30',
                 canOpenCreateModal && 'cursor-pointer',
+                canOpenCreateModal &&
+                    'focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none focus-visible:ring-inset',
+                isReadOnly && 'cursor-default',
             )}
         >
             <div className="mb-2 flex items-start justify-between px-1">
@@ -53,7 +77,9 @@ export function DayColumn({
                         'text-xs font-medium tabular-nums transition-colors',
                         isToday
                             ? 'flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white shadow-sm'
-                            : 'text-zinc-500 group-hover/day:text-zinc-300',
+                            : canManageSessions
+                              ? 'text-zinc-500 group-hover/day:text-zinc-300'
+                              : 'text-zinc-500',
                         isPast && !isToday && 'text-zinc-700',
                     )}
                 >
@@ -72,6 +98,7 @@ export function DayColumn({
                             isPast
                                 ? 'hover:bg-zinc-800/50'
                                 : 'hover:bg-zinc-800',
+                            'focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none',
                         )}
                         aria-label="Add session"
                     >
@@ -96,7 +123,11 @@ export function DayColumn({
                 ))}
 
                 {sessions.length === 0 ? (
-                    <div className="min-h-[40px] w-full flex-1" />
+                    <div className="flex min-h-[40px] w-full flex-1 items-start px-1 pt-0.5">
+                        <p className="text-[10px] text-zinc-700">
+                            No training planned
+                        </p>
+                    </div>
                 ) : null}
             </div>
         </div>

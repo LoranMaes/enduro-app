@@ -93,7 +93,7 @@ export function SessionRow({
     const isPlanned = session.status === 'planned';
     const durationParts = formatDurationParts(session.durationMinutes);
 
-    const statusStyle: Record<string, string> = {
+    const interactiveStatusStyle: Record<string, string> = {
         planned:
             'bg-surface border-border hover:border-zinc-600 text-zinc-400 hover:text-zinc-300',
         completed:
@@ -103,23 +103,49 @@ export function SessionRow({
         partial:
             'bg-amber-950/10 border-amber-900/20 hover:border-amber-900/40 text-zinc-300',
     };
+    const readOnlyStatusStyle: Record<string, string> = {
+        planned: 'bg-surface border-border text-zinc-400',
+        completed: 'bg-zinc-800 border-zinc-700 text-zinc-100',
+        skipped: 'bg-red-950/5 border-red-900/10 text-zinc-600 opacity-80',
+        partial: 'bg-amber-950/10 border-amber-900/20 text-zinc-300',
+    };
 
-    let currentStatusStyle = statusStyle[session.status] ?? statusStyle.planned;
+    let currentStatusStyle =
+        (isInteractive ? interactiveStatusStyle : readOnlyStatusStyle)[
+            session.status
+        ] ?? readOnlyStatusStyle.planned;
 
     if (isOverlay) {
         currentStatusStyle =
             'bg-transparent border-dashed border-zinc-700/50 opacity-50 hover:opacity-80 hover:border-zinc-500 hover:bg-zinc-900/20';
     }
 
+    const activate = (): void => {
+        if (isOverlay || !isInteractive) {
+            return;
+        }
+
+        onClick?.();
+    };
+
     return (
         <div
             onClick={(event) => {
                 event.stopPropagation();
+                activate();
+            }}
+            onKeyDown={(event) => {
+                if (!isInteractive || isOverlay) {
+                    return;
+                }
 
-                if (!isOverlay && isInteractive) {
-                    onClick?.();
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    activate();
                 }
             }}
+            role={isInteractive && !isOverlay ? 'button' : undefined}
+            tabIndex={isInteractive && !isOverlay ? 0 : undefined}
             className={cn(
                 'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
                 currentStatusStyle,
@@ -127,6 +153,10 @@ export function SessionRow({
                 isOverlay && 'cursor-default',
                 !isOverlay && !isInteractive && 'cursor-default',
                 !isOverlay && isInteractive && 'cursor-pointer',
+                !isOverlay && !isInteractive && 'opacity-90',
+                !isOverlay &&
+                    isInteractive &&
+                    'focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:outline-none focus-visible:ring-inset',
             )}
         >
             <div
@@ -157,7 +187,7 @@ export function SessionRow({
                             isSkipped &&
                                 'text-zinc-600 line-through decoration-zinc-700',
                             session.status === 'completed' && 'text-zinc-100',
-                            isPlanned && 'text-zinc-200',
+                            isPlanned && 'text-zinc-100',
                             !isPlanned &&
                                 session.status !== 'completed' &&
                                 'text-zinc-300',
@@ -193,7 +223,7 @@ export function SessionRow({
                         className={cn(
                             'font-mono text-sm font-medium',
                             session.status === 'completed' && 'text-white',
-                            isPlanned && 'text-zinc-200',
+                            isPlanned && 'text-zinc-100',
                             !isPlanned &&
                                 session.status !== 'completed' &&
                                 'text-zinc-300',

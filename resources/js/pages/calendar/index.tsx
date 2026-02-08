@@ -41,8 +41,7 @@ export default function CalendarPage({
                 {primaryPlan === null ? (
                     <div className="flex h-full items-center justify-center border border-dashed border-border">
                         <p className="text-sm text-zinc-400">
-                            No readable calendar data is currently available for
-                            this account.
+                            No training planned.
                         </p>
                     </div>
                 ) : (

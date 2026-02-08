@@ -44,6 +44,7 @@ export function WeekSection({
 }: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
     const todayKey = dateKey(new Date());
+    const hasSessions = week.sessions.length > 0;
 
     const sessionsByDay = week.sessions.reduce<
         Record<string, typeof week.sessions>
@@ -94,9 +95,16 @@ export function WeekSection({
                 >
                     Week of {formatWeekRange(weekStart)}
                 </p>
-                {isCurrentWeek ? (
-                    <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
-                ) : null}
+                <div className="flex items-center gap-2">
+                    {!hasSessions ? (
+                        <p className="text-[10px] text-zinc-600">
+                            No training planned
+                        </p>
+                    ) : null}
+                    {isCurrentWeek ? (
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
+                    ) : null}
+                </div>
             </header>
 
             <div className="flex flex-col md:grid md:grid-cols-[repeat(7,minmax(0,1fr))_156px] md:divide-x md:divide-border">
