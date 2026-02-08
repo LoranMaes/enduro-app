@@ -1,10 +1,19 @@
 import { cn } from '@/lib/utils';
-import type { TrainingWeekView } from '@/types/training-plans';
+import type {
+    TrainingSessionView,
+    TrainingWeekView,
+} from '@/types/training-plans';
 import { DayColumn } from './day-column';
 import { WeekSummary } from './week-summary';
 
 type WeekSectionProps = {
     week: TrainingWeekView;
+    canManageSessions: boolean;
+    onCreateSession: (trainingWeekId: number, date: string) => void;
+    onEditSession: (
+        trainingWeekId: number,
+        session: TrainingSessionView,
+    ) => void;
 };
 
 const dateKey = (date: Date): string => {
@@ -27,7 +36,12 @@ const dayToken = (date: Date): string => {
     });
 };
 
-export function WeekSection({ week }: WeekSectionProps) {
+export function WeekSection({
+    week,
+    canManageSessions,
+    onCreateSession,
+    onEditSession,
+}: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
     const todayKey = dateKey(new Date());
 
@@ -98,12 +112,17 @@ export function WeekSection({ week }: WeekSectionProps) {
                         >
                             <DayColumn
                                 dayNumber={dayToken(currentDay)}
+                                dayDate={currentDayKey}
+                                trainingWeekId={week.id}
                                 isToday={todayKey === currentDayKey}
                                 isPast={
                                     currentDay < new Date() &&
                                     todayKey !== currentDayKey
                                 }
                                 sessions={sessions}
+                                canManageSessions={canManageSessions}
+                                onCreateSession={onCreateSession}
+                                onEditSession={onEditSession}
                             />
                         </div>
                     );

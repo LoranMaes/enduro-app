@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\ListTrainingSessionRequest;
+use App\Http\Requests\Api\StoreTrainingSessionRequest;
+use App\Http\Requests\Api\UpdateTrainingSessionRequest;
 use App\Http\Resources\TrainingSessionResource;
 use App\Models\TrainingSession;
+use App\Models\TrainingWeek;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -54,14 +57,30 @@ class TrainingSessionController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @todo Implement training session creation workflow and validation.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreTrainingSessionRequest $request): JsonResponse
     {
-        return response()->json([
-            'message' => 'TODO: implement TrainingSessionController@store.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        $this->authorize('create', TrainingSession::class);
+        $validated = $request->validated();
+
+        $trainingWeek = TrainingWeek::query()->findOrFail(
+            (int) $validated['training_week_id'],
+        );
+        $this->authorize('update', $trainingWeek);
+
+        $trainingSession = TrainingSession::query()->create([
+            'training_week_id' => $trainingWeek->id,
+            'scheduled_date' => $validated['date'],
+            'sport' => $validated['sport'],
+            'status' => TrainingSessionStatus::Planned->value,
+            'duration_minutes' => $validated['planned_duration_minutes'],
+            'planned_tss' => $validated['planned_tss'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return (new TrainingSessionResource($trainingSession))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
@@ -78,26 +97,39 @@ class TrainingSessionController extends Controller
 
     /**
      * Update the specified resource in storage.
-     *
-     * @todo Implement training session update workflow and validation.
      */
-    public function update(Request $request, TrainingSession $trainingSession): JsonResponse
+    public function update(UpdateTrainingSessionRequest $request, TrainingSession $trainingSession): TrainingSessionResource
     {
-        return response()->json([
-            'message' => 'TODO: implement TrainingSessionController@update.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        $this->authorize('update', $trainingSession);
+        $validated = $request->validated();
+
+        $trainingWeek = TrainingWeek::query()->findOrFail(
+            (int) $validated['training_week_id'],
+        );
+        $this->authorize('update', $trainingWeek);
+
+        $trainingSession->update([
+            'training_week_id' => $trainingWeek->id,
+            'scheduled_date' => $validated['date'],
+            'sport' => $validated['sport'],
+            'duration_minutes' => $validated['planned_duration_minutes'],
+            'planned_tss' => $validated['planned_tss'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return new TrainingSessionResource($trainingSession->refresh());
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @todo Implement training session deletion workflow.
      */
-    public function destroy(TrainingSession $trainingSession): JsonResponse
+    public function destroy(TrainingSession $trainingSession): \Illuminate\Http\Response
     {
-        return response()->json([
-            'message' => 'TODO: implement TrainingSessionController@destroy.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        $this->authorize('delete', $trainingSession);
+
+        $trainingSession->delete();
+
+        return response()->noContent();
     }
 
     private function queryForUser(User $user): Builder

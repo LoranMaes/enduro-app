@@ -63,6 +63,7 @@ type SessionRowProps = {
     showDate?: boolean;
     compact?: boolean;
     isOverlay?: boolean;
+    isInteractive?: boolean;
     intensity?: 'easy' | 'steady' | 'tempo' | 'threshold' | 'vo2';
     onClick?: () => void;
 };
@@ -80,6 +81,7 @@ export function SessionRow({
     showDate = true,
     compact = false,
     isOverlay = false,
+    isInteractive = true,
     intensity,
     onClick,
 }: SessionRowProps) {
@@ -114,15 +116,17 @@ export function SessionRow({
             onClick={(event) => {
                 event.stopPropagation();
 
-                if (!isOverlay) {
+                if (!isOverlay && isInteractive) {
                     onClick?.();
                 }
             }}
             className={cn(
-                'group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
+                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
                 currentStatusStyle,
                 compact ? 'min-h-[56px] gap-0.5' : 'min-h-[72px] gap-1',
                 isOverlay && 'cursor-default',
+                !isOverlay && !isInteractive && 'cursor-default',
+                !isOverlay && isInteractive && 'cursor-pointer',
             )}
         >
             <div

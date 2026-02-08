@@ -1,8 +1,16 @@
+import { router, usePage } from '@inertiajs/react';
 import { Layers } from 'lucide-react';
-import { usePage } from '@inertiajs/react';
+import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
-import type { TrainingPlanView } from '@/types/training-plans';
+import type {
+    TrainingPlanView,
+    TrainingSessionView,
+} from '@/types/training-plans';
+import {
+    SessionEditorModal,
+    type SessionEditorContext,
+} from './session-editor-modal';
 import { WeekSection } from './week-section';
 
 type PlanSectionProps = {
@@ -16,12 +24,56 @@ export function PlanSection({ plan, additionalPlanCount }: PlanSectionProps) {
     void additionalPlanCount;
 
     const { auth } = usePage<SharedData>().props;
+    const [sessionEditorContext, setSessionEditorContext] =
+        useState<SessionEditorContext | null>(null);
     const avatarInitials = auth.user.name
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
         .map((part) => part[0]?.toUpperCase() ?? '')
         .join('');
+    const canManageSessions = auth.user.role === 'athlete';
+
+    const openCreateSessionModal = useCallback(
+        (trainingWeekId: number, date: string): void => {
+            if (!canManageSessions) {
+                return;
+            }
+
+            setSessionEditorContext({
+                mode: 'create',
+                trainingWeekId,
+                date,
+            });
+        },
+        [canManageSessions],
+    );
+
+    const openEditSessionModal = useCallback(
+        (trainingWeekId: number, session: TrainingSessionView): void => {
+            if (!canManageSessions) {
+                return;
+            }
+
+            setSessionEditorContext({
+                mode: 'edit',
+                trainingWeekId,
+                date: session.scheduledDate,
+                session,
+            });
+        },
+        [canManageSessions],
+    );
+
+    const closeSessionModal = useCallback((): void => {
+        setSessionEditorContext(null);
+    }, []);
+
+    const refreshCalendarData = useCallback((): void => {
+        router.reload({
+            only: ['trainingPlans'],
+        });
+    }, []);
 
     return (
         <section className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background [--calendar-days-height:2.75rem] [--calendar-header-height:4rem] [--calendar-week-sticky:6.75rem]">
@@ -81,11 +133,28 @@ export function PlanSection({ plan, additionalPlanCount }: PlanSectionProps) {
 
             <div className="flex-1">
                 {plan.weeks.map((week) => (
-                    <WeekSection key={week.id} week={week} />
+                    <WeekSection
+                        key={week.id}
+                        week={week}
+                        canManageSessions={canManageSessions}
+                        onCreateSession={openCreateSessionModal}
+                        onEditSession={openEditSessionModal}
+                    />
                 ))}
             </div>
 
             <div className="h-16" />
+
+            <SessionEditorModal
+                open={sessionEditorContext !== null}
+                context={sessionEditorContext}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeSessionModal();
+                    }
+                }}
+                onSaved={refreshCalendarData}
+            />
         </section>
     );
 }

@@ -86,6 +86,37 @@
   - planned-state right-side marker aligned to slicing composition
 - Verified frontend safety with targeted TypeScript check (`npm run types`) after the pass.
 - No backend/API/routes/policy changes in this update.
+- Implemented TrainingSession write support (backend-only):
+  - added `StoreTrainingSessionRequest`
+  - added `UpdateTrainingSessionRequest`
+  - added enum-backed sport validation via `TrainingSessionSport` (`swim`, `bike`, `run`, `gym`, `other`)
+  - enforced session date within selected `TrainingWeek` range
+  - enforced week accessibility validation for athlete/admin write paths
+- Implemented `TrainingSessionController` write methods:
+  - `store` returns `201` + `TrainingSessionResource`
+  - `update` returns `200` + `TrainingSessionResource`
+  - `destroy` returns `204`
+  - policy checks applied for create/update/delete; coach write access remains denied
+- Added `tests/Feature/Api/TrainingSessionCrudApiTest.php` covering:
+  - auth required
+  - athlete own create/update/delete
+  - athlete forbidden cross-athlete mutation
+  - admin full mutation
+  - coach forbidden (`403`)
+  - validation failures for invalid week, date outside week range, missing required fields
+- Verification completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php` (23 passed)
+- Wired athlete-only TrainingSession write interactions into calendar UI (frontend-only):
+  - create modal triggered from empty day cells / add button
+  - edit modal triggered from session row click
+  - delete action with explicit confirmation in edit modal
+  - all writes call existing API routes (`store` / `update` / `destroy`) via Wayfinder route helpers
+  - backend validation errors render inline in the modal
+  - successful writes reload calendar data from real backend props
+  - role gating enforced: only `auth.user.role === 'athlete'` can trigger write affordances; non-athletes remain read-only
+- Frontend verification completed:
+  - `vendor/bin/sail npm run types`
 
 Next milestone:
-→ Final screenshot-level athlete calendar QA and lock, then start controlled `TrainingSession` write backend phase (`store` / `update` / `destroy` + tests) without expanding coach assignment scope.
+→ Hardening pass for athlete session write UX using real error cases + parity QA against slicing screenshots, then move to the next backend phase without expanding coach assignment scope.
