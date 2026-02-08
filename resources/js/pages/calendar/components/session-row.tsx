@@ -6,6 +6,7 @@ import {
     Droplets,
     Dumbbell,
     Footprints,
+    Link2,
     XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,7 @@ export function SessionRow({
     const displayTitle = config.title;
     const isSkipped = session.status === 'skipped';
     const isPlanned = session.status === 'planned';
+    const isLinked = session.linkedActivityId !== null;
     const durationParts = formatDurationParts(session.durationMinutes);
 
     const interactiveStatusStyle: Record<string, string> = {
@@ -198,7 +200,7 @@ export function SessionRow({
                 </div>
 
                 {!isOverlay && !compact ? (
-                    <div className="shrink-0 pt-0.5">
+                    <div className="flex shrink-0 items-center gap-1 pt-0.5">
                         {session.status === 'completed' ? (
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         ) : null}
@@ -211,6 +213,15 @@ export function SessionRow({
                         {isPlanned ? (
                             <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-500/80">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/85" />
+                            </span>
+                        ) : null}
+                        {isLinked ? (
+                            <span
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-sky-400/45 bg-sky-500/10 text-sky-300"
+                                aria-label="Linked activity"
+                                title="Linked activity"
+                            >
+                                <Link2 className="h-2.5 w-2.5" />
                             </span>
                         ) : null}
                     </div>

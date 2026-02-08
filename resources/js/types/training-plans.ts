@@ -1,3 +1,19 @@
+export type LinkedActivitySummaryApi = {
+    id: number;
+    provider: string;
+    started_at: string | null;
+    duration_seconds: number | null;
+    sport: string | null;
+};
+
+export type SuggestedActivityApi = {
+    id: number;
+    provider: string;
+    sport: string | null;
+    started_at: string | null;
+    duration_seconds: number | null;
+};
+
 export type TrainingSessionApi = {
     id: number;
     scheduled_date: string;
@@ -7,6 +23,9 @@ export type TrainingSessionApi = {
     planned_tss: number | null;
     actual_tss: number | null;
     notes: string | null;
+    linked_activity_id?: number | null;
+    linked_activity_summary?: LinkedActivitySummaryApi | null;
+    suggested_activities?: SuggestedActivityApi[];
 };
 
 export type TrainingWeekApi = {
@@ -55,6 +74,21 @@ export type TrainingSessionView = {
     plannedTss: number | null;
     actualTss: number | null;
     notes: string | null;
+    linkedActivityId: number | null;
+    linkedActivitySummary: {
+        id: number;
+        provider: string;
+        startedAt: string | null;
+        durationSeconds: number | null;
+        sport: string | null;
+    } | null;
+    suggestedActivities: Array<{
+        id: number;
+        provider: string;
+        sport: string | null;
+        startedAt: string | null;
+        durationSeconds: number | null;
+    }>;
 };
 
 export type TrainingWeekView = {

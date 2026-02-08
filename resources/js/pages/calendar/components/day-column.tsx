@@ -11,6 +11,7 @@ type DayColumnProps = {
     isPast: boolean;
     sessions: TrainingSessionView[];
     canManageSessions: boolean;
+    canManageSessionLinks: boolean;
     onCreateSession: (trainingWeekId: number, date: string) => void;
     onEditSession: (
         trainingWeekId: number,
@@ -26,11 +27,13 @@ export function DayColumn({
     isPast,
     sessions,
     canManageSessions,
+    canManageSessionLinks,
     onCreateSession,
     onEditSession,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
-    const isReadOnly = !canManageSessions;
+    const canOpenEditModal = canManageSessions || canManageSessionLinks;
+    const isReadOnly = !canManageSessions && !canManageSessionLinks;
 
     const openCreateSession = (): void => {
         if (!canOpenCreateModal) {
@@ -113,9 +116,9 @@ export function DayColumn({
                         key={session.id}
                         session={session}
                         showDate={false}
-                        isInteractive={canManageSessions}
+                        isInteractive={canOpenEditModal}
                         onClick={() => {
-                            if (canManageSessions) {
+                            if (canOpenEditModal) {
                                 onEditSession(trainingWeekId, session);
                             }
                         }}

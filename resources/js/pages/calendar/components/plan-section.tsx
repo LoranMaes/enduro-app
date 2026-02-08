@@ -38,12 +38,13 @@ export function PlanSection({
         .slice(0, 2)
         .map((part) => part[0]?.toUpperCase() ?? '')
         .join('');
-    const canManageSessions =
+    const canManageSessionWrites =
         auth.user.role === 'athlete' && !(auth.impersonating ?? false);
+    const canManageSessionLinks = auth.user.role === 'athlete';
 
     const openCreateSessionModal = useCallback(
         (trainingWeekId: number, date: string): void => {
-            if (!canManageSessions) {
+            if (!canManageSessionWrites) {
                 return;
             }
 
@@ -53,12 +54,12 @@ export function PlanSection({
                 date,
             });
         },
-        [canManageSessions],
+        [canManageSessionWrites],
     );
 
     const openEditSessionModal = useCallback(
         (trainingWeekId: number, session: TrainingSessionView): void => {
-            if (!canManageSessions) {
+            if (!canManageSessionLinks) {
                 return;
             }
 
@@ -69,7 +70,7 @@ export function PlanSection({
                 session,
             });
         },
-        [canManageSessions],
+        [canManageSessionLinks],
     );
 
     const closeSessionModal = useCallback((): void => {
@@ -98,7 +99,7 @@ export function PlanSection({
                         {viewingAthleteName !== null
                             ? `Viewing athlete: ${viewingAthleteName}`
                             : 'Season 2024 • Build Phase 1'}
-                        {!canManageSessions ? ' • Read-only' : null}
+                        {!canManageSessionWrites ? ' • Read-only' : null}
                     </p>
                 </div>
 
@@ -165,7 +166,8 @@ export function PlanSection({
                     <WeekSection
                         key={week.id}
                         week={week}
-                        canManageSessions={canManageSessions}
+                        canManageSessions={canManageSessionWrites}
+                        canManageSessionLinks={canManageSessionLinks}
                         onCreateSession={openCreateSessionModal}
                         onEditSession={openEditSessionModal}
                     />
@@ -182,6 +184,8 @@ export function PlanSection({
                         closeSessionModal();
                     }
                 }}
+                canManageSessionWrites={canManageSessionWrites}
+                canManageSessionLinks={canManageSessionLinks}
                 onSaved={refreshCalendarData}
             />
         </section>

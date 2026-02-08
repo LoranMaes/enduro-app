@@ -42,7 +42,9 @@ class AthleteCalendarController extends Controller
                 'trainingWeeks' => function ($query): void {
                     $query->orderBy('starts_at')->with([
                         'trainingSessions' => function ($sessionQuery): void {
-                            $sessionQuery->orderBy('scheduled_date');
+                            $sessionQuery
+                                ->orderBy('scheduled_date')
+                                ->with('activity');
                         },
                     ]);
                 },

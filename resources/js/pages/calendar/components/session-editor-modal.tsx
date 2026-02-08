@@ -4,11 +4,14 @@ import {
     Droplets,
     Dumbbell,
     Footprints,
+    Link2,
     Trash2,
+    Unlink,
 } from 'lucide-react';
 import {
     FormEvent,
     KeyboardEvent,
+    useCallback,
     useEffect,
     useMemo,
     useRef,
@@ -29,10 +32,16 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
     destroy as destroyTrainingSession,
+    linkActivity as linkActivityToSession,
+    show as showTrainingSession,
     store as storeTrainingSession,
+    unlinkActivity as unlinkActivityFromSession,
     update as updateTrainingSession,
 } from '@/routes/training-sessions';
-import type { TrainingSessionView } from '@/types/training-plans';
+import type {
+    TrainingSessionApi,
+    TrainingSessionView,
+} from '@/types/training-plans';
 
 type SessionEditorMode = 'create' | 'edit';
 type Sport = 'swim' | 'bike' | 'run' | 'gym' | 'other';
@@ -44,7 +53,8 @@ type ValidationErrors = Partial<
         | 'sport'
         | 'planned_duration_minutes'
         | 'planned_tss'
-        | 'notes',
+        | 'notes'
+        | 'activity_id',
         string
     >
 >;
@@ -74,6 +84,8 @@ export type SessionEditorContext =
 type SessionEditorModalProps = {
     open: boolean;
     context: SessionEditorContext | null;
+    canManageSessionWrites: boolean;
+    canManageSessionLinks: boolean;
     onOpenChange: (open: boolean) => void;
     onSaved: () => void;
 };
@@ -97,11 +109,14 @@ const validationFields: Array<keyof ValidationErrors> = [
     'planned_duration_minutes',
     'planned_tss',
     'notes',
+    'activity_id',
 ];
 
 export function SessionEditorModal({
     open,
     context,
+    canManageSessionWrites,
+    canManageSessionLinks,
     onOpenChange,
     onSaved,
 }: SessionEditorModalProps) {
@@ -110,17 +125,43 @@ export function SessionEditorModal({
     const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('60');
     const [plannedTss, setPlannedTss] = useState('');
     const [notes, setNotes] = useState('');
+    const [sessionDetails, setSessionDetails] = useState<TrainingSessionView | null>(
+        null,
+    );
+    const [isLoadingSessionDetails, setIsLoadingSessionDetails] =
+        useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isLinkingActivity, setIsLinkingActivity] = useState(false);
+    const [isUnlinkingActivity, setIsUnlinkingActivity] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
-    const isBusy = isSubmitting || isDeleting;
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
     const isEditMode = context?.mode === 'edit';
+    const isBusy =
+        isSubmitting ||
+        isDeleting ||
+        isLinkingActivity ||
+        isUnlinkingActivity;
+    const canPersistSessionWrites =
+        canManageSessionWrites && context !== null && !isBusy;
+    const canPerformLinking =
+        canManageSessionLinks && isEditMode && context !== null && !isBusy;
+    const selectedSession =
+        isEditMode && context !== null
+            ? (sessionDetails ?? context.session)
+            : null;
+    const linkedActivitySummary = selectedSession?.linkedActivitySummary ?? null;
+    const suggestedActivities =
+        selectedSession?.suggestedActivities.filter(
+            (activity) => activity.id !== selectedSession.linkedActivityId,
+        ) ?? [];
+
     const dialogTitle = isEditMode ? 'Edit Session' : 'Create Session';
     const dialogDescription = isEditMode
-        ? 'Update planned session details or remove this session.'
+        ? 'Update planned session details, manage links, or remove this session.'
         : 'Add a planned training session to this day.';
     const dateLabel = useMemo(() => {
         if (!context) {
@@ -137,6 +178,52 @@ export function SessionEditorModal({
         );
     }, [context]);
 
+    const clearFieldError = (field: keyof ValidationErrors): void => {
+        setErrors((currentErrors) => {
+            if (currentErrors[field] === undefined) {
+                return currentErrors;
+            }
+
+            return {
+                ...currentErrors,
+                [field]: undefined,
+            };
+        });
+        setGeneralError(null);
+    };
+
+    const refreshSessionDetails = useCallback(
+        async (sessionId: number): Promise<void> => {
+            setIsLoadingSessionDetails(true);
+
+            try {
+                const route = showTrainingSession(sessionId);
+                const response = await fetch(route.url, {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = (await response.json()) as {
+                    data?: TrainingSessionApi;
+                };
+
+                if (payload.data !== undefined) {
+                    setSessionDetails(mapSessionFromApi(payload.data));
+                }
+            } finally {
+                setIsLoadingSessionDetails(false);
+            }
+        },
+        [],
+    );
+
     useEffect(() => {
         if (!open || !context) {
             return;
@@ -144,26 +231,29 @@ export function SessionEditorModal({
 
         if (context.mode === 'edit') {
             setSport(toSport(context.session.sport));
-            setPlannedDurationMinutes(
-                context.session.durationMinutes.toString(),
-            );
+            setPlannedDurationMinutes(context.session.durationMinutes.toString());
             setPlannedTss(
                 context.session.plannedTss !== null
                     ? context.session.plannedTss.toString()
                     : '',
             );
             setNotes(context.session.notes ?? '');
+            setSessionDetails(context.session);
+
+            void refreshSessionDetails(context.session.id);
         } else {
             setSport('run');
             setPlannedDurationMinutes('60');
             setPlannedTss('');
             setNotes('');
+            setSessionDetails(null);
         }
 
         setErrors({});
         setGeneralError(null);
+        setStatusMessage(null);
         setConfirmingDelete(false);
-    }, [open, context]);
+    }, [open, context, refreshSessionDetails]);
 
     useEffect(() => {
         if (!open) {
@@ -179,22 +269,8 @@ export function SessionEditorModal({
         };
     }, [open, context]);
 
-    const clearFieldError = (field: keyof ValidationErrors): void => {
-        setErrors((currentErrors) => {
-            if (currentErrors[field] === undefined) {
-                return currentErrors;
-            }
-
-            return {
-                ...currentErrors,
-                [field]: undefined,
-            };
-        });
-        setGeneralError(null);
-    };
-
     const handleFormKeyDown = (event: KeyboardEvent<HTMLFormElement>): void => {
-        if (event.key !== 'Enter') {
+        if (!canManageSessionWrites || event.key !== 'Enter') {
             return;
         }
 
@@ -216,13 +292,14 @@ export function SessionEditorModal({
     const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
         event.preventDefault();
 
-        if (!context || isBusy) {
+        if (!context || !canManageSessionWrites || isBusy) {
             return;
         }
 
         setIsSubmitting(true);
         setErrors({});
         setGeneralError(null);
+        setStatusMessage(null);
         setConfirmingDelete(false);
 
         const payload = buildPayload({
@@ -285,7 +362,12 @@ export function SessionEditorModal({
     };
 
     const deleteSession = async (): Promise<void> => {
-        if (!context || context.mode !== 'edit' || isBusy) {
+        if (
+            !context ||
+            context.mode !== 'edit' ||
+            !canManageSessionWrites ||
+            isBusy
+        ) {
             return;
         }
 
@@ -297,6 +379,7 @@ export function SessionEditorModal({
         setIsDeleting(true);
         setErrors({});
         setGeneralError(null);
+        setStatusMessage(null);
 
         try {
             const route = destroyTrainingSession(context.session.id);
@@ -321,6 +404,94 @@ export function SessionEditorModal({
             );
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const linkActivity = async (activityId: number): Promise<void> => {
+        if (!context || context.mode !== 'edit' || !canPerformLinking) {
+            return;
+        }
+
+        setIsLinkingActivity(true);
+        setErrors({});
+        setGeneralError(null);
+        setStatusMessage(null);
+
+        try {
+            const route = linkActivityToSession(context.session.id);
+            const response = await fetch(route.url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    activity_id: activityId,
+                }),
+            });
+
+            if (response.ok) {
+                await refreshSessionDetails(context.session.id);
+                onSaved();
+                setStatusMessage('Activity linked.');
+                return;
+            }
+
+            const responsePayload = await response.json().catch(() => null);
+            const validationErrors = extractValidationErrors(responsePayload);
+
+            if (validationErrors !== null) {
+                setErrors(validationErrors);
+            }
+
+            setGeneralError(
+                extractMessage(responsePayload) ?? 'Unable to link activity.',
+            );
+        } finally {
+            setIsLinkingActivity(false);
+        }
+    };
+
+    const unlinkActivity = async (): Promise<void> => {
+        if (!context || context.mode !== 'edit' || !canPerformLinking) {
+            return;
+        }
+
+        setIsUnlinkingActivity(true);
+        setErrors({});
+        setGeneralError(null);
+        setStatusMessage(null);
+
+        try {
+            const route = unlinkActivityFromSession(context.session.id);
+            const response = await fetch(route.url, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (response.ok) {
+                await refreshSessionDetails(context.session.id);
+                onSaved();
+                setStatusMessage('Activity unlinked.');
+                return;
+            }
+
+            const responsePayload = await response.json().catch(() => null);
+            const validationErrors = extractValidationErrors(responsePayload);
+
+            if (validationErrors !== null) {
+                setErrors(validationErrors);
+            }
+
+            setGeneralError(
+                extractMessage(responsePayload) ?? 'Unable to unlink activity.',
+            );
+        } finally {
+            setIsUnlinkingActivity(false);
         }
     };
 
@@ -371,6 +542,12 @@ export function SessionEditorModal({
                             </p>
                         ) : null}
 
+                        {statusMessage !== null ? (
+                            <p className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                                {statusMessage}
+                            </p>
+                        ) : null}
+
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-md border border-border bg-background/60 px-3 py-2">
                                 <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
@@ -402,7 +579,12 @@ export function SessionEditorModal({
                                         <button
                                             key={option.value}
                                             type="button"
+                                            disabled={!canManageSessionWrites}
                                             onClick={() => {
+                                                if (!canManageSessionWrites) {
+                                                    return;
+                                                }
+
                                                 setSport(option.value);
                                                 clearFieldError('sport');
                                             }}
@@ -411,6 +593,8 @@ export function SessionEditorModal({
                                                 sport === option.value
                                                     ? 'border border-zinc-700 bg-zinc-800 text-white'
                                                     : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
+                                                !canManageSessionWrites &&
+                                                    'cursor-default opacity-65 hover:bg-transparent hover:text-zinc-500',
                                             )}
                                         >
                                             <Icon className="h-3.5 w-3.5" />
@@ -435,6 +619,7 @@ export function SessionEditorModal({
                                     ref={plannedDurationInputRef}
                                     type="number"
                                     min={1}
+                                    disabled={!canManageSessionWrites}
                                     value={plannedDurationMinutes}
                                     onChange={(event) => {
                                         setPlannedDurationMinutes(
@@ -462,6 +647,7 @@ export function SessionEditorModal({
                                     id="planned-tss"
                                     type="number"
                                     min={0}
+                                    disabled={!canManageSessionWrites}
                                     value={plannedTss}
                                     onChange={(event) => {
                                         setPlannedTss(event.target.value);
@@ -483,6 +669,7 @@ export function SessionEditorModal({
                             <textarea
                                 id="session-notes"
                                 rows={4}
+                                disabled={!canManageSessionWrites}
                                 value={notes}
                                 onChange={(event) => {
                                     setNotes(event.target.value);
@@ -491,13 +678,127 @@ export function SessionEditorModal({
                                 className={cn(
                                     'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
                                     'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                                    !canManageSessionWrites &&
+                                        'cursor-default opacity-65',
                                 )}
                             />
                             <InputError message={errors.notes} />
                         </div>
 
+                        {isEditMode ? (
+                            <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-medium tracking-wide text-zinc-300 uppercase">
+                                        Suggested Activities
+                                    </p>
+                                    {isLoadingSessionDetails ? (
+                                        <span className="text-[11px] text-zinc-500">
+                                            Loading...
+                                        </span>
+                                    ) : null}
+                                </div>
+
+                                {linkedActivitySummary !== null ? (
+                                    <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 p-2.5">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="flex items-center gap-1.5 text-xs text-sky-200">
+                                                    <Link2 className="h-3.5 w-3.5" />
+                                                    Linked activity
+                                                </p>
+                                                <p className="mt-1 text-xs text-zinc-300">
+                                                    {formatStartedAt(
+                                                        linkedActivitySummary.startedAt,
+                                                    )}
+                                                    {' • '}
+                                                    {formatDurationSeconds(
+                                                        linkedActivitySummary.durationSeconds,
+                                                    )}
+                                                </p>
+                                            </div>
+
+                                            {canManageSessionLinks ? (
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled={!canPerformLinking}
+                                                    onClick={() => {
+                                                        void unlinkActivity();
+                                                    }}
+                                                    className="border-red-500/35 text-red-300 hover:text-red-200"
+                                                >
+                                                    <Unlink className="h-3.5 w-3.5" />
+                                                    {isUnlinkingActivity
+                                                        ? 'Unlinking...'
+                                                        : 'Unlink'}
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-zinc-500">
+                                        No linked activity yet.
+                                    </p>
+                                )}
+
+                                {suggestedActivities.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {suggestedActivities.map((activity) => (
+                                            <div
+                                                key={activity.id}
+                                                className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="text-xs text-zinc-300">
+                                                        {formatStartedAt(
+                                                            activity.startedAt,
+                                                        )}
+                                                    </p>
+                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                        {activity.sport ?? 'other'}
+                                                        {' • '}
+                                                        {formatDurationSeconds(
+                                                            activity.durationSeconds,
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                {canManageSessionLinks ? (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={
+                                                            !canPerformLinking
+                                                        }
+                                                        onClick={() => {
+                                                            void linkActivity(
+                                                                activity.id,
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Link2 className="h-3.5 w-3.5" />
+                                                        {isLinkingActivity
+                                                            ? 'Linking...'
+                                                            : 'Link'}
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : !isLoadingSessionDetails ? (
+                                    <p className="text-xs text-zinc-500">
+                                        No suggested activities found.
+                                    </p>
+                                ) : null}
+
+                                <InputError message={errors.activity_id} />
+                            </div>
+                        ) : null}
+
                         <DialogFooter className="gap-2 sm:justify-between">
-                            {isEditMode ? (
+                            {isEditMode && canManageSessionWrites ? (
                                 <div className="mr-auto flex items-center gap-2">
                                     <Button
                                         type="button"
@@ -548,18 +849,29 @@ export function SessionEditorModal({
                                     disabled={isBusy}
                                     onClick={() => onOpenChange(false)}
                                 >
-                                    Cancel
+                                    Close
                                 </Button>
 
-                                <Button type="submit" disabled={isBusy}>
-                                    {isSubmitting
-                                        ? 'Saving...'
-                                        : isEditMode
-                                          ? 'Save Changes'
-                                          : 'Create Session'}
-                                </Button>
+                                {canManageSessionWrites ? (
+                                    <Button
+                                        type="submit"
+                                        disabled={!canPersistSessionWrites}
+                                    >
+                                        {isSubmitting
+                                            ? 'Saving...'
+                                            : isEditMode
+                                              ? 'Save Changes'
+                                              : 'Create Session'}
+                                    </Button>
+                                ) : null}
                             </div>
                         </DialogFooter>
+
+                        {!canManageSessionWrites ? (
+                            <p className="text-right text-[11px] text-zinc-500">
+                                Session fields are read-only in this context.
+                            </p>
+                        ) : null}
 
                         {isBusy ? (
                             <p
@@ -568,7 +880,11 @@ export function SessionEditorModal({
                             >
                                 {isDeleting
                                     ? 'Deleting session...'
-                                    : 'Saving session...'}
+                                    : isLinkingActivity
+                                      ? 'Linking activity...'
+                                      : isUnlinkingActivity
+                                        ? 'Unlinking activity...'
+                                        : 'Saving session...'}
                             </p>
                         ) : null}
                     </form>
@@ -658,4 +974,74 @@ function extractMessage(payload: unknown): string | null {
     }
 
     return null;
+}
+
+function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
+    return {
+        id: session.id,
+        scheduledDate: session.scheduled_date,
+        sport: session.sport,
+        status: session.status,
+        durationMinutes: session.duration_minutes,
+        plannedTss: session.planned_tss,
+        actualTss: session.actual_tss,
+        notes: session.notes,
+        linkedActivityId: session.linked_activity_id ?? null,
+        linkedActivitySummary:
+            session.linked_activity_summary !== undefined &&
+            session.linked_activity_summary !== null
+                ? {
+                      id: session.linked_activity_summary.id,
+                      provider: session.linked_activity_summary.provider,
+                      startedAt:
+                          session.linked_activity_summary.started_at ?? null,
+                      durationSeconds:
+                          session.linked_activity_summary.duration_seconds ??
+                          null,
+                      sport: session.linked_activity_summary.sport ?? null,
+                  }
+                : null,
+        suggestedActivities:
+            session.suggested_activities?.map((activity) => ({
+                id: activity.id,
+                provider: activity.provider,
+                sport: activity.sport ?? null,
+                startedAt: activity.started_at ?? null,
+                durationSeconds: activity.duration_seconds ?? null,
+            })) ?? [],
+    };
+}
+
+function formatDurationSeconds(durationSeconds: number | null): string {
+    if (durationSeconds === null || Number.isNaN(durationSeconds)) {
+        return 'Unknown duration';
+    }
+
+    const roundedMinutes = Math.max(1, Math.round(durationSeconds / 60));
+    const hours = Math.floor(roundedMinutes / 60);
+    const minutes = roundedMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    if (hours > 0) {
+        return `${hours}h`;
+    }
+
+    return `${minutes}m`;
+}
+
+function formatStartedAt(startedAt: string | null): string {
+    if (startedAt === null) {
+        return 'Unknown start time';
+    }
+
+    return new Date(startedAt).toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
 }

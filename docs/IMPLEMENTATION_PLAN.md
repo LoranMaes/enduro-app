@@ -57,6 +57,18 @@ This follows the **design-first → Codex → backend** approach.
   - role-gated write affordances
   - backend validation error rendering
   - real API writes + Inertia calendar data reload
+- Activity ↔ session read-only link hints (COMPLETE):
+  - `ActivityLinkingService` suggestions by athlete/sport/date/duration proximity
+  - `TrainingSessionResource` now includes `suggested_activities`
+  - `ActivityResource` now exposes `linked_session_id` for downstream UI wiring
+  - no auto-assignment and no link-write endpoints (intentionally deferred)
+- Activity ↔ session manual linking actions (COMPLETE):
+  - explicit API actions:
+    - `POST /api/training-sessions/{training_session}/link-activity`
+    - `DELETE /api/training-sessions/{training_session}/unlink-activity`
+  - athlete-only link/unlink policy path
+  - conflict-safe validation (already-linked activity / already-linked session)
+  - calendar modal affordances for link/unlink with non-optimistic refresh flow
 - Garmin sync ingestion (placeholder only in V1 scaffold)
 - Planned ↔ completed linking
 
@@ -66,6 +78,8 @@ Status update:
 - Athlete calendar structural parity hardening is complete; remaining work is screenshot-level lock/cleanup only.
 - TrainingSession write endpoints (`store`, `update`, `destroy`) are implemented and validated with policy + FormRequest coverage.
 - Athlete calendar now supports explicit athlete-only modal CRUD for planned sessions while preserving non-athlete read-only behavior.
+- External activities can now be correlated to planned sessions through read-only API hints; write-side linking is intentionally out of scope for this phase.
+- Manual activity linking is now enabled via explicit athlete actions, while automatic matching and metrics derivation remain out of scope.
 
 ---
 

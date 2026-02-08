@@ -393,5 +393,60 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
 
+- Implemented read-only Activity ↔ TrainingSession linking hints (backend-only):
+  - added `ActivityLinkingService` for deterministic suggestion queries by:
+    - athlete ownership
+    - same sport
+    - same calendar date
+    - unlinked activities only
+    - duration proximity ordering
+  - updated `TrainingSessionResource` to include `suggested_activities` (minimal fields only)
+  - updated `ActivityResource` to expose `linked_session_id` (+ `linked_session_uid` helper)
+  - confirmed no write endpoints, no auto-linking, and no metric derivation were introduced
+- Added linking-focused tests:
+  - `tests/Feature/Services/ActivityLinkingServiceTest.php`
+  - `tests/Feature/Api/ActivityLinkingResourceTest.php`
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (20 passed)
+
+- Implemented manual Activity ↔ TrainingSession linking (explicit actions, no auto-binding):
+  - added API endpoints:
+    - `POST /api/training-sessions/{training_session}/link-activity`
+    - `DELETE /api/training-sessions/{training_session}/unlink-activity`
+  - added FormRequests:
+    - `LinkActivityToSessionRequest`
+    - `UnlinkActivityFromSessionRequest`
+  - controller-level validation and guards now enforce:
+    - session policy authorization (`linkActivity`, `unlinkActivity`)
+    - same-athlete ownership between session/activity
+    - conflict rejection when activity is linked elsewhere
+    - conflict rejection when session already has a different linked activity
+  - admin link/unlink is blocked by policy unless admin is impersonating an athlete (then treated as athlete context)
+- Updated API resource contracts:
+  - `TrainingSessionResource` now includes:
+    - `linked_activity_id`
+    - `linked_activity_summary`
+    - `suggested_activities` (computed only for session show context)
+  - `ActivityResource` now includes:
+    - `linked_session_summary` when relation is loaded
+- Frontend calendar wiring (athlete-only link UX):
+  - session editor modal now shows:
+    - linked activity summary
+    - suggested activities list
+    - explicit Link / Unlink actions with loading and error feedback
+  - role gating updated:
+    - athletes can link/unlink
+    - coaches/admins do not see link controls
+    - impersonated athlete context can access link/unlink controls while session write fields remain read-only
+  - session rows show subtle linked-activity indicator
+- Added/updated tests:
+  - `tests/Feature/Api/TrainingSessionActivityLinkApiTest.php`
+  - `tests/Feature/Api/ActivityLinkingResourceTest.php` (extended)
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/ActivityReadApiTest.php` (44 passed)
+
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

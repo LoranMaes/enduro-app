@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\LinkActivityToSessionRequest;
 use App\Http\Requests\Api\ListTrainingSessionRequest;
 use App\Http\Requests\Api\StoreTrainingSessionRequest;
+use App\Http\Requests\Api\UnlinkActivityFromSessionRequest;
 use App\Http\Requests\Api\UpdateTrainingSessionRequest;
+use App\Http\Resources\ActivityResource;
 use App\Http\Resources\TrainingSessionResource;
+use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrainingSessionController extends Controller
@@ -30,6 +36,7 @@ class TrainingSessionController extends Controller
         $perPage = (int) ($validated['per_page'] ?? 20);
 
         $sessions = $this->queryForUser($request->user())
+            ->with('activity')
             ->when(
                 isset($validated['from']),
                 fn (Builder $query) => $query->whereDate('scheduled_date', '>=', $validated['from']),
@@ -88,9 +95,15 @@ class TrainingSessionController extends Controller
      *
      * @todo Implement single training session retrieval.
      */
-    public function show(TrainingSession $trainingSession): TrainingSessionResource
+    public function show(Request $request, TrainingSession $trainingSession): TrainingSessionResource
     {
         $this->authorize('view', $trainingSession);
+        $request->attributes->set('include_suggested_activities', true);
+
+        $trainingSession->loadMissing([
+            'trainingWeek.trainingPlan',
+            'activity',
+        ]);
 
         return new TrainingSessionResource($trainingSession);
     }
@@ -130,6 +143,95 @@ class TrainingSessionController extends Controller
         $trainingSession->delete();
 
         return response()->noContent();
+    }
+
+    public function linkActivity(
+        LinkActivityToSessionRequest $request,
+        TrainingSession $trainingSession,
+    ): JsonResponse {
+        $this->authorize('linkActivity', $trainingSession);
+
+        $activity = $request->activity();
+        $user = $request->user();
+
+        if (! $activity instanceof Activity || ! $user instanceof User) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'The selected activity is invalid.',
+            ]);
+        }
+
+        if ($activity->athlete_id !== $user->id) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'The selected activity is invalid.',
+            ]);
+        }
+
+        if (
+            $activity->training_session_id !== null &&
+            $activity->training_session_id !== $trainingSession->id
+        ) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'This activity is already linked to another session.',
+            ]);
+        }
+
+        $conflictingLinkExists = Activity::query()
+            ->where('training_session_id', $trainingSession->id)
+            ->where('id', '!=', $activity->id)
+            ->exists();
+
+        if ($conflictingLinkExists) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'This session already has a linked activity. Unlink it first.',
+            ]);
+        }
+
+        $activity->training_session_id = $trainingSession->id;
+        $activity->save();
+        $activity->loadMissing('trainingSession');
+
+        return response()->json([
+            'activity' => (new ActivityResource($activity))->resolve(),
+            'session' => [
+                'id' => $trainingSession->id,
+                'linked_activity_id' => $activity->id,
+            ],
+        ]);
+    }
+
+    public function unlinkActivity(
+        UnlinkActivityFromSessionRequest $request,
+        TrainingSession $trainingSession,
+    ): JsonResponse {
+        $this->authorize('unlinkActivity', $trainingSession);
+
+        $linkedActivity = Activity::query()
+            ->where('training_session_id', $trainingSession->id)
+            ->first();
+        $user = $request->user();
+
+        if (! $linkedActivity instanceof Activity || ! $user instanceof User) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'No activity is currently linked to this session.',
+            ]);
+        }
+
+        if ($linkedActivity->athlete_id !== $user->id) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'The linked activity is invalid.',
+            ]);
+        }
+
+        $linkedActivity->training_session_id = null;
+        $linkedActivity->save();
+
+        return response()->json([
+            'activity' => (new ActivityResource($linkedActivity))->resolve(),
+            'session' => [
+                'id' => $trainingSession->id,
+                'linked_activity_id' => null,
+            ],
+        ]);
     }
 
     private function queryForUser(User $user): Builder

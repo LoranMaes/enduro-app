@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Enums\TrainingSessionStatus;
+use App\Models\Activity;
+use App\Services\ActivityLinkingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +20,38 @@ class TrainingSessionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $linkedActivitySummary = null;
+        $linkedActivityId = null;
+
+        if ($this->relationLoaded('activity') && $this->activity instanceof Activity) {
+            $linkedActivityId = $this->activity->id;
+            $linkedActivitySummary = [
+                'id' => $this->activity->id,
+                'provider' => $this->activity->provider,
+                'started_at' => $this->activity->started_at?->toISOString(),
+                'duration_seconds' => $this->activity->duration_seconds,
+                'sport' => $this->activity->sport,
+            ];
+        }
+
+        $suggestedActivities = [];
+
+        if ((bool) $request->attributes->get('include_suggested_activities', false)) {
+            $suggestedActivities = app(ActivityLinkingService::class)
+                ->suggestMatchesForSession($this->resource)
+                ->map(function (Activity $activity): array {
+                    return [
+                        'id' => $activity->id,
+                        'provider' => $activity->provider,
+                        'sport' => $activity->sport,
+                        'started_at' => $activity->started_at?->toISOString(),
+                        'duration_seconds' => $activity->duration_seconds,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         return [
             'id' => $this->id,
             'training_week_id' => $this->training_week_id,
@@ -28,6 +62,9 @@ class TrainingSessionResource extends JsonResource
             'planned_tss' => $this->planned_tss,
             'actual_tss' => $this->actual_tss,
             'notes' => $this->notes,
+            'linked_activity_id' => $linkedActivityId,
+            'linked_activity_summary' => $linkedActivitySummary,
+            'suggested_activities' => $suggestedActivities,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

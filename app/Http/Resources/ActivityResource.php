@@ -17,9 +17,24 @@ class ActivityResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $linkedSessionSummary = null;
+
+        if ($this->relationLoaded('trainingSession') && $this->trainingSession !== null) {
+            $linkedSessionSummary = [
+                'id' => $this->trainingSession->id,
+                'scheduled_date' => $this->trainingSession->scheduled_date?->toDateString(),
+                'sport' => $this->trainingSession->sport,
+            ];
+        }
+
         return [
             'id' => $this->id,
             'training_session_id' => $this->training_session_id,
+            'linked_session_id' => $this->training_session_id,
+            'linked_session_uid' => $this->training_session_id !== null
+                ? (string) $this->training_session_id
+                : null,
+            'linked_session_summary' => $linkedSessionSummary,
             'athlete_id' => $this->athlete_id,
             'provider' => $this->provider,
             'external_id' => $this->external_id,

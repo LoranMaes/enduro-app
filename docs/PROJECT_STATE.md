@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Backend spine + athlete calendar write flow complete, with coach-athlete assignment and admin impersonation backbone implemented.
+Backend spine + athlete calendar write flow complete, with coach-athlete assignment, admin impersonation, and explicit activity/session manual linking implemented.
 
 ## Confidence Level
 
@@ -16,6 +16,8 @@ High — UX validated, backend structure in place
 - Admin role-management actions are not implemented yet (impersonation-only admin interaction is currently supported)
 - Remaining visual drift risk from starter-kit primitives still present in non-calendar surfaces
 - External provider operations still need production rollout hardening (queue worker uptime, webhook subscription lifecycle, operational alerting)
+- Activity ↔ TrainingSession matching is heuristic (date/sport/duration) and may need future confidence tuning before write-side linking is enabled
+- Linking currently supports single explicit attach/detach actions only; no bulk-link workflow yet
 
 ## Mitigations
 
@@ -48,6 +50,16 @@ LOCKED for MVP
 - Activity delete webhook events are handled via soft deletes (no hard deletion from `activities`).
 - Reverb broadcasting is configured for live provider sync status updates on authenticated user channels.
 - Sail compose exposes Reverb websocket port (`FORWARD_REVERB_PORT`, default `8080`) for local browser subscriptions.
+- Read-only activity/session correlation is available:
+  - `TrainingSessionResource` exposes `suggested_activities`
+  - `ActivityResource` exposes `linked_session_id`
+  - linking is currently non-mutating and service-driven (`ActivityLinkingService`)
+- Manual linking API is available:
+  - `POST /api/training-sessions/{training_session}/link-activity`
+  - `DELETE /api/training-sessions/{training_session}/unlink-activity`
+  - athlete-owned sessions/activities only
+  - coach/admin direct linking denied
+  - impersonated athlete context can link/unlink as athlete
 
 ## Frontend Status
 
@@ -70,3 +82,8 @@ LOCKED for MVP
 - Core theme tokens/fonts were hardened to slicing palette + typography baselines.
 - Settings → Connections now reflects async sync states from real backend status (`queued`, `running`, `rate_limited`, `failed`, `success`).
 - Settings → Connections now updates those sync states live via Reverb/Echo events (no manual refresh needed).
+- Session editor now includes manual activity linking controls:
+  - suggested activities list
+  - linked activity summary
+  - explicit Link/Unlink actions with loading/error feedback
+  - role-gated visibility (athlete contexts only)

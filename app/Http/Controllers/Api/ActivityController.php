@@ -48,6 +48,7 @@ class ActivityController extends Controller
     public function show(Activity $activity): ActivityResource
     {
         $this->authorize('view', $activity);
+        $activity->loadMissing('trainingSession');
 
         return new ActivityResource($activity);
     }

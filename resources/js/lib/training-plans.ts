@@ -18,6 +18,29 @@ const mapSession = (
         plannedTss: session.planned_tss,
         actualTss: session.actual_tss,
         notes: session.notes,
+        linkedActivityId: session.linked_activity_id ?? null,
+        linkedActivitySummary:
+            session.linked_activity_summary !== undefined &&
+            session.linked_activity_summary !== null
+                ? {
+                      id: session.linked_activity_summary.id,
+                      provider: session.linked_activity_summary.provider,
+                      startedAt:
+                          session.linked_activity_summary.started_at ?? null,
+                      durationSeconds:
+                          session.linked_activity_summary.duration_seconds ??
+                          null,
+                      sport: session.linked_activity_summary.sport ?? null,
+                  }
+                : null,
+        suggestedActivities:
+            session.suggested_activities?.map((activity) => ({
+                id: activity.id,
+                provider: activity.provider,
+                sport: activity.sport ?? null,
+                startedAt: activity.started_at ?? null,
+                durationSeconds: activity.duration_seconds ?? null,
+            })) ?? [],
     };
 };
 

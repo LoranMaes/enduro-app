@@ -9,6 +9,10 @@ class TrainingSessionPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
+        if ($user->isAdmin() && in_array($ability, ['linkActivity', 'unlinkActivity'], true)) {
+            return false;
+        }
+
         if ($user->isAdmin()) {
             return true;
         }
@@ -93,6 +97,24 @@ class TrainingSessionPolicy
     {
         if ($this->isImpersonating()) {
             return false;
+        }
+
+        return false;
+    }
+
+    public function linkActivity(User $user, TrainingSession $trainingSession): bool
+    {
+        if ($user->isAthlete()) {
+            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
+    }
+
+    public function unlinkActivity(User $user, TrainingSession $trainingSession): bool
+    {
+        if ($user->isAthlete()) {
+            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
         }
 
         return false;

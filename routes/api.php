@@ -26,6 +26,14 @@ Route::middleware([
     Route::apiResource('training-plans', TrainingPlanController::class);
     Route::apiResource('training-weeks', TrainingWeekController::class);
     Route::apiResource('training-sessions', TrainingSessionController::class);
+    Route::post(
+        'training-sessions/{training_session}/link-activity',
+        [TrainingSessionController::class, 'linkActivity'],
+    )->name('training-sessions.link-activity');
+    Route::delete(
+        'training-sessions/{training_session}/unlink-activity',
+        [TrainingSessionController::class, 'unlinkActivity'],
+    )->name('training-sessions.unlink-activity');
     Route::apiResource('activities', ActivityController::class)->only([
         'index',
         'show',

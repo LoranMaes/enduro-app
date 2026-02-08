@@ -9,6 +9,7 @@ import { WeekSummary } from './week-summary';
 type WeekSectionProps = {
     week: TrainingWeekView;
     canManageSessions: boolean;
+    canManageSessionLinks: boolean;
     onCreateSession: (trainingWeekId: number, date: string) => void;
     onEditSession: (
         trainingWeekId: number,
@@ -39,6 +40,7 @@ const dayToken = (date: Date): string => {
 export function WeekSection({
     week,
     canManageSessions,
+    canManageSessionLinks,
     onCreateSession,
     onEditSession,
 }: WeekSectionProps) {
@@ -129,6 +131,7 @@ export function WeekSection({
                                 }
                                 sessions={sessions}
                                 canManageSessions={canManageSessions}
+                                canManageSessionLinks={canManageSessionLinks}
                                 onCreateSession={onCreateSession}
                                 onEditSession={onEditSession}
                             />

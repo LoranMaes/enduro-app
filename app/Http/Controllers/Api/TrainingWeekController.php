@@ -40,7 +40,9 @@ class TrainingWeekController extends Controller
             )
             ->with([
                 'trainingSessions' => function ($query): void {
-                    $query->orderBy('scheduled_date');
+                    $query
+                        ->orderBy('scheduled_date')
+                        ->with('activity');
                 },
             ])
             ->orderByDesc('starts_at')
@@ -72,7 +74,7 @@ class TrainingWeekController extends Controller
             'ends_at' => $validated['ends_at'],
         ]);
 
-        $trainingWeek->load('trainingSessions');
+        $trainingWeek->load('trainingSessions.activity');
 
         return (new TrainingWeekResource($trainingWeek))
             ->response()
@@ -90,7 +92,9 @@ class TrainingWeekController extends Controller
 
         $trainingWeek->load([
             'trainingSessions' => function ($query): void {
-                $query->orderBy('scheduled_date');
+                $query
+                    ->orderBy('scheduled_date')
+                    ->with('activity');
             },
         ]);
 
@@ -107,7 +111,7 @@ class TrainingWeekController extends Controller
         $this->authorize('update', $trainingWeek);
 
         $trainingWeek->update($request->validated());
-        $trainingWeek->load('trainingSessions');
+        $trainingWeek->load('trainingSessions.activity');
 
         return new TrainingWeekResource($trainingWeek);
     }
