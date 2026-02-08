@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\ActivityProviders\Strava\StravaActivityProvider;
+
 return [
 
     /*
@@ -33,6 +35,20 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    'activity_providers' => [
+        'allowed' => array_values(array_filter(array_map('trim', explode(
+            ',',
+            (string) env('ACTIVITY_PROVIDERS_ALLOWED', 'strava'),
+        )))),
+        'providers' => [
+            'strava' => StravaActivityProvider::class,
+        ],
+    ],
+
+    'strava' => [
+        'base_url' => env('STRAVA_BASE_URL', 'https://www.strava.com/api/v3'),
     ],
 
 ];

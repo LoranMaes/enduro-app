@@ -3,70 +3,72 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ListActivityRequest;
+use App\Http\Resources\ActivityResource;
 use App\Models\Activity;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ActivityController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     *
-     * @todo Implement activity listing with policy-aware query scoping.
+     * Display a listing of activities.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListActivityRequest $request): AnonymousResourceCollection
     {
-        return response()->json([
-            'message' => 'TODO: implement ActivityController@index.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        $this->authorize('viewAny', Activity::class);
+
+        $validated = $request->validated();
+        $perPage = (int) ($validated['per_page'] ?? 20);
+
+        $activities = $this->queryForUser($request->user())
+            ->when(
+                isset($validated['provider']),
+                fn (Builder $query) => $query->where('provider', $validated['provider']),
+            )
+            ->when(
+                isset($validated['from']),
+                fn (Builder $query) => $query->whereDate('started_at', '>=', $validated['from']),
+            )
+            ->when(
+                isset($validated['to']),
+                fn (Builder $query) => $query->whereDate('started_at', '<=', $validated['to']),
+            )
+            ->orderByDesc('started_at')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return ActivityResource::collection($activities);
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @todo Implement Garmin activity placeholder creation workflow.
+     * Display the specified activity.
      */
-    public function store(Request $request): JsonResponse
+    public function show(Activity $activity): ActivityResource
     {
-        return response()->json([
-            'message' => 'TODO: implement ActivityController@store.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        $this->authorize('view', $activity);
+
+        return new ActivityResource($activity);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @todo Implement single activity retrieval.
-     */
-    public function show(Activity $activity): JsonResponse
+    private function queryForUser(User $user): Builder
     {
-        return response()->json([
-            'message' => 'TODO: implement ActivityController@show.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
-    }
+        if ($user->isAdmin()) {
+            return Activity::query();
+        }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @todo Implement Garmin activity placeholder update workflow.
-     */
-    public function update(Request $request, Activity $activity): JsonResponse
-    {
-        return response()->json([
-            'message' => 'TODO: implement ActivityController@update.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
-    }
+        if ($user->isAthlete()) {
+            return Activity::query()->where('athlete_id', $user->id);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @todo Implement activity deletion workflow.
-     */
-    public function destroy(Activity $activity): JsonResponse
-    {
-        return response()->json([
-            'message' => 'TODO: implement ActivityController@destroy.',
-        ], Response::HTTP_NOT_IMPLEMENTED);
+        if ($user->isCoach()) {
+            return Activity::query()->whereIn(
+                'athlete_id',
+                $user->coachedAthletes()->select('users.id'),
+            );
+        }
+
+        return Activity::query()->whereRaw('1 = 0');
     }
 }

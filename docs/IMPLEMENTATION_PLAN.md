@@ -77,6 +77,22 @@ Status update:
 
 ---
 
+## Phase 4.5 — External Activity Providers (Backend Backbone)
+
+- Provider-agnostic contract + manager/registry (COMPLETE)
+- Strava read-only provider implementation (COMPLETE)
+- Normalized DTO mapping + typed activity collections (COMPLETE)
+- Minimal persistence into `activities` (COMPLETE, no session-linking/metrics)
+- Read-only activities API with role-scoped access + pagination/filtering (COMPLETE)
+- Test coverage for provider resolution, mapping, token failures, and activity read access (COMPLETE)
+
+Status update:
+- External provider scaffolding is now production-safe and swappable by provider key.
+- Strava is wired as the first provider with explicit error handling and no write-back behavior.
+- OAuth UI, background sync/webhooks, and derived load metrics remain intentionally out of scope.
+
+---
+
 ## Phase 5 — Roles & Permissions
 
 - Athlete / Coach / Admin

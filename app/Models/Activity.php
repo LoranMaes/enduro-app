@@ -15,8 +15,14 @@ class Activity extends Model
      */
     protected $fillable = [
         'training_session_id',
+        'athlete_id',
+        'provider',
         'external_id',
-        'source',
+        'sport',
+        'started_at',
+        'duration_seconds',
+        'distance_meters',
+        'elevation_gain_meters',
         'raw_payload',
     ];
 
@@ -26,6 +32,9 @@ class Activity extends Model
     protected function casts(): array
     {
         return [
+            'started_at' => 'datetime',
+            'distance_meters' => 'float',
+            'elevation_gain_meters' => 'float',
             'raw_payload' => 'array',
         ];
     }
@@ -33,5 +42,10 @@ class Activity extends Model
     public function trainingSession(): BelongsTo
     {
         return $this->belongsTo(TrainingSession::class);
+    }
+
+    public function athlete(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'athlete_id');
     }
 }

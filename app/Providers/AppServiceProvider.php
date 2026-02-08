@@ -10,6 +10,8 @@ use App\Policies\ActivityPolicy;
 use App\Policies\TrainingPlanPolicy;
 use App\Policies\TrainingSessionPolicy;
 use App\Policies\TrainingWeekPolicy;
+use App\Services\ActivityProviders\ActivityProviderManager;
+use App\Services\ActivityProviders\Contracts\ActivityProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +26,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ActivityProviderManager::class, function ($app): ActivityProviderManager {
+            /** @var array<string, class-string<ActivityProvider>> $providerClasses */
+            $providerClasses = (array) config('services.activity_providers.providers', []);
+
+            /** @var list<string> $allowedProviders */
+            $allowedProviders = array_values(array_filter(
+                (array) config(
+                    'services.activity_providers.allowed',
+                    array_keys($providerClasses),
+                ),
+                static fn (mixed $provider): bool => is_string($provider) && trim($provider) !== '',
+            ));
+
+            return new ActivityProviderManager(
+                container: $app,
+                providerClasses: $providerClasses,
+                allowedProviders: $allowedProviders,
+            );
+        });
     }
 
     /**

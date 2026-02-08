@@ -23,7 +23,11 @@ class ActivityPolicy
 
     public function view(User $user, Activity $activity): bool
     {
-        $athlete = $activity->trainingSession->trainingWeek->trainingPlan->user;
+        $athlete = $this->resolveAthlete($activity);
+
+        if (! $athlete instanceof User) {
+            return false;
+        }
 
         if ($user->isAthlete()) {
             return $athlete->is($user);
@@ -46,7 +50,6 @@ class ActivityPolicy
             return true;
         }
 
-        /** @todo Allow coaches to create activities for assigned athletes. */
         return false;
     }
 
@@ -56,8 +59,14 @@ class ActivityPolicy
             return false;
         }
 
+        $athlete = $this->resolveAthlete($activity);
+
+        if (! $athlete instanceof User) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
-            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $athlete->is($user);
         }
 
         return false;
@@ -69,8 +78,14 @@ class ActivityPolicy
             return false;
         }
 
+        $athlete = $this->resolveAthlete($activity);
+
+        if (! $athlete instanceof User) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
-            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
+            return $athlete->is($user);
         }
 
         return false;
@@ -78,15 +93,7 @@ class ActivityPolicy
 
     public function restore(User $user, Activity $activity): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
-        if ($user->isAthlete()) {
-            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
-        }
-
-        return false;
+        return $this->delete($user, $activity);
     }
 
     public function forceDelete(User $user, Activity $activity): bool
@@ -96,6 +103,27 @@ class ActivityPolicy
         }
 
         return false;
+    }
+
+    private function resolveAthlete(Activity $activity): ?User
+    {
+        if ($activity->relationLoaded('athlete') && $activity->athlete instanceof User) {
+            return $activity->athlete;
+        }
+
+        if ($activity->athlete_id !== null) {
+            return $activity->athlete()->first();
+        }
+
+        if (
+            $activity->trainingSession !== null
+            && $activity->trainingSession->trainingWeek !== null
+            && $activity->trainingSession->trainingWeek->trainingPlan !== null
+        ) {
+            return $activity->trainingSession->trainingWeek->trainingPlan->user;
+        }
+
+        return null;
     }
 
     private function canCoachAccessAthlete(User $coach, User $athlete): bool

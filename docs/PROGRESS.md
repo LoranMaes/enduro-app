@@ -183,5 +183,79 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php` (54 passed)
 
+- Implemented provider-agnostic external activity read scaffolding (backend-only):
+  - added provider contract:
+    - `app/Services/ActivityProviders/Contracts/ActivityProvider.php`
+  - added normalized DTO + typed collection:
+    - `app/Data/ExternalActivityDTO.php`
+    - `app/Data/Collections/ActivityCollection.php`
+  - added provider manager/registry with allowed-provider enforcement:
+    - `app/Services/ActivityProviders/ActivityProviderManager.php`
+  - added explicit provider exceptions:
+    - unsupported provider
+    - unauthorized
+    - invalid token
+    - rate limited
+    - token missing
+    - request failure
+  - container wiring added in `AppServiceProvider` with provider map from `config/services.php`
+
+- Implemented Strava read-only provider:
+  - `app/Services/ActivityProviders/Strava/StravaActivityProvider.php`
+  - read endpoints used:
+    - `/athlete/activities`
+    - `/activities/{id}`
+  - centralized HTTP client setup (base URL + bearer token + JSON)
+  - explicit failure handling for:
+    - missing token
+    - invalid/expired token (`401`)
+    - unauthorized (`403`)
+    - rate limit (`429`)
+  - explicit mapping from Strava payload to normalized DTO fields
+
+- Added minimal persistence layer for normalized provider activities:
+  - `app/Services/Activities/ExternalActivityPersister.php`
+  - upsert by (`athlete_id`, `provider`, `external_id`)
+  - no training-session linking or derived metrics
+
+- Extended schema for external activity storage:
+  - `users`:
+    - `strava_access_token`
+    - `strava_refresh_token`
+    - `strava_token_expires_at`
+  - `activities`:
+    - renamed `source` → `provider`
+    - added `athlete_id`, `sport`, `started_at`, `duration_seconds`, `distance_meters`, `elevation_gain_meters`
+    - made `training_session_id` nullable
+    - added indexes + unique constraint on (`athlete_id`, `provider`, `external_id`)
+
+- Implemented read-only activities API:
+  - controller:
+    - `ActivityController@index`
+    - `ActivityController@show`
+  - routes:
+    - `GET /api/activities`
+    - `GET /api/activities/{activity}`
+  - request validation:
+    - `per_page`
+    - `provider`
+    - `from` / `to`
+  - role-scoped access:
+    - athlete: own activities
+    - coach: assigned athletes only
+    - admin: all
+  - pagination shape preserved (`data`, `links`, `meta`)
+
+- Added/updated tests:
+  - `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php`
+  - `tests/Feature/ActivityProviders/StravaActivityProviderTest.php`
+  - `tests/Feature/Api/ActivityReadApiTest.php`
+  - updated `tests/Feature/Api/DomainSpineRoutesTest.php` for implemented activities index
+
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/DomainSpineRoutesTest.php` (14 passed)
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/CoachCalendarReadAccessTest.php` (39 passed)
+
 Next milestone:
 → Wire admin users table and impersonation controls tighter to final slicing parity (table density/labels), then implement role-management actions in a separate scoped phase (still no training-data admin writes).

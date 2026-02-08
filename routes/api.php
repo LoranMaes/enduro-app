@@ -18,5 +18,8 @@ Route::middleware([
     Route::apiResource('training-plans', TrainingPlanController::class);
     Route::apiResource('training-weeks', TrainingWeekController::class);
     Route::apiResource('training-sessions', TrainingSessionController::class);
-    Route::apiResource('activities', ActivityController::class);
+    Route::apiResource('activities', ActivityController::class)->only([
+        'index',
+        'show',
+    ]);
 });

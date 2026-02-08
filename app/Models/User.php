@@ -27,6 +27,9 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'strava_access_token',
+        'strava_refresh_token',
+        'strava_token_expires_at',
     ];
 
     /**
@@ -39,6 +42,8 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+        'strava_access_token',
+        'strava_refresh_token',
     ];
 
     /**
@@ -53,6 +58,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
+            'strava_token_expires_at' => 'datetime',
         ];
     }
 
@@ -89,6 +95,11 @@ class User extends Authenticatable
     public function trainingPlans(): HasMany
     {
         return $this->hasMany(TrainingPlan::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class, 'athlete_id');
     }
 
     public function isAthlete(): bool
