@@ -19,14 +19,14 @@ export function DayColumn({
     return (
         <div
             className={cn(
-                'group/day relative flex h-full min-h-[140px] flex-col border-r border-border p-2 transition-all duration-200',
+                'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 transition-all duration-200',
                 isToday
                     ? 'bg-zinc-900/40 ring-1 ring-white/5 ring-inset'
                     : 'bg-transparent',
                 !isToday && isPast ? 'bg-zinc-950/30' : 'hover:bg-zinc-900/30',
             )}
         >
-            <div className="mb-3 flex items-start justify-between px-1">
+            <div className="mb-2 flex items-start justify-between px-1">
                 <span
                     className={cn(
                         'text-xs font-medium tabular-nums transition-colors',

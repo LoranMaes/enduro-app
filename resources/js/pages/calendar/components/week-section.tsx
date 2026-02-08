@@ -66,16 +66,10 @@ export function WeekSection({ week }: WeekSectionProps) {
     const isCurrentWeek = isDateInWeek(weekStart, new Date());
 
     return (
-        <section
-            className={cn(
-                'flex flex-col border-b border-border transition-colors',
-                isCurrentWeek ? 'bg-zinc-900/10' : 'bg-background',
-            )}
-        >
+        <section className="flex flex-col border-b border-border bg-background">
             <header
                 className={cn(
                     'sticky top-[var(--calendar-week-sticky)] z-20 flex w-full items-center justify-between border-b border-border bg-background/95 px-4 py-1.5 backdrop-blur-sm',
-                    isCurrentWeek && 'border-l-2 border-l-accent',
                 )}
             >
                 <p
@@ -91,7 +85,7 @@ export function WeekSection({ week }: WeekSectionProps) {
                 ) : null}
             </header>
 
-            <div className="flex flex-col md:grid md:grid-cols-[repeat(7,minmax(0,1fr))_140px] md:divide-x md:divide-border">
+            <div className="flex flex-col md:grid md:grid-cols-[repeat(7,minmax(0,1fr))_156px] md:divide-x md:divide-border">
                 {Array.from({ length: 7 }, (_, index) => {
                     const currentDay = addDays(weekStart, index);
                     const currentDayKey = dateKey(currentDay);
@@ -100,7 +94,7 @@ export function WeekSection({ week }: WeekSectionProps) {
                     return (
                         <div
                             key={`${week.id}-${currentDayKey}`}
-                            className="min-h-[100px] border-b border-border md:min-h-[160px] md:border-b-0"
+                            className="min-h-[112px] border-b border-border md:min-h-[184px] md:border-b-0"
                         >
                             <DayColumn
                                 dayNumber={dayToken(currentDay)}

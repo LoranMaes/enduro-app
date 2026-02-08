@@ -88,6 +88,8 @@ export function SessionRow({
     const displayTss = session.plannedTss ?? undefined;
     const displayTitle = config.title;
     const isSkipped = session.status === 'skipped';
+    const isPlanned = session.status === 'planned';
+    const durationParts = formatDurationParts(session.durationMinutes);
 
     const statusStyle: Record<string, string> = {
         planned:
@@ -150,9 +152,11 @@ export function SessionRow({
                             compact ? 'text-xs' : 'text-sm',
                             isSkipped &&
                                 'text-zinc-600 line-through decoration-zinc-700',
-                            session.status === 'completed'
-                                ? 'text-zinc-100'
-                                : 'text-zinc-400',
+                            session.status === 'completed' && 'text-zinc-100',
+                            isPlanned && 'text-zinc-200',
+                            !isPlanned &&
+                                session.status !== 'completed' &&
+                                'text-zinc-300',
                         )}
                     >
                         {displayTitle}
@@ -170,31 +174,54 @@ export function SessionRow({
                         {session.status === 'partial' ? (
                             <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
                         ) : null}
+                        {isPlanned ? (
+                            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-500/80">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/85" />
+                            </span>
+                        ) : null}
                     </div>
                 ) : null}
             </div>
 
-            <div className="mt-auto flex items-baseline gap-3">
-                <span
-                    className={cn(
-                        'font-mono text-sm font-light',
-                        session.status === 'completed'
-                            ? 'text-white'
-                            : 'text-zinc-400',
-                        isSkipped && 'text-zinc-600',
-                    )}
-                >
-                    {formatDuration(session.durationMinutes)}
-                </span>
-                {displayTss !== undefined && displayTss > 0 ? (
+            <div className="mt-auto flex items-start gap-3">
+                <div className="flex min-w-[34px] flex-col leading-[1.1]">
                     <span
                         className={cn(
-                            'font-mono text-sm font-light',
+                            'font-mono text-sm font-medium',
+                            session.status === 'completed' && 'text-white',
+                            isPlanned && 'text-zinc-200',
+                            !isPlanned &&
+                                session.status !== 'completed' &&
+                                'text-zinc-300',
+                            isSkipped && 'text-zinc-600',
+                        )}
+                    >
+                        {durationParts.primary}
+                    </span>
+                    <span
+                        className={cn(
+                            'font-mono text-xs',
                             isSkipped ? 'text-zinc-700' : 'text-zinc-500',
                         )}
                     >
-                        {displayTss} TSS
+                        {durationParts.secondary}
                     </span>
+                </div>
+
+                {displayTss !== undefined && displayTss > 0 ? (
+                    <div className="flex min-w-[28px] flex-col leading-[1.1]">
+                        <span
+                            className={cn(
+                                'font-mono text-sm font-light',
+                                isSkipped ? 'text-zinc-700' : 'text-zinc-500',
+                            )}
+                        >
+                            {displayTss}
+                        </span>
+                        <span className="font-mono text-[10px] tracking-wide text-zinc-600 uppercase">
+                            TSS
+                        </span>
+                    </div>
                 ) : null}
             </div>
 
@@ -221,17 +248,29 @@ export function SessionRow({
     );
 }
 
-function formatDuration(durationMinutes: number): string {
+function formatDurationParts(durationMinutes: number): {
+    primary: string;
+    secondary: string;
+} {
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
 
     if (hours > 0 && minutes > 0) {
-        return `${hours}h ${minutes}m`;
+        return {
+            primary: `${hours}h`,
+            secondary: `${minutes}m`,
+        };
     }
 
     if (hours > 0) {
-        return `${hours}h`;
+        return {
+            primary: `${hours}h`,
+            secondary: '\u00a0',
+        };
     }
 
-    return `${minutes}m`;
+    return {
+        primary: `${minutes}m`,
+        secondary: '\u00a0',
+    };
 }

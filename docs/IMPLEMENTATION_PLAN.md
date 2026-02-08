@@ -40,11 +40,12 @@ This follows the **design-first → Codex → backend** approach.
 - TrainingSession read endpoints (COMPLETE)
 - Calendar read filters/pagination for plan/week/session collections (COMPLETE)
 - TrainingWeek CRUD backend (COMPLETE)
-- Athlete calendar slicing convergence pass (IN PROGRESS):
+- Athlete calendar slicing convergence pass (COMPLETE for structural parity):
   - fixed header + fixed day axis + sticky weeks
   - slicing-aligned session/day/week composition
   - slicing-style sidebar rail integration
   - token/typography hardening
+  - scroll ownership, separator cleanup, summary rail ratio, and session metric hierarchy hardening
 
 ---
 
@@ -56,7 +57,8 @@ This follows the **design-first → Codex → backend** approach.
 
 Status update:
 - TrainingWeek CRUD is implemented and validated.
-- Calendar is read-only and now mapped to slicing-first layout using real API data.
+- Calendar remains read-only and mapped to slicing-first layout using real API data.
+- Athlete calendar structural parity hardening is complete; remaining work is screenshot-level lock/cleanup only.
 - Session write logic is still intentionally deferred and is the next backend milestone.
 
 ---

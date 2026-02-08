@@ -30,7 +30,7 @@ export default function CalendarPage({ trainingPlans }: CalendarPageProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Calendar" />
 
-            <div className="flex h-full flex-1 flex-col">
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                 {primaryPlan === null ? (
                     <div className="flex h-full items-center justify-center border border-dashed border-border">
                         <p className="text-sm text-zinc-400">
@@ -39,7 +39,7 @@ export default function CalendarPage({ trainingPlans }: CalendarPageProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="flex h-full min-h-0 flex-1 flex-col">
+                    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                         <PlanSection
                             plan={primaryPlan}
                             additionalPlanCount={additionalPlanCount}

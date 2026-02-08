@@ -72,5 +72,20 @@
   - mono metric row + left sport accent strip + density/rhythm parity updates
 - Updated docs to track frontend slicing convergence and backend readiness
 
+## 2026-02-08
+
+- Completed athlete calendar visual parity hardening pass (frontend-only, read-only behavior unchanged):
+  - scroll ownership locked to calendar canvas (page wrapper overflow hidden)
+  - duplicate day-column vertical separators removed
+  - current-week emphasis reduced to subtle header treatment (no full-week tint / left stripe)
+  - weekly summary rail width adjusted to slicing proportions
+  - week/day vertical rhythm normalized for consistent band height
+  - day-cell inset spacing tightened for closer date-to-session scan flow
+  - planned-session contrast increased (title + primary duration metric)
+  - session metrics restructured to stacked mono duration/TSS blocks
+  - planned-state right-side marker aligned to slicing composition
+- Verified frontend safety with targeted TypeScript check (`npm run types`) after the pass.
+- No backend/API/routes/policy changes in this update.
+
 Next milestone:
-→ Lock remaining pixel-level slicing parity in athlete calendar + sidebar shell, then begin controlled Session write backend phase (store/update/destroy + tests) without changing coach assignment scope
+→ Final screenshot-level athlete calendar QA and lock, then start controlled `TrainingSession` write backend phase (`store` / `update` / `destroy` + tests) without expanding coach assignment scope.

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Backend spine + calendar read/write foundation complete, with frontend in slicing-convergence mode (athlete calendar + sidebar)
+Backend spine + calendar read/write foundation complete, with athlete calendar in screenshot-level parity lock mode.
 
 ## Confidence Level
 
@@ -46,5 +46,10 @@ LOCKED for MVP
   - fixed weekday axis
   - sticky week labels
   - aligned day columns + summary rail
+- Calendar hardening pass completed for slicing parity:
+  - calendar-owned scrolling (no page-level scroll ownership)
+  - single-source vertical separators (no double grid lines)
+  - adjusted week-band rhythm and summary rail width
+  - planned-session metric hierarchy aligned (stacked duration/TSS + planned marker)
 - Sidebar is now slicing-style fixed icon rail with role-aware entries.
 - Core theme tokens/fonts were hardened to slicing palette + typography baselines.
