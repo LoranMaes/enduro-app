@@ -37,7 +37,8 @@ export function PlanSection({
         .slice(0, 2)
         .map((part) => part[0]?.toUpperCase() ?? '')
         .join('');
-    const canManageSessions = auth.user.role === 'athlete';
+    const canManageSessions =
+        auth.user.role === 'athlete' && !(auth.impersonating ?? false);
 
     const openCreateSessionModal = useCallback(
         (trainingWeekId: number, date: string): void => {

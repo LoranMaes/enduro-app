@@ -38,6 +38,10 @@ class ActivityPolicy
 
     public function create(User $user): bool
     {
+        if ($this->isImpersonating()) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
             return true;
         }
@@ -48,6 +52,10 @@ class ActivityPolicy
 
     public function update(User $user, Activity $activity): bool
     {
+        if ($this->isImpersonating()) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
             return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
         }
@@ -57,6 +65,10 @@ class ActivityPolicy
 
     public function delete(User $user, Activity $activity): bool
     {
+        if ($this->isImpersonating()) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
             return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
         }
@@ -66,6 +78,10 @@ class ActivityPolicy
 
     public function restore(User $user, Activity $activity): bool
     {
+        if ($this->isImpersonating()) {
+            return false;
+        }
+
         if ($user->isAthlete()) {
             return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
         }
@@ -75,6 +91,10 @@ class ActivityPolicy
 
     public function forceDelete(User $user, Activity $activity): bool
     {
+        if ($this->isImpersonating()) {
+            return false;
+        }
+
         return false;
     }
 
@@ -84,5 +104,17 @@ class ActivityPolicy
             ->coachedAthletes()
             ->whereKey($athlete->id)
             ->exists();
+    }
+
+    private function isImpersonating(): bool
+    {
+        $request = request();
+
+        if ($request === null || ! $request->hasSession()) {
+            return false;
+        }
+
+        return $request->session()->has('impersonation.original_user_id')
+            && $request->session()->has('impersonation.impersonated_user_id');
     }
 }

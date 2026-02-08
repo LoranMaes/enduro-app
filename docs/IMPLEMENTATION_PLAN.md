@@ -80,13 +80,19 @@ Status update:
 ## Phase 5 — Roles & Permissions
 
 - Athlete / Coach / Admin
-- Impersonation support
+- Impersonation support (COMPLETE for session-based read-only admin supervision)
 - Approval workflows
 
 Status update:
 - Coach-athlete assignment backbone is implemented (model, migration, policies, query scoping, read-only coach views, tests).
 - Coach access is now assignment-aware and read-only for calendar data.
-- Next in this phase is admin impersonation groundwork.
+- Admin console + users directory + session impersonation are now implemented and validated:
+  - admin sidebar scope corrected to `Admin Console` + `Users`
+  - impersonation start/stop routes implemented
+  - Inertia impersonation context shared globally
+  - impersonated sessions use role-correct navigation context
+  - training-data writes are blocked while impersonating
+- Next in this phase is explicit role-management/admin account actions (separate scope), without expanding into training-data write access.
 
 ---
 

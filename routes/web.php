@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminConsoleController;
+use App\Http\Controllers\Admin\AdminUserIndexController;
+use App\Http\Controllers\Admin\ImpersonationStartController;
+use App\Http\Controllers\Admin\ImpersonationStopController;
 use App\Http\Controllers\AthleteCalendarController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
@@ -17,6 +21,10 @@ Route::get('dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::post('admin/impersonate/stop', ImpersonationStopController::class)
+    ->middleware('auth')
+    ->name('admin.impersonate.stop');
+
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('athletes', function () {
         return Inertia::render('athletes/index');
@@ -28,9 +36,13 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('coaches', CoachAthleteIndexController::class)
         ->name('coaches.index');
 
-    Route::get('admin', function () {
-        return Inertia::render('admin/index');
-    })->name('admin.index');
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function (): void {
+        Route::get('/', AdminConsoleController::class)->name('index');
+        Route::get('/users', AdminUserIndexController::class)->name('users.index');
+        Route::post('/impersonate/{user}', ImpersonationStartController::class)
+            ->whereNumber('user')
+            ->name('impersonate.start');
+    });
 
     Route::get('settings/overview', function () {
         return Inertia::render('settings/overview');

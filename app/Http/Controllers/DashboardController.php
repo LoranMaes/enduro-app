@@ -7,6 +7,7 @@ use App\Http\Resources\TrainingPlanResource;
 use App\Models\TrainingPlan;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,8 +16,12 @@ class DashboardController extends Controller
     /**
      * Display the dashboard.
      */
-    public function __invoke(IndexRequest $request): Response
+    public function __invoke(IndexRequest $request): Response|RedirectResponse
     {
+        if ($request->user()->isAdmin()) {
+            return redirect()->route('admin.index');
+        }
+
         $this->authorize('viewAny', TrainingPlan::class);
 
         $validated = $request->validated();

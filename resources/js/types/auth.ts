@@ -13,6 +13,9 @@ export type User = {
 
 export type Auth = {
     user: User;
+    impersonating?: boolean;
+    original_user?: User | null;
+    impersonated_user?: User | null;
 };
 
 export type TwoFactorSetupData = {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,13 +36,80 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $impersonationContext = $this->resolveImpersonationContext($request, $user);
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'impersonating' => $impersonationContext['impersonating'],
+                'original_user' => $impersonationContext['original_user'],
+                'impersonated_user' => $impersonationContext['impersonated_user'],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * @return array{
+     *     impersonating: bool,
+     *     original_user: array{id: int, name: string, email: string, role: string|null}|null,
+     *     impersonated_user: array{id: int, name: string, email: string, role: string|null}|null
+     * }
+     */
+    private function resolveImpersonationContext(Request $request, ?User $user): array
+    {
+        $originalUserId = $request->session()->get('impersonation.original_user_id');
+        $impersonatedUserId = $request->session()->get('impersonation.impersonated_user_id');
+
+        if ($originalUserId === null || $impersonatedUserId === null || $user === null) {
+            return [
+                'impersonating' => false,
+                'original_user' => null,
+                'impersonated_user' => null,
+            ];
+        }
+
+        $originalUser = User::query()->find((int) $originalUserId);
+        $impersonatedUser = User::query()->find((int) $impersonatedUserId);
+
+        if (
+            $originalUser === null ||
+            ! $originalUser->isAdmin() ||
+            $impersonatedUser === null ||
+            ! $impersonatedUser->is($user)
+        ) {
+            $request->session()->forget([
+                'impersonation.original_user_id',
+                'impersonation.impersonated_user_id',
+            ]);
+
+            return [
+                'impersonating' => false,
+                'original_user' => null,
+                'impersonated_user' => null,
+            ];
+        }
+
+        return [
+            'impersonating' => true,
+            'original_user' => $this->toSharedUser($originalUser),
+            'impersonated_user' => $this->toSharedUser($impersonatedUser),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string, role: string|null}
+     */
+    private function toSharedUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role?->value,
         ];
     }
 }

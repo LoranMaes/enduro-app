@@ -150,5 +150,38 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/DashboardTest.php` (46 passed)
 
+- Implemented admin console + impersonation system (session-based, read-only-first):
+  - added admin-only route guard middleware (`admin`)
+  - added admin routes:
+    - `GET /admin`
+    - `GET /admin/users`
+    - `POST /admin/impersonate/{user}`
+    - `POST /admin/impersonate/stop`
+  - added backend controllers:
+    - `AdminConsoleController`
+    - `AdminUserIndexController`
+    - `ImpersonationStartController`
+    - `ImpersonationStopController`
+  - added Inertia shared impersonation context:
+    - `auth.impersonating`
+    - `auth.original_user`
+    - `auth.impersonated_user`
+- Corrected admin navigation behavior to slicing rules:
+  - admin (not impersonating) sidebar now shows only:
+    - Admin Console
+    - Users
+  - impersonated sessions now show role-correct sidebar automatically
+- Added persistent impersonation banner with stop action across app layout.
+- Enforced read-only training writes during impersonation:
+  - write-policy guard for plan/week/session/activity create/update/delete/restore/forceDelete
+  - API routes now include session middleware (`StartSession`) so impersonation context is available for policy enforcement
+- Added admin impersonation + role-navigation test coverage:
+  - `tests/Feature/AdminImpersonationTest.php`
+  - updated `tests/Feature/NavigationShellPagesTest.php`
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php` (54 passed)
+
 Next milestone:
-→ Build admin impersonation groundwork on top of assignment-aware access, while keeping coach write permissions disabled.
+→ Wire admin users table and impersonation controls tighter to final slicing parity (table density/labels), then implement role-management actions in a separate scoped phase (still no training-data admin writes).
