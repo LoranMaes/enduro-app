@@ -21,8 +21,10 @@ class TrainingSession extends Model
         'sport',
         'status',
         'duration_minutes',
+        'actual_duration_minutes',
         'planned_tss',
         'actual_tss',
+        'completed_at',
         'notes',
     ];
 
@@ -34,6 +36,7 @@ class TrainingSession extends Model
         return [
             'scheduled_date' => 'date',
             'status' => TrainingSessionStatus::class,
+            'completed_at' => 'datetime',
         ];
     }
 

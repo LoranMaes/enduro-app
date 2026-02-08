@@ -1,10 +1,12 @@
 import {
     Activity,
     Bike,
+    CheckCircle2,
     Droplets,
     Dumbbell,
     Footprints,
     Link2,
+    RotateCcw,
     Trash2,
     Unlink,
 } from 'lucide-react';
@@ -31,8 +33,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
+    complete as completeTrainingSession,
     destroy as destroyTrainingSession,
     linkActivity as linkActivityToSession,
+    revertCompletion as revertTrainingSessionCompletion,
     show as showTrainingSession,
     store as storeTrainingSession,
     unlinkActivity as unlinkActivityFromSession,
@@ -46,18 +50,17 @@ import type {
 type SessionEditorMode = 'create' | 'edit';
 type Sport = 'swim' | 'bike' | 'run' | 'gym' | 'other';
 
-type ValidationErrors = Partial<
-    Record<
-        | 'training_week_id'
-        | 'date'
-        | 'sport'
-        | 'planned_duration_minutes'
-        | 'planned_tss'
-        | 'notes'
-        | 'activity_id',
-        string
-    >
->;
+type ValidationField =
+    | 'training_week_id'
+    | 'date'
+    | 'sport'
+    | 'planned_duration_minutes'
+    | 'planned_tss'
+    | 'notes'
+    | 'activity_id'
+    | 'session';
+
+type ValidationErrors = Partial<Record<ValidationField, string>>;
 
 type SessionWritePayload = {
     training_week_id: number;
@@ -102,7 +105,7 @@ const sportOptions: Array<{
     { value: 'other', label: 'Other', icon: Activity },
 ];
 
-const validationFields: Array<keyof ValidationErrors> = [
+const validationFields: ValidationField[] = [
     'training_week_id',
     'date',
     'sport',
@@ -110,6 +113,7 @@ const validationFields: Array<keyof ValidationErrors> = [
     'planned_tss',
     'notes',
     'activity_id',
+    'session',
 ];
 
 export function SessionEditorModal({
@@ -134,6 +138,8 @@ export function SessionEditorModal({
     const [isDeleting, setIsDeleting] = useState(false);
     const [isLinkingActivity, setIsLinkingActivity] = useState(false);
     const [isUnlinkingActivity, setIsUnlinkingActivity] = useState(false);
+    const [isCompletingSession, setIsCompletingSession] = useState(false);
+    const [isRevertingCompletion, setIsRevertingCompletion] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
@@ -144,15 +150,22 @@ export function SessionEditorModal({
         isSubmitting ||
         isDeleting ||
         isLinkingActivity ||
-        isUnlinkingActivity;
+        isUnlinkingActivity ||
+        isCompletingSession ||
+        isRevertingCompletion;
     const canPersistSessionWrites =
         canManageSessionWrites && context !== null && !isBusy;
     const canPerformLinking =
+        canManageSessionLinks && isEditMode && context !== null && !isBusy;
+    const canPerformCompletion =
         canManageSessionLinks && isEditMode && context !== null && !isBusy;
     const selectedSession =
         isEditMode && context !== null
             ? (sessionDetails ?? context.session)
             : null;
+    const isSessionCompleted =
+        selectedSession?.isCompleted ??
+        selectedSession?.status === 'completed';
     const linkedActivitySummary = selectedSession?.linkedActivitySummary ?? null;
     const suggestedActivities =
         selectedSession?.suggestedActivities.filter(
@@ -495,6 +508,92 @@ export function SessionEditorModal({
         }
     };
 
+    const completeSession = async (): Promise<void> => {
+        if (!context || context.mode !== 'edit' || !canPerformCompletion) {
+            return;
+        }
+
+        setIsCompletingSession(true);
+        setErrors({});
+        setGeneralError(null);
+        setStatusMessage(null);
+
+        try {
+            const route = completeTrainingSession(context.session.id);
+            const response = await fetch(route.url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (response.ok) {
+                await refreshSessionDetails(context.session.id);
+                onSaved();
+                setStatusMessage('Session marked as completed.');
+                return;
+            }
+
+            const responsePayload = await response.json().catch(() => null);
+            const validationErrors = extractValidationErrors(responsePayload);
+
+            if (validationErrors !== null) {
+                setErrors(validationErrors);
+            }
+
+            setGeneralError(
+                extractMessage(responsePayload) ??
+                    'Unable to complete this session.',
+            );
+        } finally {
+            setIsCompletingSession(false);
+        }
+    };
+
+    const revertSessionCompletion = async (): Promise<void> => {
+        if (!context || context.mode !== 'edit' || !canPerformCompletion) {
+            return;
+        }
+
+        setIsRevertingCompletion(true);
+        setErrors({});
+        setGeneralError(null);
+        setStatusMessage(null);
+
+        try {
+            const route = revertTrainingSessionCompletion(context.session.id);
+            const response = await fetch(route.url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (response.ok) {
+                await refreshSessionDetails(context.session.id);
+                onSaved();
+                setStatusMessage('Session reverted to planned.');
+                return;
+            }
+
+            const responsePayload = await response.json().catch(() => null);
+            const validationErrors = extractValidationErrors(responsePayload);
+
+            if (validationErrors !== null) {
+                setErrors(validationErrors);
+            }
+
+            setGeneralError(
+                extractMessage(responsePayload) ??
+                    'Unable to revert session completion.',
+            );
+        } finally {
+            setIsRevertingCompletion(false);
+        }
+    };
+
     return (
         <Dialog
             open={open}
@@ -735,6 +834,67 @@ export function SessionEditorModal({
                                                 </Button>
                                             ) : null}
                                         </div>
+
+                                        {selectedSession !== null ? (
+                                            <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
+                                                <div className="min-w-0">
+                                                    {isSessionCompleted ? (
+                                                        <p className="flex items-center gap-1.5 text-xs text-emerald-300">
+                                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                                            Completed
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-xs text-zinc-400">
+                                                            Ready to mark as completed.
+                                                        </p>
+                                                    )}
+                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                        {isSessionCompleted
+                                                            ? selectedSession.completedAt !== null
+                                                                ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
+                                                                : 'Completed'
+                                                            : 'Uses linked activity values only.'}
+                                                    </p>
+                                                </div>
+
+                                                {canManageSessionLinks ? (
+                                                    isSessionCompleted ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={
+                                                                !canPerformCompletion
+                                                            }
+                                                            onClick={() => {
+                                                                void revertSessionCompletion();
+                                                            }}
+                                                        >
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                            {isRevertingCompletion
+                                                                ? 'Reverting...'
+                                                                : 'Revert to Planned'}
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            disabled={
+                                                                !canPerformCompletion
+                                                            }
+                                                            onClick={() => {
+                                                                void completeSession();
+                                                            }}
+                                                        >
+                                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                                            {isCompletingSession
+                                                                ? 'Completing...'
+                                                                : 'Mark as Completed'}
+                                                        </Button>
+                                                    )
+                                                ) : null}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 ) : (
                                     <p className="text-xs text-zinc-500">
@@ -794,6 +954,7 @@ export function SessionEditorModal({
                                 ) : null}
 
                                 <InputError message={errors.activity_id} />
+                                <InputError message={errors.session} />
                             </div>
                         ) : null}
 
@@ -884,6 +1045,10 @@ export function SessionEditorModal({
                                       ? 'Linking activity...'
                                       : isUnlinkingActivity
                                         ? 'Unlinking activity...'
+                                        : isCompletingSession
+                                          ? 'Completing session...'
+                                          : isRevertingCompletion
+                                            ? 'Reverting completion...'
                                         : 'Saving session...'}
                             </p>
                         ) : null}
@@ -982,7 +1147,10 @@ function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
         scheduledDate: session.scheduled_date,
         sport: session.sport,
         status: session.status,
+        isCompleted: session.is_completed ?? session.status === 'completed',
+        completedAt: session.completed_at ?? null,
         durationMinutes: session.duration_minutes,
+        actualDurationMinutes: session.actual_duration_minutes ?? null,
         plannedTss: session.planned_tss,
         actualTss: session.actual_tss,
         notes: session.notes,
@@ -1039,6 +1207,15 @@ function formatStartedAt(startedAt: string | null): string {
 
     return new Date(startedAt).toLocaleString('en-US', {
         weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
+function formatCompletedAt(completedAt: string): string {
+    return new Date(completedAt).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: 'numeric',

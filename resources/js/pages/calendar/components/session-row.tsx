@@ -88,12 +88,19 @@ export function SessionRow({
 }: SessionRowProps) {
     const config = sportConfig[session.sport] ?? sportConfig.rest;
     const SportIcon = config.icon;
-    const displayTss = session.plannedTss ?? undefined;
+    const isCompleted = session.isCompleted || session.status === 'completed';
+    const displayDurationMinutes =
+        isCompleted && session.actualDurationMinutes !== null
+            ? session.actualDurationMinutes
+            : session.durationMinutes;
+    const displayTss = isCompleted
+        ? (session.actualTss ?? undefined)
+        : (session.plannedTss ?? undefined);
     const displayTitle = config.title;
     const isSkipped = session.status === 'skipped';
     const isPlanned = session.status === 'planned';
     const isLinked = session.linkedActivityId !== null;
-    const durationParts = formatDurationParts(session.durationMinutes);
+    const durationParts = formatDurationParts(displayDurationMinutes);
 
     const interactiveStatusStyle: Record<string, string> = {
         planned:
@@ -188,10 +195,10 @@ export function SessionRow({
                             compact ? 'text-xs' : 'text-sm',
                             isSkipped &&
                                 'text-zinc-600 line-through decoration-zinc-700',
-                            session.status === 'completed' && 'text-zinc-100',
+                            isCompleted && 'text-zinc-100',
                             isPlanned && 'text-zinc-100',
                             !isPlanned &&
-                                session.status !== 'completed' &&
+                                !isCompleted &&
                                 'text-zinc-300',
                         )}
                     >
@@ -201,7 +208,7 @@ export function SessionRow({
 
                 {!isOverlay && !compact ? (
                     <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                        {session.status === 'completed' ? (
+                        {isCompleted ? (
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         ) : null}
                         {session.status === 'skipped' ? (
@@ -233,10 +240,10 @@ export function SessionRow({
                     <span
                         className={cn(
                             'font-mono text-sm font-medium',
-                            session.status === 'completed' && 'text-white',
+                            isCompleted && 'text-white',
                             isPlanned && 'text-zinc-100',
                             !isPlanned &&
-                                session.status !== 'completed' &&
+                                !isCompleted &&
                                 'text-zinc-300',
                             isSkipped && 'text-zinc-600',
                         )}

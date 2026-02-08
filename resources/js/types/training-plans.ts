@@ -19,7 +19,10 @@ export type TrainingSessionApi = {
     scheduled_date: string;
     sport: string;
     status: 'planned' | 'completed' | 'skipped' | 'partial' | string;
+    is_completed?: boolean;
+    completed_at?: string | null;
     duration_minutes: number;
+    actual_duration_minutes?: number | null;
     planned_tss: number | null;
     actual_tss: number | null;
     notes: string | null;
@@ -70,7 +73,10 @@ export type TrainingSessionView = {
     scheduledDate: string;
     sport: string;
     status: string;
+    isCompleted: boolean;
+    completedAt: string | null;
     durationMinutes: number;
+    actualDurationMinutes: number | null;
     plannedTss: number | null;
     actualTss: number | null;
     notes: string | null;

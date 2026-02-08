@@ -448,5 +448,48 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/ActivityReadApiTest.php` (44 passed)
 
+- Implemented manual TrainingSession completion using linked Activity (explicit, non-automatic):
+  - added completion endpoints:
+    - `POST /api/training-sessions/{training_session}/complete`
+    - `POST /api/training-sessions/{training_session}/revert-completion`
+  - added FormRequests:
+    - `CompleteTrainingSessionRequest`
+    - `RevertTrainingSessionCompletionRequest`
+  - added policy methods:
+    - `complete`
+    - `revertCompletion`
+  - admin direct completion writes denied; impersonated athlete context is allowed
+- Added session completion persistence fields:
+  - `training_sessions.actual_duration_minutes` (nullable)
+  - `training_sessions.completed_at` (nullable)
+  - model/resource support for:
+    - `is_completed`
+    - `completed_at`
+    - `actual_duration_minutes`
+    - `actual_tss`
+- Completion semantics implemented:
+  - completion requires linked activity
+  - status transitions:
+    - `planned` → `completed` (explicit action only)
+    - `completed` → `planned` via revert endpoint
+  - values copied from linked activity (no training-science derivation):
+    - duration from activity duration seconds (minute conversion)
+    - `actual_tss` copied only if explicit `tss` exists in activity payload; otherwise null
+  - revert clears `actual_*` + `completed_at` while retaining linked activity
+- Frontend calendar completion UX wired (athlete-only):
+  - session editor modal now exposes:
+    - `Mark as Completed`
+    - `Revert to Planned`
+  - completion actions include loading + validation error feedback
+  - completed sessions display clear, restrained status cues
+  - coach/admin remain read-only; impersonated athlete context behaves as athlete
+- Added tests:
+  - `tests/Feature/Api/TrainingSessionCompletionApiTest.php`
+  - `tests/Feature/Calendar/SessionCompletionUiPropsTest.php` (Inertia rendering props coverage)
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Calendar/SessionCompletionUiPropsTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (60 passed)
+
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

@@ -9,7 +9,14 @@ class TrainingSessionPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->isAdmin() && in_array($ability, ['linkActivity', 'unlinkActivity'], true)) {
+        if (
+            $user->isAdmin()
+            && in_array(
+                $ability,
+                ['linkActivity', 'unlinkActivity', 'complete', 'revertCompletion'],
+                true,
+            )
+        ) {
             return false;
         }
 
@@ -112,6 +119,24 @@ class TrainingSessionPolicy
     }
 
     public function unlinkActivity(User $user, TrainingSession $trainingSession): bool
+    {
+        if ($user->isAthlete()) {
+            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
+    }
+
+    public function complete(User $user, TrainingSession $trainingSession): bool
+    {
+        if ($user->isAthlete()) {
+            return $trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
+    }
+
+    public function revertCompletion(User $user, TrainingSession $trainingSession): bool
     {
         if ($user->isAthlete()) {
             return $trainingSession->trainingWeek->trainingPlan->user->is($user);

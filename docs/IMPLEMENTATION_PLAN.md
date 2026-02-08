@@ -69,6 +69,15 @@ This follows the **design-first → Codex → backend** approach.
   - athlete-only link/unlink policy path
   - conflict-safe validation (already-linked activity / already-linked session)
   - calendar modal affordances for link/unlink with non-optimistic refresh flow
+- Session completion from linked activity (COMPLETE):
+  - explicit API actions:
+    - `POST /api/training-sessions/{training_session}/complete`
+    - `POST /api/training-sessions/{training_session}/revert-completion`
+  - completion requires linked activity and explicit user action
+  - copied completion fields:
+    - `actual_duration_minutes`
+    - `actual_tss` (nullable when missing)
+  - completion/revert UI actions integrated in session editor modal (athlete contexts only)
 - Garmin sync ingestion (placeholder only in V1 scaffold)
 - Planned ↔ completed linking
 
@@ -80,6 +89,7 @@ Status update:
 - Athlete calendar now supports explicit athlete-only modal CRUD for planned sessions while preserving non-athlete read-only behavior.
 - External activities can now be correlated to planned sessions through read-only API hints; write-side linking is intentionally out of scope for this phase.
 - Manual activity linking is now enabled via explicit athlete actions, while automatic matching and metrics derivation remain out of scope.
+- Manual session completion is now enabled as a distinct explicit step after linking; no automatic completion or training metric derivation has been introduced.
 
 ---
 

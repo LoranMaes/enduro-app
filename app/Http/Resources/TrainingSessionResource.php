@@ -58,9 +58,14 @@ class TrainingSessionResource extends JsonResource
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'sport' => $this->sport,
             'status' => $this->status instanceof TrainingSessionStatus ? $this->status->value : $this->status,
+            'is_completed' => ($this->status instanceof TrainingSessionStatus
+                ? $this->status === TrainingSessionStatus::Completed
+                : $this->status === TrainingSessionStatus::Completed->value),
             'duration_minutes' => $this->duration_minutes,
+            'actual_duration_minutes' => $this->actual_duration_minutes,
             'planned_tss' => $this->planned_tss,
             'actual_tss' => $this->actual_tss,
+            'completed_at' => $this->completed_at?->toISOString(),
             'notes' => $this->notes,
             'linked_activity_id' => $linkedActivityId,
             'linked_activity_summary' => $linkedActivitySummary,

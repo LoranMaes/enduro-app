@@ -34,6 +34,14 @@ Route::middleware([
         'training-sessions/{training_session}/unlink-activity',
         [TrainingSessionController::class, 'unlinkActivity'],
     )->name('training-sessions.unlink-activity');
+    Route::post(
+        'training-sessions/{training_session}/complete',
+        [TrainingSessionController::class, 'complete'],
+    )->name('training-sessions.complete');
+    Route::post(
+        'training-sessions/{training_session}/revert-completion',
+        [TrainingSessionController::class, 'revertCompletion'],
+    )->name('training-sessions.revert-completion');
     Route::apiResource('activities', ActivityController::class)->only([
         'index',
         'show',

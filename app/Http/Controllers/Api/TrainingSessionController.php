@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\CompleteTrainingSessionRequest;
 use App\Http\Requests\Api\LinkActivityToSessionRequest;
 use App\Http\Requests\Api\ListTrainingSessionRequest;
+use App\Http\Requests\Api\RevertTrainingSessionCompletionRequest;
 use App\Http\Requests\Api\StoreTrainingSessionRequest;
 use App\Http\Requests\Api\UnlinkActivityFromSessionRequest;
 use App\Http\Requests\Api\UpdateTrainingSessionRequest;
@@ -234,6 +236,81 @@ class TrainingSessionController extends Controller
         ]);
     }
 
+    public function complete(
+        CompleteTrainingSessionRequest $request,
+        TrainingSession $trainingSession,
+    ): TrainingSessionResource {
+        $this->authorize('complete', $trainingSession);
+
+        $trainingSession->loadMissing('activity');
+
+        if (
+            $trainingSession->status instanceof TrainingSessionStatus
+            && $trainingSession->status === TrainingSessionStatus::Completed
+        ) {
+            throw ValidationException::withMessages([
+                'session' => 'This session is already completed.',
+            ]);
+        }
+
+        $linkedActivity = $trainingSession->activity;
+        $user = $request->user();
+
+        if (! $linkedActivity instanceof Activity) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'Link an activity before completing this session.',
+            ]);
+        }
+
+        if (! $user instanceof User || $linkedActivity->athlete_id !== $user->id) {
+            throw ValidationException::withMessages([
+                'activity_id' => 'The linked activity is invalid.',
+            ]);
+        }
+
+        $actualDurationMinutes = $this->mapDurationSecondsToMinutes(
+            $linkedActivity->duration_seconds,
+        );
+
+        $trainingSession->update([
+            'status' => TrainingSessionStatus::Completed->value,
+            'actual_duration_minutes' => $actualDurationMinutes,
+            'actual_tss' => $this->resolveActualTssFromActivity($linkedActivity),
+            'completed_at' => now(),
+        ]);
+
+        return new TrainingSessionResource(
+            $trainingSession->refresh()->loadMissing('activity'),
+        );
+    }
+
+    public function revertCompletion(
+        RevertTrainingSessionCompletionRequest $request,
+        TrainingSession $trainingSession,
+    ): TrainingSessionResource {
+        $this->authorize('revertCompletion', $trainingSession);
+
+        if (
+            ! ($trainingSession->status instanceof TrainingSessionStatus)
+            || $trainingSession->status !== TrainingSessionStatus::Completed
+        ) {
+            throw ValidationException::withMessages([
+                'session' => 'Only completed sessions can be reverted.',
+            ]);
+        }
+
+        $trainingSession->update([
+            'status' => TrainingSessionStatus::Planned->value,
+            'actual_duration_minutes' => null,
+            'actual_tss' => null,
+            'completed_at' => null,
+        ]);
+
+        return new TrainingSessionResource(
+            $trainingSession->refresh()->loadMissing('activity'),
+        );
+    }
+
     private function queryForUser(User $user): Builder
     {
         if ($user->isAdmin()) {
@@ -256,5 +333,41 @@ class TrainingSessionController extends Controller
         }
 
         return TrainingSession::query()->whereRaw('1 = 0');
+    }
+
+    private function mapDurationSecondsToMinutes(?int $durationSeconds): ?int
+    {
+        if ($durationSeconds === null || $durationSeconds <= 0) {
+            return null;
+        }
+
+        return max(1, (int) round($durationSeconds / 60));
+    }
+
+    private function resolveActualTssFromActivity(Activity $activity): ?int
+    {
+        $rawPayload = $activity->raw_payload;
+
+        if (! is_array($rawPayload)) {
+            return null;
+        }
+
+        if (! array_key_exists('tss', $rawPayload)) {
+            return null;
+        }
+
+        $value = $rawPayload['tss'];
+
+        if (is_int($value)) {
+            return $value >= 0 ? $value : null;
+        }
+
+        if (is_numeric($value)) {
+            $normalized = (int) round((float) $value);
+
+            return $normalized >= 0 ? $normalized : null;
+        }
+
+        return null;
     }
 }
