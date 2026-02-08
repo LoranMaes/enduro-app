@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminUserIndexController;
 use App\Http\Controllers\Admin\ImpersonationStartController;
 use App\Http\Controllers\Admin\ImpersonationStopController;
 use App\Http\Controllers\AthleteCalendarController;
+use App\Http\Controllers\AthleteProgressController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
@@ -36,9 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('coaches', CoachAthleteIndexController::class)
         ->name('coaches.index');
 
-    Route::get('progress', function () {
-        return Inertia::render('progress/index');
-    })->name('progress.index');
+    Route::get('progress', AthleteProgressController::class)
+        ->name('progress.index');
 
     Route::get('plans', function () {
         return Inertia::render('plans/index');

@@ -1,6 +1,7 @@
 import React from 'react';
 
 export function MarketingFooter() {
+    const currentYear = new Date().getFullYear();
     return (
         <footer className="border-t border-border px-6 py-12 text-center md:text-left">
             <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row">
@@ -9,7 +10,7 @@ export function MarketingFooter() {
                         Endure
                     </div>
                     <div className="text-[10px] text-zinc-600">
-                        © 2024 Performance Systems.
+                        © {currentYear} Performance Systems.
                     </div>
                 </div>
                 <div className="font-mono text-[10px] text-zinc-700">

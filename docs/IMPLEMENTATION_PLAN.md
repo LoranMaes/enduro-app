@@ -46,6 +46,10 @@ This follows the **design-first → Codex → backend** approach.
   - slicing-style sidebar rail integration
   - token/typography hardening
   - scroll ownership, separator cleanup, summary rail ratio, and session metric hierarchy hardening
+- Calendar behavioral parity hardening (COMPLETE):
+  - initial load centers current week in owned calendar scroll container
+  - infinite vertical week loading (past + future) via session-window reads
+  - no pagination UI and no write-path changes
 
 ---
 
@@ -90,6 +94,7 @@ Status update:
 - External activities can now be correlated to planned sessions through read-only API hints; write-side linking is intentionally out of scope for this phase.
 - Manual activity linking is now enabled via explicit athlete actions, while automatic matching and metrics derivation remain out of scope.
 - Manual session completion is now enabled as a distinct explicit step after linking; no automatic completion or training metric derivation has been introduced.
+- Athlete Training Progress page is now implemented as a read-only session-derived surface (`/progress`) with range filtering, trend visualization, and consistency indicators.
 
 ---
 

@@ -32,62 +32,62 @@ const PERFORMANCE_DATA: TelemetryPoint[] = [
 const LOAD_TREND_WEEKS: WeekData[] = [
     {
         id: 'w-1',
-        startDate: new Date('2024-01-01'),
+        startDate: new Date('2026-01-01'),
         summary: { totalTss: 280, plannedTss: 290 },
     },
     {
         id: 'w-2',
-        startDate: new Date('2024-01-08'),
+        startDate: new Date('2026-01-08'),
         summary: { totalTss: 300, plannedTss: 305 },
     },
     {
         id: 'w-3',
-        startDate: new Date('2024-01-15'),
+        startDate: new Date('2026-01-15'),
         summary: { totalTss: 315, plannedTss: 320 },
     },
     {
         id: 'w-4',
-        startDate: new Date('2024-01-22'),
+        startDate: new Date('2026-01-22'),
         summary: { totalTss: 330, plannedTss: 335 },
     },
     {
         id: 'w-5',
-        startDate: new Date('2024-01-29'),
+        startDate: new Date('2026-01-29'),
         summary: { totalTss: 342, plannedTss: 348 },
     },
     {
         id: 'w-6',
-        startDate: new Date('2024-02-05'),
+        startDate: new Date('2026-02-05'),
         summary: { totalTss: 356, plannedTss: 360 },
     },
     {
         id: 'w-7',
-        startDate: new Date('2024-02-12'),
+        startDate: new Date('2026-02-12'),
         summary: { totalTss: 370, plannedTss: 374 },
     },
     {
         id: 'w-8',
-        startDate: new Date('2024-02-19'),
+        startDate: new Date('2026-02-19'),
         summary: { totalTss: 384, plannedTss: 388 },
     },
     {
         id: 'w-9',
-        startDate: new Date('2024-02-26'),
+        startDate: new Date('2026-02-26'),
         summary: { totalTss: 398, plannedTss: 402 },
     },
     {
         id: 'w-10',
-        startDate: new Date('2024-03-04'),
+        startDate: new Date('2026-03-04'),
         summary: { totalTss: 412, plannedTss: 418 },
     },
     {
         id: 'w-11',
-        startDate: new Date('2024-03-11'),
+        startDate: new Date('2026-03-11'),
         summary: { totalTss: 426, plannedTss: 430 },
     },
     {
         id: 'w-12',
-        startDate: new Date('2024-03-18'),
+        startDate: new Date('2024603-18'),
         summary: { totalTss: 440, plannedTss: 445 },
     },
 ];

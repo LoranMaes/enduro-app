@@ -491,5 +491,33 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Calendar/SessionCompletionUiPropsTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (60 passed)
 
+- Implemented athlete Training Progress read model page (`/progress`) using real session aggregates:
+  - added athlete-only backend controller + request validation:
+    - `AthleteProgressController`
+    - `Progress/IndexRequest`
+  - range selector now supports validated windows: `4`, `8`, `12`, `24` weeks
+  - page now renders:
+    - average weekly load/volume
+    - planned vs completed totals
+    - load trend chart with explicit gaps when data is missing
+    - consistency + current streak indicators
+  - no training science, prediction, or speculative metrics added
+- Completed calendar behavior parity updates:
+  - initial calendar load now centers the current week in the owned scroll container
+  - infinite vertical week loading added in both directions:
+    - prepends past windows
+    - appends future windows
+  - uses existing `GET /api/training-sessions` read endpoint with date-window queries
+  - no write logic changes and no calendar layout redesign introduced
+- Added/updated tests:
+  - `tests/Feature/ProgressPageTest.php`
+  - `tests/Feature/DashboardTest.php` (session-first payload assertions retained/extended)
+  - `tests/Feature/Api/TrainingSessionCrudApiTest.php` and existing read/navigation coverage remain green
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php` (23 passed)
+  - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php` (25 passed)
+
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Backend spine + athlete calendar write flow complete, with coach-athlete assignment, admin impersonation, explicit activity/session manual linking, and explicit session completion/reversion implemented.
+Backend spine + athlete calendar write flow complete, with coach-athlete assignment, admin impersonation, explicit activity/session manual linking, explicit session completion/reversion, and athlete Training Progress read model implemented.
 
 ## Confidence Level
 
@@ -72,6 +72,7 @@ LOCKED for MVP
 
 - Athlete calendar uses real backend data with athlete-only session write interactions enabled.
 - Athlete calendar now supports athlete-only session writes (modal CRUD) against real backend endpoints.
+- Athlete calendar now centers on the current week at initial load and supports infinite vertical scrolling (past/future windows) through session read API window fetches.
 - Calendar composition now follows slicing structure:
   - fixed calendar header
   - fixed weekday axis
@@ -99,3 +100,9 @@ LOCKED for MVP
   - explicit `Revert to Planned` when completed
   - completion/revert feedback states without optimistic mutation
   - athlete-context only (coach/admin remain read-only)
+- Training Progress (`/progress`) is now a real athlete-only read surface:
+  - range filters (`4/8/12/24` weeks)
+  - average load/volume from session aggregates
+  - planned vs completed totals
+  - trend chart with explicit missing-data gaps
+  - consistency/streak indicators without training-science derivation
