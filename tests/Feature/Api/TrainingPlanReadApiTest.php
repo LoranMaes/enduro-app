@@ -60,18 +60,23 @@ it('allows admins to list all training plans', function () {
     $response->assertJsonCount(2, 'data');
 });
 
-it('returns an empty list for coaches until assignment logic is implemented', function () {
+it('returns only assigned athlete plans for coaches', function () {
     $coach = User::factory()->coach()->create();
-    $athlete = User::factory()->athlete()->create();
+    $assignedAthlete = User::factory()->athlete()->create();
+    $unassignedAthlete = User::factory()->athlete()->create();
 
-    TrainingPlan::factory()->for($athlete)->create();
+    $assignedPlan = TrainingPlan::factory()->for($assignedAthlete)->create();
+    TrainingPlan::factory()->for($unassignedAthlete)->create();
+
+    $coach->coachedAthletes()->attach($assignedAthlete->id);
 
     $response = $this
         ->actingAs($coach)
         ->getJson('/api/training-plans');
 
     $response->assertOk();
-    $response->assertJsonCount(0, 'data');
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $assignedPlan->id);
 });
 
 it('supports training plan pagination and keeps stable response shape', function () {

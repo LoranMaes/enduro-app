@@ -6,8 +6,20 @@ import type {
 
 type DashboardProps = {
     trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
+    viewingAthlete?: {
+        id: number;
+        name: string;
+    } | null;
 };
 
-export default function Dashboard({ trainingPlans }: DashboardProps) {
-    return <CalendarPage trainingPlans={trainingPlans} />;
+export default function Dashboard({
+    trainingPlans,
+    viewingAthlete = null,
+}: DashboardProps) {
+    return (
+        <CalendarPage
+            trainingPlans={trainingPlans}
+            viewingAthlete={viewingAthlete}
+        />
+    );
 }

@@ -48,17 +48,29 @@ class ActivityPolicy
 
     public function update(User $user, Activity $activity): bool
     {
-        return $this->view($user, $activity);
+        if ($user->isAthlete()) {
+            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
     }
 
     public function delete(User $user, Activity $activity): bool
     {
-        return $this->view($user, $activity);
+        if ($user->isAthlete()) {
+            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
     }
 
     public function restore(User $user, Activity $activity): bool
     {
-        return $this->view($user, $activity);
+        if ($user->isAthlete()) {
+            return $activity->trainingSession->trainingWeek->trainingPlan->user->is($user);
+        }
+
+        return false;
     }
 
     public function forceDelete(User $user, Activity $activity): bool
@@ -68,7 +80,9 @@ class ActivityPolicy
 
     private function canCoachAccessAthlete(User $coach, User $athlete): bool
     {
-        /** @todo Add coach-athlete assignment lookup. */
-        return false;
+        return $coach
+            ->coachedAthletes()
+            ->whereKey($athlete->id)
+            ->exists();
     }
 }

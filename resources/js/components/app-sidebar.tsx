@@ -39,9 +39,12 @@ export function AppSidebar() {
             ? [
                   {
                       title: 'Athletes',
-                      href: '/athletes',
+                      href: role === 'coach' ? '/coaches' : '/athletes',
                       icon: UsersRound,
-                      matches: ['/athletes'],
+                      matches:
+                          role === 'coach'
+                              ? ['/coaches', '/athletes']
+                              : ['/athletes'],
                   } satisfies SidebarItem,
               ]
             : []),

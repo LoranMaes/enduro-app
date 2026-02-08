@@ -16,8 +16,8 @@ class VisualSeeder extends Seeder
     {
         $this->call([
             AdminVisualSeeder::class,
-            CoachVisualSeeder::class,
             AthleteVisualSeeder::class,
+            CoachVisualSeeder::class,
         ]);
     }
 }

@@ -75,19 +75,25 @@ it('allows admins to read all sessions', function () {
     ]);
 });
 
-it('returns an empty sessions collection for coaches until assignment logic exists', function () {
+it('returns only assigned athlete sessions for coaches', function () {
     $coach = User::factory()->coach()->create();
-    $athlete = User::factory()->athlete()->create();
+    $assignedAthlete = User::factory()->athlete()->create();
+    $unassignedAthlete = User::factory()->athlete()->create();
 
-    $plan = TrainingPlan::factory()->for($athlete)->create();
-    TrainingSession::factory()->for(TrainingWeek::factory()->for($plan))->create();
+    $assignedPlan = TrainingPlan::factory()->for($assignedAthlete)->create();
+    $assignedSession = TrainingSession::factory()->for(TrainingWeek::factory()->for($assignedPlan))->create();
+    $unassignedPlan = TrainingPlan::factory()->for($unassignedAthlete)->create();
+    TrainingSession::factory()->for(TrainingWeek::factory()->for($unassignedPlan))->create();
+
+    $coach->coachedAthletes()->attach($assignedAthlete->id);
 
     $response = $this
         ->actingAs($coach)
         ->getJson('/api/training-sessions');
 
     $response->assertOk();
-    $response->assertJsonCount(0, 'data');
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $assignedSession->id);
 });
 
 it('filters sessions by date window for calendar reads', function () {

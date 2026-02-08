@@ -16,11 +16,16 @@ import { WeekSection } from './week-section';
 type PlanSectionProps = {
     plan: TrainingPlanView;
     additionalPlanCount: number;
+    viewingAthleteName?: string | null;
 };
 
 const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export function PlanSection({ plan, additionalPlanCount }: PlanSectionProps) {
+export function PlanSection({
+    plan,
+    additionalPlanCount,
+    viewingAthleteName = null,
+}: PlanSectionProps) {
     void additionalPlanCount;
 
     const { auth } = usePage<SharedData>().props;
@@ -83,7 +88,9 @@ export function PlanSection({ plan, additionalPlanCount }: PlanSectionProps) {
                         Training Calendar
                     </h1>
                     <p className="text-xs text-zinc-500">
-                        Season 2024 • Build Phase 1
+                        {viewingAthleteName !== null
+                            ? `Viewing athlete: ${viewingAthleteName}`
+                            : 'Season 2024 • Build Phase 1'}
                     </p>
                 </div>
 

@@ -10,19 +10,26 @@ use Illuminate\Database\Eloquent\Builder;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class DashboardController extends Controller
+class AthleteCalendarController extends Controller
 {
     /**
-     * Display the dashboard.
+     * Handle the incoming request.
      */
-    public function __invoke(IndexRequest $request): Response
+    public function __invoke(IndexRequest $request, User $athlete): Response
     {
-        $this->authorize('viewAny', TrainingPlan::class);
+        abort_unless($athlete->isAthlete(), 404);
+
+        $viewer = $request->user();
+
+        if (! $this->canViewAthleteCalendar($viewer, $athlete)) {
+            abort(403);
+        }
 
         $validated = $request->validated();
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $plans = $this->queryForUser($request->user())
+        $plans = TrainingPlan::query()
+            ->where('user_id', $athlete->id)
             ->when(
                 isset($validated['starts_from']),
                 fn (Builder $query) => $query->whereDate('ends_at', '>=', $validated['starts_from']),
@@ -48,26 +55,27 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'trainingPlans' => $trainingPlanResource->response()->getData(true),
+            'viewingAthlete' => [
+                'id' => $athlete->id,
+                'name' => $athlete->name,
+            ],
         ]);
     }
 
-    private function queryForUser(User $user): Builder
+    private function canViewAthleteCalendar(User $viewer, User $athlete): bool
     {
-        if ($user->isAdmin()) {
-            return TrainingPlan::query();
+        if ($viewer->isAdmin()) {
+            return true;
         }
 
-        if ($user->isAthlete()) {
-            return TrainingPlan::query()->where('user_id', $user->id);
+        if ($viewer->isAthlete()) {
+            return $viewer->is($athlete);
         }
 
-        if ($user->isCoach()) {
-            return TrainingPlan::query()->whereIn(
-                'user_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
+        if ($viewer->isCoach()) {
+            return $viewer->coachedAthletes()->whereKey($athlete->id)->exists();
         }
 
-        return TrainingPlan::query()->whereRaw('1 = 0');
+        return false;
     }
 }

@@ -46,17 +46,29 @@ class TrainingPlanPolicy
 
     public function update(User $user, TrainingPlan $trainingPlan): bool
     {
-        return $this->view($user, $trainingPlan);
+        if ($user->isAthlete()) {
+            return $trainingPlan->user_id === $user->id;
+        }
+
+        return false;
     }
 
     public function delete(User $user, TrainingPlan $trainingPlan): bool
     {
-        return $this->view($user, $trainingPlan);
+        if ($user->isAthlete()) {
+            return $trainingPlan->user_id === $user->id;
+        }
+
+        return false;
     }
 
     public function restore(User $user, TrainingPlan $trainingPlan): bool
     {
-        return $this->view($user, $trainingPlan);
+        if ($user->isAthlete()) {
+            return $trainingPlan->user_id === $user->id;
+        }
+
+        return false;
     }
 
     public function forceDelete(User $user, TrainingPlan $trainingPlan): bool
@@ -66,7 +78,9 @@ class TrainingPlanPolicy
 
     private function canCoachAccessAthlete(User $coach, User $athlete): bool
     {
-        /** @todo Add coach-athlete assignment lookup. */
-        return false;
+        return $coach
+            ->coachedAthletes()
+            ->whereKey($athlete->id)
+            ->exists();
     }
 }

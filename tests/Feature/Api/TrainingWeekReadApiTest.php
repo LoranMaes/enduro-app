@@ -58,17 +58,23 @@ it('allows admins to list all weeks', function () {
     $response->assertJsonCount(2, 'data');
 });
 
-it('returns empty weeks list for coaches until assignment logic exists', function () {
+it('returns only assigned athlete weeks for coaches', function () {
     $coach = User::factory()->coach()->create();
-    $athlete = User::factory()->athlete()->create();
+    $assignedAthlete = User::factory()->athlete()->create();
+    $unassignedAthlete = User::factory()->athlete()->create();
 
-    $plan = TrainingPlan::factory()->for($athlete)->create();
-    TrainingWeek::factory()->for($plan)->create();
+    $assignedPlan = TrainingPlan::factory()->for($assignedAthlete)->create();
+    $assignedWeek = TrainingWeek::factory()->for($assignedPlan)->create();
+    $unassignedPlan = TrainingPlan::factory()->for($unassignedAthlete)->create();
+    TrainingWeek::factory()->for($unassignedPlan)->create();
+
+    $coach->coachedAthletes()->attach($assignedAthlete->id);
 
     $response = $this
         ->actingAs($coach)
         ->getJson('/api/training-weeks');
 
     $response->assertOk();
-    $response->assertJsonCount(0, 'data');
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $assignedWeek->id);
 });

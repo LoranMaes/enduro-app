@@ -140,7 +140,13 @@ class TrainingPlanController extends Controller
             return TrainingPlan::query()->where('user_id', $user->id);
         }
 
-        /** @todo Add coach-athlete assignment query scoping. */
+        if ($user->isCoach()) {
+            return TrainingPlan::query()->whereIn(
+                'user_id',
+                $user->coachedAthletes()->select('users.id'),
+            );
+        }
+
         return TrainingPlan::query()->whereRaw('1 = 0');
     }
 }

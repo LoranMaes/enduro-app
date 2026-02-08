@@ -13,7 +13,7 @@ it('renders navigation shell pages for authenticated users', function () {
     $user = User::factory()->athlete()->create();
 
     $this->actingAs($user)->get('/athletes')->assertOk();
-    $this->actingAs($user)->get('/athletes/42')->assertOk();
+    $this->actingAs($user)->get("/athletes/{$user->id}")->assertOk();
     $this->actingAs($user)->get('/coaches')->assertOk();
     $this->actingAs($user)->get('/admin')->assertOk();
     $this->actingAs($user)->get('/settings/overview')->assertOk();

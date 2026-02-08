@@ -83,6 +83,11 @@ Status update:
 - Impersonation support
 - Approval workflows
 
+Status update:
+- Coach-athlete assignment backbone is implemented (model, migration, policies, query scoping, read-only coach views, tests).
+- Coach access is now assignment-aware and read-only for calendar data.
+- Next in this phase is admin impersonation groundwork.
+
 ---
 
 ## Phase 6 — Monetization

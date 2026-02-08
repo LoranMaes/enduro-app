@@ -17,16 +17,59 @@ class AthleteVisualSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     *
-     * Rebuilds training plans only for the dedicated visual athlete account to keep
-     * deterministic, repeatable calendar data without touching unrelated users.
      */
     public function run(): void
     {
-        $athlete = User::query()->updateOrCreate(
-            ['email' => 'athlete.visual@endure.test'],
+        $currentWeekStart = CarbonImmutable::today()->startOfWeek();
+
+        $athletes = [
             [
-                'name' => 'Athlete Visual',
+                'email' => 'athlete.visual@endure.test',
+                'name' => 'J. Doe',
+                'birthdate' => '1992-07-14',
+                'weight' => 71.2,
+                'height' => 178.0,
+                'label' => 'Primary',
+            ],
+            [
+                'email' => 'athlete.alpha@endure.test',
+                'name' => 'A. Smith',
+                'birthdate' => '1994-03-08',
+                'weight' => 68.5,
+                'height' => 172.0,
+                'label' => 'Alpha',
+            ],
+            [
+                'email' => 'athlete.bravo@endure.test',
+                'name' => 'M. Jones',
+                'birthdate' => '1991-11-02',
+                'weight' => 73.8,
+                'height' => 181.0,
+                'label' => 'Bravo',
+            ],
+        ];
+
+        foreach ($athletes as $index => $config) {
+            $this->seedAthlete(
+                config: $config,
+                currentWeekStart: $currentWeekStart,
+                athleteIndex: $index,
+            );
+        }
+    }
+
+    /**
+     * @param  array{email: string, name: string, birthdate: string, weight: float, height: float, label: string}  $config
+     */
+    private function seedAthlete(
+        array $config,
+        CarbonImmutable $currentWeekStart,
+        int $athleteIndex,
+    ): void {
+        $athlete = User::query()->updateOrCreate(
+            ['email' => $config['email']],
+            [
+                'name' => $config['name'],
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'role' => UserRole::Athlete,
@@ -36,9 +79,9 @@ class AthleteVisualSeeder extends Seeder
         AthleteProfile::query()->updateOrCreate(
             ['user_id' => $athlete->id],
             [
-                'birthdate' => '1992-07-14',
-                'weight' => 71.2,
-                'height' => 178.0,
+                'birthdate' => $config['birthdate'],
+                'weight' => $config['weight'],
+                'height' => $config['height'],
             ],
         );
 
@@ -46,67 +89,66 @@ class AthleteVisualSeeder extends Seeder
             ->where('user_id', $athlete->id)
             ->delete();
 
-        $today = CarbonImmutable::today();
-        $currentWeekStart = $today->startOfWeek();
+        $offsetWeekStart = $currentWeekStart->addWeeks($athleteIndex);
 
         $pastPlan = TrainingPlan::query()->create([
             'user_id' => $athlete->id,
-            'title' => 'Base Block - Prior Cycle',
-            'description' => 'Completed baseline build block for visual history.',
-            'starts_at' => $currentWeekStart->subWeeks(10),
-            'ends_at' => $currentWeekStart->subWeeks(5)->subDay(),
+            'title' => "{$config['label']} Base Block - Prior Cycle",
+            'description' => "Completed baseline build block for {$config['label']} athlete visual history.",
+            'starts_at' => $offsetWeekStart->subWeeks(10),
+            'ends_at' => $offsetWeekStart->subWeeks(5)->subDay(),
         ]);
 
         TrainingWeek::query()->create([
             'training_plan_id' => $pastPlan->id,
-            'starts_at' => $currentWeekStart->subWeeks(10),
-            'ends_at' => $currentWeekStart->subWeeks(9)->subDay(),
+            'starts_at' => $offsetWeekStart->subWeeks(10),
+            'ends_at' => $offsetWeekStart->subWeeks(9)->subDay(),
         ]);
 
         $activePlan = TrainingPlan::query()->create([
             'user_id' => $athlete->id,
-            'title' => 'Build Toward Spring Event',
-            'description' => 'Current progression block used for calendar layout verification.',
-            'starts_at' => $currentWeekStart->subWeek(),
-            'ends_at' => $currentWeekStart->addWeeks(3)->subDay(),
+            'title' => "{$config['label']} Build Toward Spring Event",
+            'description' => "Current progression block used for {$config['label']} calendar layout verification.",
+            'starts_at' => $offsetWeekStart->subWeek(),
+            'ends_at' => $offsetWeekStart->addWeeks(3)->subDay(),
         ]);
 
         $heavyWeek = TrainingWeek::query()->create([
             'training_plan_id' => $activePlan->id,
-            'starts_at' => $currentWeekStart->subWeek(),
-            'ends_at' => $currentWeekStart->subDay(),
+            'starts_at' => $offsetWeekStart->subWeek(),
+            'ends_at' => $offsetWeekStart->subDay(),
         ]);
 
         $lightWeek = TrainingWeek::query()->create([
             'training_plan_id' => $activePlan->id,
-            'starts_at' => $currentWeekStart,
-            'ends_at' => $currentWeekStart->addWeek()->subDay(),
+            'starts_at' => $offsetWeekStart,
+            'ends_at' => $offsetWeekStart->addWeek()->subDay(),
         ]);
 
         $balancedWeek = TrainingWeek::query()->create([
             'training_plan_id' => $activePlan->id,
-            'starts_at' => $currentWeekStart->addWeek(),
-            'ends_at' => $currentWeekStart->addWeeks(2)->subDay(),
+            'starts_at' => $offsetWeekStart->addWeek(),
+            'ends_at' => $offsetWeekStart->addWeeks(2)->subDay(),
         ]);
 
         TrainingWeek::query()->create([
             'training_plan_id' => $activePlan->id,
-            'starts_at' => $currentWeekStart->addWeeks(2),
-            'ends_at' => $currentWeekStart->addWeeks(3)->subDay(),
+            'starts_at' => $offsetWeekStart->addWeeks(2),
+            'ends_at' => $offsetWeekStart->addWeeks(3)->subDay(),
         ]);
 
         $futurePlan = TrainingPlan::query()->create([
             'user_id' => $athlete->id,
-            'title' => 'Future Race Preparation',
-            'description' => 'Reserved plan shell for upcoming cycle.',
-            'starts_at' => $currentWeekStart->addWeeks(6),
-            'ends_at' => $currentWeekStart->addWeeks(10)->subDay(),
+            'title' => "{$config['label']} Future Race Preparation",
+            'description' => "Reserved plan shell for {$config['label']} athlete upcoming cycle.",
+            'starts_at' => $offsetWeekStart->addWeeks(6),
+            'ends_at' => $offsetWeekStart->addWeeks(10)->subDay(),
         ]);
 
         TrainingWeek::query()->create([
             'training_plan_id' => $futurePlan->id,
-            'starts_at' => $currentWeekStart->addWeeks(6),
-            'ends_at' => $currentWeekStart->addWeeks(7)->subDay(),
+            'starts_at' => $offsetWeekStart->addWeeks(6),
+            'ends_at' => $offsetWeekStart->addWeeks(7)->subDay(),
         ]);
 
         $this->seedHeavyWeekSessions($heavyWeek);

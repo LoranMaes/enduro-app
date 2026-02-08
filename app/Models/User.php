@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\UserRole;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -62,6 +64,31 @@ class User extends Authenticatable
     public function coachProfile(): HasOne
     {
         return $this->hasOne(CoachProfile::class);
+    }
+
+    public function coachedAthletes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'coach_athlete_assignments',
+            'coach_id',
+            'athlete_id',
+        )->withTimestamps();
+    }
+
+    public function coaches(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'coach_athlete_assignments',
+            'athlete_id',
+            'coach_id',
+        )->withTimestamps();
+    }
+
+    public function trainingPlans(): HasMany
+    {
+        return $this->hasMany(TrainingPlan::class);
     }
 
     public function isAthlete(): bool

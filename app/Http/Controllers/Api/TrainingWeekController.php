@@ -139,7 +139,15 @@ class TrainingWeekController extends Controller
             });
         }
 
-        /** @todo Add coach-athlete assignment query scoping. */
+        if ($user->isCoach()) {
+            return TrainingWeek::query()->whereHas('trainingPlan', function (Builder $query) use ($user): void {
+                $query->whereIn(
+                    'user_id',
+                    $user->coachedAthletes()->select('users.id'),
+                );
+            });
+        }
+
         return TrainingWeek::query()->whereRaw('1 = 0');
     }
 }

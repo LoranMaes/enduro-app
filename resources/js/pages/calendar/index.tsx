@@ -12,6 +12,10 @@ import { PlanSection } from './components/plan-section';
 
 type CalendarPageProps = {
     trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
+    viewingAthlete?: {
+        id: number;
+        name: string;
+    } | null;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -21,7 +25,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function CalendarPage({ trainingPlans }: CalendarPageProps) {
+export default function CalendarPage({
+    trainingPlans,
+    viewingAthlete = null,
+}: CalendarPageProps) {
     const plans = mapTrainingPlanCollection(trainingPlans);
     const primaryPlan = resolvePrimaryPlan(plans);
     const additionalPlanCount = plans.length > 0 ? plans.length - 1 : 0;
@@ -43,6 +50,7 @@ export default function CalendarPage({ trainingPlans }: CalendarPageProps) {
                         <PlanSection
                             plan={primaryPlan}
                             additionalPlanCount={additionalPlanCount}
+                            viewingAthleteName={viewingAthlete?.name ?? null}
                         />
                     </div>
                 )}

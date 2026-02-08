@@ -117,6 +117,38 @@
   - role gating enforced: only `auth.user.role === 'athlete'` can trigger write affordances; non-athletes remain read-only
 - Frontend verification completed:
   - `vendor/bin/sail npm run types`
+- Implemented coach-athlete assignment backbone (backend-first):
+  - added `coach_athlete_assignments` table with:
+    - `coach_id` FK
+    - `athlete_id` FK
+    - unique `(coach_id, athlete_id)`
+    - cascading deletes
+  - added `CoachAthleteAssignment` model
+  - added `User` relationships:
+    - `coachedAthletes()`
+    - `coaches()`
+- Updated assignment-aware authorization and read scoping:
+  - policies now allow coach read access only for assigned athletes
+  - coach write access remains denied for plans/weeks/sessions/activities
+  - dashboard + API read controllers (`TrainingPlan`, `TrainingWeek`, `TrainingSession`) now scope coach collections to assigned athletes only
+- Implemented read-only coach view enablement:
+  - added `CoachAthleteIndexController` for assigned-athlete directory props
+  - added `AthleteCalendarController` for coach/admin athlete calendar viewing
+  - wired `/coaches` to assigned-athlete directory with real Inertia props
+  - wired `/athletes/{athlete}` to reuse existing calendar page in read-only coach context
+  - added contextual calendar header text: `Viewing athlete: {name}`
+  - kept athlete calendar composition unchanged
+- Extended deterministic visual seeders:
+  - seeded three deterministic athletes with plans/weeks/sessions
+  - seeded one coach assigned to all three athletes
+- Added/updated tests:
+  - `tests/Feature/CoachAthleteAssignmentTest.php`
+  - `tests/Feature/CoachCalendarReadAccessTest.php`
+  - updated existing coach read assertions in plan/week/session read API tests for assignment-aware behavior
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/DashboardTest.php` (46 passed)
 
 Next milestone:
-→ Hardening pass for athlete session write UX using real error cases + parity QA against slicing screenshots, then move to the next backend phase without expanding coach assignment scope.
+→ Build admin impersonation groundwork on top of assignment-aware access, while keeping coach write permissions disabled.

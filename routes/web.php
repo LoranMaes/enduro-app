@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AthleteCalendarController;
+use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -20,15 +22,11 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         return Inertia::render('athletes/index');
     })->name('athletes.index');
 
-    Route::get('athletes/{athlete}', function (string $athlete) {
-        return Inertia::render('athletes/show', [
-            'athleteId' => $athlete,
-        ]);
-    })->name('athletes.show');
+    Route::get('athletes/{athlete}', AthleteCalendarController::class)
+        ->name('athletes.show');
 
-    Route::get('coaches', function () {
-        return Inertia::render('coaches/index');
-    })->name('coaches.index');
+    Route::get('coaches', CoachAthleteIndexController::class)
+        ->name('coaches.index');
 
     Route::get('admin', function () {
         return Inertia::render('admin/index');
