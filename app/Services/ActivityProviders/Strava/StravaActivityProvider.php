@@ -105,6 +105,7 @@ class StravaActivityProvider implements ActivityProvider
             throw new ActivityProviderRateLimitedException(
                 self::PROVIDER,
                 $this->extractMessage($response, 'Retry later.'),
+                $this->retryAfterSeconds($response),
             );
         }
 
@@ -265,5 +266,22 @@ class StravaActivityProvider implements ActivityProvider
         }
 
         return $default;
+    }
+
+    private function retryAfterSeconds(Response $response): ?int
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (! is_string($retryAfter)) {
+            return null;
+        }
+
+        $retryAfter = trim($retryAfter);
+
+        if (! ctype_digit($retryAfter)) {
+            return null;
+        }
+
+        return (int) $retryAfter;
     }
 }

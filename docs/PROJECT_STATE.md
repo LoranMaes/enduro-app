@@ -15,6 +15,7 @@ High — UX validated, backend structure in place
 - Overcomplicating early admin tools
 - Admin role-management actions are not implemented yet (impersonation-only admin interaction is currently supported)
 - Remaining visual drift risk from starter-kit primitives still present in non-calendar surfaces
+- External provider operations still need production rollout hardening (queue worker uptime, webhook subscription lifecycle, operational alerting)
 
 ## Mitigations
 
@@ -41,6 +42,12 @@ LOCKED for MVP
 - API routes use session middleware so impersonation context is available for policy checks.
 - Training data writes are blocked during impersonation sessions.
 - Visual verification seeders are available via `VisualSeeder` for deterministic UI snapshots.
+- Activity provider OAuth + token refresh + read sync backbone is implemented (Strava first).
+- Provider sync is now queue-backed with lock safety and run tracking (`activity_provider_sync_runs`).
+- Strava webhook verification and ingestion endpoints are implemented with idempotent event storage (`activity_provider_webhook_events`).
+- Activity delete webhook events are handled via soft deletes (no hard deletion from `activities`).
+- Reverb broadcasting is configured for live provider sync status updates on authenticated user channels.
+- Sail compose exposes Reverb websocket port (`FORWARD_REVERB_PORT`, default `8080`) for local browser subscriptions.
 
 ## Frontend Status
 
@@ -61,3 +68,5 @@ LOCKED for MVP
 - Persistent impersonation banner is active during impersonated sessions with explicit stop action.
 - Coach directory now renders real assigned-athlete data and links into read-only athlete calendar views.
 - Core theme tokens/fonts were hardened to slicing palette + typography baselines.
+- Settings → Connections now reflects async sync states from real backend status (`queued`, `running`, `rate_limited`, `failed`, `success`).
+- Settings → Connections now updates those sync states live via Reverb/Echo events (no manual refresh needed).

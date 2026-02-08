@@ -90,17 +90,35 @@ Status update:
 - Token lifecycle refresh management behind provider abstractions (COMPLETE)
 - Manual sync entrypoint with status tracking (COMPLETE):
   - `POST /api/activity-providers/{provider}/sync`
+  - now queue-backed (`202 queued`)
+  - sync run tracking table/model in place
 - Settings → Connections page (COMPLETE):
   - real connection status
   - connect/disconnect actions
   - sync-now action
 - Idempotent provider activity persistence during sync (COMPLETE)
+- Queue orchestration hardening (COMPLETE):
+  - one-lock-per-user+provider sync safety
+  - deterministic lock retry delay
+  - deterministic rate-limit requeue (`Retry-After` or exponential fallback)
+  - connection status lifecycle (`queued` → `running` → terminal/limited state)
+- Real-time sync status delivery (COMPLETE):
+  - broadcasting + Reverb scaffold installed
+  - private user-channel sync-status event broadcasting
+  - settings connections view now updates live when sync status transitions
+- Strava webhook ingestion (COMPLETE, Strava-first):
+  - verification endpoint (challenge response)
+  - event ingestion endpoint
+  - idempotent event persistence
+  - create/update event dispatches targeted sync
+  - delete event soft-deletes local external activity records
+- Soft-delete safe external activity upserts (COMPLETE)
 
 Status update:
 - External provider scaffolding is now production-safe and swappable by provider key.
-- Strava is wired as the first provider with explicit read-only sync behavior, token refresh handling, and no write-back behavior.
-- OAuth + sync is now structured for future provider extensions (Garmin/Suunto/Polar) without changing activity read contracts.
-- Background sync scheduling, webhooks, and derived load metrics remain intentionally out of scope.
+- Strava is wired as the first provider with explicit read-only sync behavior, token refresh handling, queue-backed execution, and webhook-triggered sync.
+- OAuth + sync/webhook architecture is structured for future provider extensions (Garmin/Suunto/Polar) without changing activity read contracts.
+- Provider webhook subscription lifecycle automation, periodic scheduling strategy, and derived load metrics remain intentionally out of scope.
 
 ---
 

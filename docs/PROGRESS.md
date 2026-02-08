@@ -312,5 +312,86 @@
   - `vendor/bin/sail npm run types`
   - `vendor/bin/sail artisan test --compact tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (27 passed)
 
+- Upgraded provider sync to queue-backed execution with lock safety:
+  - added sync run tracking model/table:
+    - `ActivityProviderSyncRun`
+    - `activity_provider_sync_runs`
+  - added async dispatcher + job:
+    - `ActivitySyncDispatcher`
+    - `SyncActivityProviderJob`
+  - sync endpoint behavior changed:
+    - `POST /api/activity-providers/{provider}/sync`
+    - now returns `202` + queued payload (`status`, `provider`, `sync_run_id`)
+  - one sync lock per `provider + user` enforced via cache lock
+  - deterministic retry/backoff implemented:
+    - lock-contention release delay
+    - rate-limit-aware requeue (uses `Retry-After` when provided; otherwise exponential delay)
+  - connection sync statuses expanded in practice:
+    - `queued`
+    - `running`
+    - `rate_limited`
+    - `failed`
+    - `success`
+
+- Added Strava webhook ingestion + verification (Strava-first, provider-safe structure):
+  - new webhook routes:
+    - `GET /api/webhooks/strava` (verification handshake)
+    - `POST /api/webhooks/strava` (event ingestion)
+  - new webhook persistence model/table:
+    - `ActivityProviderWebhookEvent`
+    - `activity_provider_webhook_events`
+  - idempotent event storage enforced by unique (`provider`, `payload_hash`)
+  - processing behavior:
+    - `create` / `update` activity events queue targeted sync for connected athlete
+    - `delete` activity events soft-delete matching local activity record
+    - unsupported/unmapped events are stored and marked ignored
+  - optional subscription-id matching supported through config for stricter ingestion safety
+
+- Added soft-delete support for external activities:
+  - migration:
+    - `add_deleted_at_to_activities_table`
+  - `Activity` now uses `SoftDeletes`
+  - persister restored to handle upserts against previously deleted activity rows
+
+- Updated settings connections UX for async sync lifecycle:
+  - sync action now expects `202 queued`
+  - sync status labels rendered from real backend connection state (`queued`, `running`, `rate_limited`, `failed`, `success`)
+  - no fake status data introduced
+
+- Added/updated tests for queue + webhook hardening:
+  - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
+  - `tests/Feature/Api/ActivityProviderSyncJobTest.php`
+  - `tests/Feature/Api/ActivityProviderWebhookTest.php`
+  - existing provider/token/read/settings tests kept green
+
+- Validation completed:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
+
+- Enabled real-time sync status updates with Laravel Reverb:
+  - installed broadcasting + Reverb scaffolding (`config/broadcasting.php`, `config/reverb.php`, `routes/channels.php`)
+  - added broadcast event:
+    - `ActivityProviderSyncStatusUpdated`
+  - wired sync status transitions to broadcast from `ActivityProviderConnectionStore`
+  - private user channel used:
+    - `App.Models.User.{id}`
+  - settings connections page now subscribes via Echo and reloads provider data when status events arrive
+  - queue/webhook/status behavior unchanged functionally; this step adds live UI propagation only
+  - Sail container networking updated for Reverb websocket traffic:
+    - exposed container port `8080` via `FORWARD_REVERB_PORT`
+- Frontend Echo setup completed:
+  - added `resources/js/lib/echo.ts`
+  - initialized Echo on app boot in `resources/js/app.tsx`
+  - added CSRF meta tag in app root view for private channel auth
+  - installer-injected `@laravel/echo-react` import was replaced with explicit `laravel-echo` + `pusher-js` setup for deterministic control
+- Added event assertions to sync tests:
+  - queued status event dispatched from sync API queueing flow
+  - running/success/rate_limited events dispatched from sync job flow
+- Validation completed after Reverb wiring:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
+
 Next milestone:
-→ Wire admin users table and impersonation controls tighter to final slicing parity (table density/labels), then implement role-management actions in a separate scoped phase (still no training-data admin writes).
+→ Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

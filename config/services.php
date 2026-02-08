@@ -51,6 +51,8 @@ return [
         ],
         'sync_lookback_days' => (int) env('ACTIVITY_PROVIDER_SYNC_LOOKBACK_DAYS', 90),
         'token_refresh_buffer_seconds' => (int) env('ACTIVITY_PROVIDER_TOKEN_REFRESH_BUFFER_SECONDS', 300),
+        'sync_lock_seconds' => (int) env('ACTIVITY_PROVIDER_SYNC_LOCK_SECONDS', 300),
+        'lock_retry_seconds' => (int) env('ACTIVITY_PROVIDER_LOCK_RETRY_SECONDS', 30),
     ],
 
     'strava' => [
@@ -63,6 +65,8 @@ return [
             ',',
             (string) env('STRAVA_SCOPES', 'read,activity:read_all'),
         )))),
+        'webhook_verify_token' => env('STRAVA_WEBHOOK_VERIFY_TOKEN'),
+        'webhook_subscription_id' => env('STRAVA_WEBHOOK_SUBSCRIPTION_ID'),
     ],
 
 ];

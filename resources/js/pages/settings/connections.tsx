@@ -1,14 +1,15 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Link2, Link2Off, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { initializeEcho } from '@/lib/echo';
 import SettingsLayout from '@/layouts/settings/layout';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
 import { connections as settingsConnections, overview } from '@/routes/settings';
 import { connect, disconnect } from '@/routes/settings/connections';
-import type { BreadcrumbItem } from '@/types';
+import type { BreadcrumbItem, SharedData } from '@/types';
 
 type ProviderConnection = {
     provider: string;
@@ -43,6 +44,7 @@ export default function Connections({
     canManageConnections,
     statusMessage,
 }: ConnectionsPageProps) {
+    const { auth } = usePage<SharedData>().props;
     const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
     const [syncMessageByProvider, setSyncMessageByProvider] = useState<
         Record<string, string>
@@ -52,6 +54,37 @@ export default function Connections({
     >({});
 
     const hasProviders = providers.length > 0;
+
+    useEffect(() => {
+        if (!canManageConnections || auth.user?.id === undefined) {
+            return;
+        }
+
+        const echo = initializeEcho();
+
+        if (echo === null) {
+            return;
+        }
+
+        const channelName = `App.Models.User.${auth.user.id}`;
+        const eventName = '.activity-provider.sync-status-updated';
+        const channel = echo.private(channelName);
+
+        channel.listen(eventName, (event: { provider?: string }) => {
+            if (typeof event.provider !== 'string' || event.provider === '') {
+                return;
+            }
+
+            router.reload({
+                only: ['providers'],
+            });
+        });
+
+        return () => {
+            channel.stopListening(eventName);
+            echo.leave(channelName);
+        };
+    }, [auth.user?.id, canManageConnections]);
 
     const syncNow = async (provider: string): Promise<void> => {
         if (!canManageConnections || syncingProvider !== null) {
@@ -94,14 +127,17 @@ export default function Connections({
                 return;
             }
 
-            const syncedCount =
-                typeof payload?.synced_activities_count === 'number'
-                    ? payload.synced_activities_count
-                    : 0;
+            const status =
+                typeof payload?.status === 'string'
+                    ? payload.status
+                    : 'queued';
 
             setSyncMessageByProvider((current) => ({
                 ...current,
-                [provider]: `Sync completed (${syncedCount} activities).`,
+                [provider]:
+                    status === 'queued'
+                        ? 'Sync queued.'
+                        : `Sync status: ${status}.`,
             }));
 
             router.reload({
@@ -138,6 +174,11 @@ export default function Connections({
                                 const isSyncing =
                                     syncingProvider ===
                                     providerConnection.provider;
+                                const hasSyncInProgress =
+                                    providerConnection.last_sync_status ===
+                                        'queued' ||
+                                    providerConnection.last_sync_status ===
+                                        'running';
                                 const connectionStatusClass =
                                     providerConnection.connected
                                         ? 'border-emerald-900/50 text-emerald-400'
@@ -168,10 +209,20 @@ export default function Connections({
                                                         providerConnection.last_synced_at,
                                                     )}
                                                 </p>
+                                                {providerConnection.last_sync_status ? (
+                                                    <p className="text-xs text-zinc-500">
+                                                        Sync status:{' '}
+                                                        {formatSyncStatus(
+                                                            providerConnection.last_sync_status,
+                                                        )}
+                                                    </p>
+                                                ) : null}
                                                 {providerConnection.last_sync_status ===
-                                                'failed' ? (
+                                                    'failed' ||
+                                                providerConnection.last_sync_status ===
+                                                    'rate_limited' ? (
                                                     <p className="text-xs text-amber-300">
-                                                        Last sync failed:{' '}
+                                                        Sync detail:{' '}
                                                         {providerConnection.last_sync_reason ??
                                                             'Unknown reason'}
                                                     </p>
@@ -210,7 +261,10 @@ export default function Connections({
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="outline"
-                                                                disabled={isSyncing}
+                                                                disabled={
+                                                                    isSyncing ||
+                                                                    hasSyncInProgress
+                                                                }
                                                                 onClick={() =>
                                                                     void syncNow(
                                                                         providerConnection.provider,
@@ -225,6 +279,8 @@ export default function Connections({
                                                                 )}
                                                                 {isSyncing
                                                                     ? 'Syncing...'
+                                                                    : hasSyncInProgress
+                                                                      ? 'Sync queued'
                                                                     : 'Sync now'}
                                                             </Button>
                                                             <Link
@@ -293,4 +349,21 @@ function formatOptionalDate(value: string | null): string {
         hour: 'numeric',
         minute: '2-digit',
     });
+}
+
+function formatSyncStatus(value: string): string {
+    switch (value) {
+        case 'queued':
+            return 'Queued';
+        case 'running':
+            return 'Syncing';
+        case 'rate_limited':
+            return 'Rate limited';
+        case 'failed':
+            return 'Failed';
+        case 'success':
+            return 'Success';
+        default:
+            return value;
+    }
 }

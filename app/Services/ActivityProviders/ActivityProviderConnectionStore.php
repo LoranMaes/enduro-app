@@ -3,6 +3,7 @@
 namespace App\Services\ActivityProviders;
 
 use App\Data\OAuthProviderTokensDTO;
+use App\Events\ActivityProviderSyncStatusUpdated;
 use App\Models\ActivityProviderConnection;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -96,17 +97,38 @@ class ActivityProviderConnectionStore
         string $provider,
         CarbonImmutable $syncedAt,
     ): void {
-        $connection = $this->ensureFromLegacy($user, $provider);
-
-        if (! $connection instanceof ActivityProviderConnection) {
-            return;
-        }
-
-        $connection->forceFill([
+        $this->updateSyncStatus($user, $provider, [
             'last_synced_at' => $syncedAt,
             'last_sync_status' => 'success',
             'last_sync_reason' => null,
-        ])->save();
+        ]);
+    }
+
+    public function markSyncQueued(User $user, string $provider): void
+    {
+        $this->updateSyncStatus($user, $provider, [
+            'last_sync_status' => 'queued',
+            'last_sync_reason' => null,
+        ]);
+    }
+
+    public function markSyncRunning(User $user, string $provider): void
+    {
+        $this->updateSyncStatus($user, $provider, [
+            'last_sync_status' => 'running',
+            'last_sync_reason' => null,
+        ]);
+    }
+
+    public function markSyncRateLimited(
+        User $user,
+        string $provider,
+        string $failureReason,
+    ): void {
+        $this->updateSyncStatus($user, $provider, [
+            'last_sync_status' => 'rate_limited',
+            'last_sync_reason' => $failureReason,
+        ]);
     }
 
     public function markSyncFailure(
@@ -114,16 +136,10 @@ class ActivityProviderConnectionStore
         string $provider,
         string $failureReason,
     ): void {
-        $connection = $this->ensureFromLegacy($user, $provider);
-
-        if (! $connection instanceof ActivityProviderConnection) {
-            return;
-        }
-
-        $connection->forceFill([
+        $this->updateSyncStatus($user, $provider, [
             'last_sync_status' => 'failed',
             'last_sync_reason' => $failureReason,
-        ])->save();
+        ]);
     }
 
     private function syncLegacyColumns(
@@ -145,5 +161,36 @@ class ActivityProviderConnectionStore
     private function normalizeProvider(string $provider): string
     {
         return strtolower(trim($provider));
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function updateSyncStatus(
+        User $user,
+        string $provider,
+        array $attributes,
+    ): void {
+        $connection = $this->ensureFromLegacy($user, $provider);
+
+        if (! $connection instanceof ActivityProviderConnection) {
+            return;
+        }
+
+        $connection->forceFill($attributes)->save();
+
+        $status = $connection->last_sync_status;
+
+        if (! is_string($status) || trim($status) === '') {
+            return;
+        }
+
+        event(new ActivityProviderSyncStatusUpdated(
+            userId: $user->id,
+            provider: $connection->provider,
+            status: $status,
+            reason: $connection->last_sync_reason,
+            syncedAt: $connection->last_synced_at?->toIso8601String(),
+        ));
     }
 }

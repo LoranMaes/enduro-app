@@ -1,9 +1,12 @@
 <?php
 
-use App\Models\Activity;
+use App\Events\ActivityProviderSyncStatusUpdated;
+use App\Jobs\SyncActivityProviderJob;
 use App\Models\ActivityProviderConnection;
+use App\Models\ActivityProviderSyncRun;
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 
 it('requires authentication for activity provider sync endpoint', function () {
     $this
@@ -24,19 +27,9 @@ it('requires an existing provider connection before syncing', function () {
         );
 });
 
-it('syncs recent activities for connected athletes', function () {
-    Http::fake([
-        'https://www.strava.com/api/v3/athlete/activities*' => Http::response([
-            [
-                'id' => 812345,
-                'sport_type' => 'Run',
-                'start_date' => '2026-02-06T07:00:00Z',
-                'elapsed_time' => 3600,
-                'distance' => 10100,
-                'total_elevation_gain' => 110,
-            ],
-        ]),
-    ]);
+it('queues a sync job for connected athletes', function () {
+    Queue::fake();
+    Event::fake([ActivityProviderSyncStatusUpdated::class]);
 
     $athlete = User::factory()->athlete()->create();
 
@@ -53,18 +46,17 @@ it('syncs recent activities for connected athletes', function () {
         ->postJson('/api/activity-providers/strava/sync');
 
     $response
-        ->assertOk()
+        ->assertStatus(202)
         ->assertJsonPath('provider', 'strava')
-        ->assertJsonPath('synced_activities_count', 1)
-        ->assertJsonPath('status', 'success');
+        ->assertJsonPath('status', 'queued');
 
-    $this->assertDatabaseHas('activities', [
-        'athlete_id' => $athlete->id,
-        'provider' => 'strava',
-        'external_id' => '812345',
-        'sport' => 'run',
-        'duration_seconds' => 3600,
-    ]);
+    expect($response->json('sync_run_id'))->toBeInt();
+
+    Queue::assertPushed(SyncActivityProviderJob::class, function (SyncActivityProviderJob $job) use ($athlete): bool {
+        return $job->provider === 'strava'
+            && $job->userId === $athlete->id
+            && $job->syncRunId !== null;
+    });
 
     $connection = ActivityProviderConnection::query()
         ->where('user_id', $athlete->id)
@@ -72,14 +64,23 @@ it('syncs recent activities for connected athletes', function () {
         ->first();
 
     expect($connection)->not->toBeNull();
-    expect($connection?->last_synced_at)->not->toBeNull();
-    expect($connection?->last_sync_status)->toBe('success');
+    expect($connection?->last_sync_status)->toBe('queued');
+
+    Event::assertDispatched(
+        ActivityProviderSyncStatusUpdated::class,
+        fn (ActivityProviderSyncStatusUpdated $event): bool => $event->userId === $athlete->id
+            && $event->provider === 'strava'
+            && $event->status === 'queued',
+    );
+
+    $syncRun = ActivityProviderSyncRun::query()->find($response->json('sync_run_id'));
+
+    expect($syncRun)->not->toBeNull();
+    expect($syncRun?->status)->toBe(ActivityProviderSyncRun::STATUS_QUEUED);
 });
 
-it('allows admins to trigger activity sync for their connected account', function () {
-    Http::fake([
-        'https://www.strava.com/api/v3/athlete/activities*' => Http::response([], 200),
-    ]);
+it('allows admins to queue activity sync for their connected account', function () {
+    Queue::fake();
 
     $admin = User::factory()->admin()->create();
 
@@ -94,8 +95,11 @@ it('allows admins to trigger activity sync for their connected account', functio
     $this
         ->actingAs($admin)
         ->postJson('/api/activity-providers/strava/sync')
-        ->assertOk()
-        ->assertJsonPath('provider', 'strava');
+        ->assertStatus(202)
+        ->assertJsonPath('provider', 'strava')
+        ->assertJsonPath('status', 'queued');
+
+    Queue::assertPushed(SyncActivityProviderJob::class, 1);
 });
 
 it('forbids coaches from syncing activity providers', function () {
@@ -115,40 +119,4 @@ it('rejects unsupported providers', function () {
         ->postJson('/api/activity-providers/garmin/sync')
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['provider']);
-});
-
-it('sync endpoint is idempotent for duplicate external activities', function () {
-    Http::fake([
-        'https://www.strava.com/api/v3/athlete/activities*' => Http::response([
-            [
-                'id' => 998877,
-                'sport_type' => 'Ride',
-                'start_date' => '2026-02-06T07:00:00Z',
-                'elapsed_time' => 5400,
-                'distance' => 46000,
-                'total_elevation_gain' => 580,
-            ],
-        ], 200),
-    ]);
-
-    $athlete = User::factory()->athlete()->create();
-
-    ActivityProviderConnection::query()->create([
-        'user_id' => $athlete->id,
-        'provider' => 'strava',
-        'access_token' => 'valid-access-token',
-        'refresh_token' => 'valid-refresh-token',
-        'token_expires_at' => now()->addHour(),
-    ]);
-
-    $this
-        ->actingAs($athlete)
-        ->postJson('/api/activity-providers/strava/sync')
-        ->assertOk();
-    $this
-        ->actingAs($athlete)
-        ->postJson('/api/activity-providers/strava/sync')
-        ->assertOk();
-
-    expect(Activity::query()->count())->toBe(1);
 });
