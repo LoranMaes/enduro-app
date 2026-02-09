@@ -28,6 +28,8 @@
 - Session-detail composition adjusted again for workflow clarity:
   - row 1: route map + route statistics side card (internal notes included)
   - row 2: planned blocks + analysis when structure exists, otherwise full-width analysis
+  - right side card compacted with a `Statistics / Internal Notes` switcher to keep row-1 height tighter
+  - planned vs actual summary reduced to compact badge-style chips
 - chart rendering performance improved via deterministic stream downsampling
 - Verification completed:
   - `vendor/bin/sail npm run types`

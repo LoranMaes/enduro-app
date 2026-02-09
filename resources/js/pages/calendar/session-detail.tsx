@@ -137,6 +137,9 @@ export default function SessionDetailPage({
     const [isSavingNotes, setIsSavingNotes] = useState(false);
     const [notesError, setNotesError] = useState<string | null>(null);
     const [notesStatus, setNotesStatus] = useState<string | null>(null);
+    const [sideCardTab, setSideCardTab] = useState<'statistics' | 'notes'>(
+        'statistics',
+    );
 
     const linkedActivityId = sessionView.linkedActivityId;
     const canEditNotes =
@@ -147,6 +150,7 @@ export default function SessionDetailPage({
         setSavedNotes(sessionView.notes ?? '');
         setNotesError(null);
         setNotesStatus(null);
+        setSideCardTab('statistics');
     }, [sessionView.id, sessionView.notes]);
 
     useEffect(() => {
@@ -855,144 +859,173 @@ export default function SessionDetailPage({
     );
 
     const statisticsPanel = (
-        <div className="rounded-xl border border-border bg-surface p-4">
-            <h2 className="text-sm font-medium text-zinc-200">
-                Route Statistics
-            </h2>
-
-            <div className="mt-3 space-y-2">
-                <StatisticsRow
-                    label="Planned Duration"
-                    value={formatDurationMinutes(sessionView.durationMinutes)}
-                />
-                <StatisticsRow
-                    label="Actual Duration"
-                    value={formatDurationMinutes(
-                        sessionView.actualDurationMinutes,
-                    )}
-                />
-                <StatisticsRow
-                    label="Planned TSS"
-                    value={formatNumber(sessionView.plannedTss)}
-                />
-                <StatisticsRow
-                    label="Actual TSS"
-                    value={formatNumber(sessionView.actualTss)}
-                />
-                <StatisticsRow
-                    label="Avg Heart Rate"
-                    value={
-                        avgHeartRate === null
-                            ? '—'
-                            : `${Math.round(avgHeartRate)} bpm`
-                    }
-                />
-                <StatisticsRow
-                    label="Avg Power"
-                    value={
-                        avgPower === null ? '—' : `${Math.round(avgPower)} W`
-                    }
-                />
-                <StatisticsRow
-                    label="Avg Cadence"
-                    value={
-                        avgCadence === null
-                            ? '—'
-                            : `${Math.round(avgCadence)} rpm`
-                    }
-                />
-                <StatisticsRow
-                    label="Avg Speed"
-                    value={formatAverageSpeedForSport(
-                        sessionView.sport,
-                        avgSpeedMetersPerSecond,
-                    )}
-                />
-                <StatisticsRow
-                    label="Distance"
-                    value={
-                        totalDistanceKilometers === null
-                            ? '—'
-                            : `${totalDistanceKilometers.toFixed(2)} km`
-                    }
-                />
-                <StatisticsRow
-                    label="Elevation Gain"
-                    value={
-                        elevationGainMeters === null
-                            ? '—'
-                            : `${Math.round(elevationGainMeters)} m`
-                    }
-                />
+        <div className="h-full overflow-y-auto rounded-xl border border-border bg-surface p-4">
+            <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-medium text-zinc-200">
+                    Route Statistics
+                </h2>
+                {sideCardTab === 'notes' && notesStatus !== null ? (
+                    <span className="text-[11px] text-emerald-300">
+                        {notesStatus}
+                    </span>
+                ) : null}
             </div>
-            <div className="mt-4 border-t border-border/70 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-medium text-zinc-200">
-                        Internal Notes
-                    </h3>
-                    {notesStatus !== null ? (
-                        <span className="text-[11px] text-emerald-300">
-                            {notesStatus}
-                        </span>
-                    ) : null}
-                </div>
 
-                <textarea
-                    value={internalNotes}
-                    rows={6}
-                    disabled={!canEditNotes || isSavingNotes}
-                    onChange={(event) => {
-                        setInternalNotes(event.target.value);
-                        setNotesError(null);
-                        setNotesStatus(null);
-                    }}
+            <div className="mt-3 inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/60 p-1">
+                <button
+                    type="button"
+                    onClick={() => setSideCardTab('statistics')}
                     className={cn(
-                        'mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
-                        'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                        (!canEditNotes || isSavingNotes) &&
-                            'cursor-not-allowed text-zinc-400 opacity-75',
+                        'rounded px-2 py-1 text-[11px] transition-colors',
+                        sideCardTab === 'statistics'
+                            ? 'bg-zinc-800 text-zinc-100'
+                            : 'text-zinc-400 hover:text-zinc-200',
                     )}
-                    placeholder="Write internal notes for this session."
-                />
+                >
+                    Statistics
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setSideCardTab('notes')}
+                    className={cn(
+                        'rounded px-2 py-1 text-[11px] transition-colors',
+                        sideCardTab === 'notes'
+                            ? 'bg-zinc-800 text-zinc-100'
+                            : 'text-zinc-400 hover:text-zinc-200',
+                    )}
+                >
+                    Internal Notes
+                </button>
+            </div>
 
-                <div className="mt-2 flex items-center justify-between gap-3">
-                    <p className="text-[11px] text-zinc-500">
-                        {canEditNotes
-                            ? 'Notes are private to the athlete account.'
-                            : 'Notes are read-only in this context.'}
-                    </p>
-
-                    {canEditNotes ? (
-                        <button
-                            type="button"
-                            disabled={!hasNotesChanged || isSavingNotes}
-                            onClick={() => {
-                                void saveInternalNotes();
-                            }}
-                            className={cn(
-                                'inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] transition-colors',
-                                !hasNotesChanged || isSavingNotes
-                                    ? 'cursor-not-allowed border-zinc-800 bg-zinc-900/50 text-zinc-600'
-                                    : 'border-zinc-700 bg-zinc-900/60 text-zinc-200 hover:text-zinc-100',
+            {sideCardTab === 'statistics' ? (
+                <>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                        <ComparisonBadge
+                            label="Planned"
+                            value={formatDurationMinutes(
+                                sessionView.durationMinutes,
                             )}
-                        >
-                            <Save className="h-3.5 w-3.5" />
-                            {isSavingNotes ? 'Saving...' : 'Save notes'}
-                        </button>
+                            meta={`${formatNumber(sessionView.plannedTss)} TSS`}
+                        />
+                        <ComparisonBadge
+                            label="Actual"
+                            value={formatDurationMinutes(
+                                sessionView.actualDurationMinutes,
+                            )}
+                            meta={`${formatNumber(sessionView.actualTss)} TSS`}
+                        />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        <StatisticsRow
+                            label="Avg HR"
+                            value={
+                                avgHeartRate === null
+                                    ? '—'
+                                    : `${Math.round(avgHeartRate)} bpm`
+                            }
+                        />
+                        <StatisticsRow
+                            label="Avg Power"
+                            value={
+                                avgPower === null
+                                    ? '—'
+                                    : `${Math.round(avgPower)} W`
+                            }
+                        />
+                        <StatisticsRow
+                            label="Avg Cadence"
+                            value={
+                                avgCadence === null
+                                    ? '—'
+                                    : `${Math.round(avgCadence)} rpm`
+                            }
+                        />
+                        <StatisticsRow
+                            label="Avg Speed"
+                            value={formatAverageSpeedForSport(
+                                sessionView.sport,
+                                avgSpeedMetersPerSecond,
+                            )}
+                        />
+                        <StatisticsRow
+                            label="Distance"
+                            value={
+                                totalDistanceKilometers === null
+                                    ? '—'
+                                    : `${totalDistanceKilometers.toFixed(2)} km`
+                            }
+                        />
+                        <StatisticsRow
+                            label="Elevation"
+                            value={
+                                elevationGainMeters === null
+                                    ? '—'
+                                    : `${Math.round(elevationGainMeters)} m`
+                            }
+                        />
+                    </div>
+                </>
+            ) : (
+                <div className="mt-3">
+                    <textarea
+                        value={internalNotes}
+                        rows={8}
+                        disabled={!canEditNotes || isSavingNotes}
+                        onChange={(event) => {
+                            setInternalNotes(event.target.value);
+                            setNotesError(null);
+                            setNotesStatus(null);
+                        }}
+                        className={cn(
+                            'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
+                            'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                            (!canEditNotes || isSavingNotes) &&
+                                'cursor-not-allowed text-zinc-400 opacity-75',
+                        )}
+                        placeholder="Write internal notes for this session."
+                    />
+
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                        <p className="text-[11px] text-zinc-500">
+                            {canEditNotes
+                                ? 'Notes are private to the athlete account.'
+                                : 'Notes are read-only in this context.'}
+                        </p>
+
+                        {canEditNotes ? (
+                            <button
+                                type="button"
+                                disabled={!hasNotesChanged || isSavingNotes}
+                                onClick={() => {
+                                    void saveInternalNotes();
+                                }}
+                                className={cn(
+                                    'inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] transition-colors',
+                                    !hasNotesChanged || isSavingNotes
+                                        ? 'cursor-not-allowed border-zinc-800 bg-zinc-900/50 text-zinc-600'
+                                        : 'border-zinc-700 bg-zinc-900/60 text-zinc-200 hover:text-zinc-100',
+                                )}
+                            >
+                                <Save className="h-3.5 w-3.5" />
+                                {isSavingNotes ? 'Saving...' : 'Save notes'}
+                            </button>
+                        ) : null}
+                    </div>
+
+                    {notesStatus !== null ? (
+                        <p className="mt-2 text-[11px] text-zinc-500">
+                            Last update saved successfully.
+                        </p>
+                    ) : null}
+                    {notesError !== null ? (
+                        <p className="mt-2 rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300">
+                            {notesError}
+                        </p>
                     ) : null}
                 </div>
-
-                {notesStatus !== null ? (
-                    <p className="mt-2 text-[11px] text-zinc-500">
-                        Last update saved successfully.
-                    </p>
-                ) : null}
-                {notesError !== null ? (
-                    <p className="mt-2 rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300">
-                        {notesError}
-                    </p>
-                ) : null}
-            </div>
+            )}
         </div>
     );
 
@@ -1086,13 +1119,13 @@ export default function SessionDetailPage({
     ) : null;
 
     const mapPanel = (
-        <div className="flex h-full flex-col rounded-xl border border-border bg-surface p-4">
+        <div className="flex min-h-0 flex-col rounded-xl border border-border bg-surface p-4">
             <div className="mb-3 flex items-center gap-2">
                 <MapPinned className="h-4 w-4 text-zinc-400" />
                 <h2 className="text-sm font-medium text-zinc-200">Route</h2>
             </div>
 
-            <div className="relative box-border h-full overflow-hidden rounded-lg border border-border/60 bg-background/70 p-2">
+            <div className="relative box-border h-[300px] overflow-hidden rounded-lg border border-border/60 bg-background/70 p-2 xl:h-[320px]">
                 {latLngPoints.length > 1 ? (
                     <>
                         <ActivityMap
@@ -1202,7 +1235,7 @@ export default function SessionDetailPage({
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
                     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-                        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(300px,0.8fr)]">
+                        <section className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,0.75fr)]">
                             {mapPanel}
                             {statisticsPanel}
                         </section>
@@ -1224,11 +1257,33 @@ export default function SessionDetailPage({
 
 function StatisticsRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex items-center justify-between gap-4 rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
-            <span className="text-[10px] tracking-wide text-zinc-500 uppercase">
+        <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
+            <span className="block text-[10px] tracking-wide text-zinc-500 uppercase">
                 {label}
             </span>
-            <span className="font-mono text-xs text-zinc-200">{value}</span>
+            <span className="mt-0.5 block font-mono text-xs text-zinc-200">
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function ComparisonBadge({
+    label,
+    value,
+    meta,
+}: {
+    label: string;
+    value: string;
+    meta: string;
+}) {
+    return (
+        <div className="rounded-full border border-border/80 bg-background/60 px-3 py-1.5">
+            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                {label}
+            </p>
+            <p className="font-mono text-xs text-zinc-100">{value}</p>
+            <p className="text-[10px] text-zinc-400">{meta}</p>
         </div>
     );
 }
