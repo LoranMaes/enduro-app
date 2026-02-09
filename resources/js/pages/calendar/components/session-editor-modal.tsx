@@ -50,6 +50,16 @@ import {
     isSessionAdjusted,
     isSessionCompleted,
 } from './session-reconciliation';
+import {
+    calculateWorkoutStructureDurationMinutes,
+    estimateWorkoutStructureTss,
+    WorkoutStructureBuilder,
+    type AthleteTrainingTargets,
+    type WorkoutStructure,
+    type WorkoutStructureMode,
+    type WorkoutStructureStep,
+    type WorkoutStructureUnit,
+} from './workout-structure-builder';
 
 type SessionEditorMode = 'create' | 'edit';
 type Sport = 'swim' | 'bike' | 'run' | 'gym' | 'other';
@@ -61,6 +71,7 @@ type ValidationField =
     | 'planned_duration_minutes'
     | 'planned_tss'
     | 'notes'
+    | 'planned_structure'
     | 'activity_id'
     | 'session';
 
@@ -73,6 +84,28 @@ type SessionWritePayload = {
     planned_duration_minutes: number;
     planned_tss: number | null;
     notes: string | null;
+    planned_structure: {
+        unit: WorkoutStructureUnit;
+        mode: WorkoutStructureMode;
+        steps: Array<{
+            id: string;
+            type: WorkoutStructureStep['type'];
+            duration_minutes: number;
+            target: number | null;
+            range_min: number | null;
+            range_max: number | null;
+            repeat_count: number;
+            note: string | null;
+            items: Array<{
+                id: string;
+                label: string;
+                duration_minutes: number;
+                target: number | null;
+                range_min: number | null;
+                range_max: number | null;
+            }> | null;
+        }>;
+    } | null;
 };
 
 export type SessionEditorContext =
@@ -88,11 +121,14 @@ export type SessionEditorContext =
           session: TrainingSessionView;
       };
 
+export type { AthleteTrainingTargets };
+
 type SessionEditorModalProps = {
     open: boolean;
     context: SessionEditorContext | null;
     canManageSessionWrites: boolean;
     canManageSessionLinks: boolean;
+    athleteTrainingTargets: AthleteTrainingTargets | null;
     onOpenChange: (open: boolean) => void;
     onSaved: () => void;
 };
@@ -116,6 +152,7 @@ const validationFields: ValidationField[] = [
     'planned_duration_minutes',
     'planned_tss',
     'notes',
+    'planned_structure',
     'activity_id',
     'session',
 ];
@@ -125,6 +162,7 @@ export function SessionEditorModal({
     context,
     canManageSessionWrites,
     canManageSessionLinks,
+    athleteTrainingTargets,
     onOpenChange,
     onSaved,
 }: SessionEditorModalProps) {
@@ -133,6 +171,9 @@ export function SessionEditorModal({
     const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('60');
     const [plannedTss, setPlannedTss] = useState('');
     const [notes, setNotes] = useState('');
+    const [plannedStructure, setPlannedStructure] = useState<WorkoutStructure | null>(
+        null,
+    );
     const [sessionDetails, setSessionDetails] = useState<TrainingSessionView | null>(
         null,
     );
@@ -148,6 +189,9 @@ export function SessionEditorModal({
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
+    const [activeEditorTab, setActiveEditorTab] = useState<'details' | 'structure'>(
+        'details',
+    );
 
     const isEditMode = context?.mode === 'edit';
     const isBusy =
@@ -192,6 +236,7 @@ export function SessionEditorModal({
     const dialogDescription = isEditMode
         ? 'Update planned session details, manage links, or remove this session.'
         : 'Add a planned training session to this day.';
+    const isStructureTab = activeEditorTab === 'structure';
     const dateLabel = useMemo(() => {
         if (!context) {
             return '';
@@ -206,6 +251,14 @@ export function SessionEditorModal({
             },
         );
     }, [context]);
+    const hasStructuredPlanning =
+        plannedStructure !== null && plannedStructure.steps.length > 0;
+    const derivedStructureDurationMinutes = useMemo(() => {
+        return calculateWorkoutStructureDurationMinutes(plannedStructure);
+    }, [plannedStructure]);
+    const derivedStructureTss = useMemo(() => {
+        return estimateWorkoutStructureTss(plannedStructure);
+    }, [plannedStructure]);
 
     const clearFieldError = (field: keyof ValidationErrors): void => {
         setErrors((currentErrors) => {
@@ -267,6 +320,9 @@ export function SessionEditorModal({
                     : '',
             );
             setNotes(context.session.notes ?? '');
+            setPlannedStructure(
+                normalizeEditorWorkoutStructure(context.session.plannedStructure),
+            );
             setSessionDetails(context.session);
 
             void refreshSessionDetails(context.session.id);
@@ -275,6 +331,7 @@ export function SessionEditorModal({
             setPlannedDurationMinutes('60');
             setPlannedTss('');
             setNotes('');
+            setPlannedStructure(null);
             setSessionDetails(null);
         }
 
@@ -282,6 +339,7 @@ export function SessionEditorModal({
         setGeneralError(null);
         setStatusMessage(null);
         setConfirmingDelete(false);
+        setActiveEditorTab('details');
     }, [open, context, refreshSessionDetails]);
 
     useEffect(() => {
@@ -338,6 +396,9 @@ export function SessionEditorModal({
             plannedDurationMinutes,
             plannedTss,
             notes,
+            plannedStructure,
+            derivedStructureDurationMinutes,
+            derivedStructureTss,
         });
 
         try {
@@ -622,7 +683,12 @@ export function SessionEditorModal({
             }}
         >
             <DialogContent
-                className="max-w-xl border-border bg-surface p-0 text-zinc-200"
+                className={cn(
+                    'max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden border-border bg-surface p-0 text-zinc-200',
+                    isStructureTab
+                        ? 'max-w-[min(98vw,1360px)]'
+                        : 'max-w-[min(96vw,860px)]',
+                )}
                 onEscapeKeyDown={(event) => {
                     if (isBusy) {
                         event.preventDefault();
@@ -646,499 +712,594 @@ export function SessionEditorModal({
                         onSubmit={submit}
                         onKeyDown={handleFormKeyDown}
                         aria-busy={isBusy}
-                        className="flex flex-col gap-5 px-6 pt-5 pb-6"
+                        className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col"
                     >
-                        {generalError !== null ? (
-                            <p
-                                role="alert"
-                                className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-                            >
-                                {generalError}
-                            </p>
-                        ) : null}
-
-                        {statusMessage !== null ? (
-                            <p className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-                                {statusMessage}
-                            </p>
-                        ) : null}
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-md border border-border bg-background/60 px-3 py-2">
-                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
-                                    Date
-                                </p>
-                                <p className="mt-1 text-xs text-zinc-200">
-                                    {dateLabel}
-                                </p>
-                            </div>
-                            <div className="rounded-md border border-border bg-background/60 px-3 py-2">
-                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
-                                    Week
-                                </p>
-                                <p className="mt-1 font-mono text-xs text-zinc-200">
-                                    {context.trainingWeekId !== null
-                                        ? `#${context.trainingWeekId}`
-                                        : 'Unassigned'}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs text-zinc-400">
-                                Sport
-                            </Label>
-                            <div className="grid grid-cols-5 gap-2 rounded-lg bg-background/70 p-1">
-                                {sportOptions.map((option) => {
-                                    const Icon = option.icon;
-
-                                    return (
-                                        <button
-                                            key={option.value}
-                                            type="button"
-                                            disabled={!canManageSessionWrites}
-                                            onClick={() => {
-                                                if (!canManageSessionWrites) {
-                                                    return;
-                                                }
-
-                                                setSport(option.value);
-                                                clearFieldError('sport');
-                                            }}
-                                            className={cn(
-                                                'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
-                                                sport === option.value
-                                                    ? 'border border-zinc-700 bg-zinc-800 text-white'
-                                                    : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
-                                                !canManageSessionWrites &&
-                                                    'cursor-default opacity-65 hover:bg-transparent hover:text-zinc-500',
-                                            )}
-                                        >
-                                            <Icon className="h-3.5 w-3.5" />
-                                            <span>{option.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <InputError message={errors.sport} />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label
-                                    htmlFor="planned-duration-minutes"
-                                    className="text-xs text-zinc-400"
+                        <div className="border-b border-border px-6 py-2.5">
+                            <div className="inline-flex items-center gap-1 rounded-md bg-background/60 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveEditorTab('details')}
+                                    className={cn(
+                                        'rounded px-3 py-1.5 text-xs font-medium',
+                                        activeEditorTab === 'details'
+                                            ? 'bg-zinc-800 text-zinc-100'
+                                            : 'text-zinc-500 hover:text-zinc-300',
+                                    )}
                                 >
-                                    Planned Duration (min)
-                                </Label>
-                                <Input
-                                    id="planned-duration-minutes"
-                                    ref={plannedDurationInputRef}
-                                    type="number"
-                                    min={1}
-                                    disabled={!canManageSessionWrites}
-                                    value={plannedDurationMinutes}
-                                    onChange={(event) => {
-                                        setPlannedDurationMinutes(
-                                            event.target.value,
-                                        );
-                                        clearFieldError(
-                                            'planned_duration_minutes',
-                                        );
-                                    }}
-                                    className="border-border bg-background font-mono text-sm text-zinc-200"
-                                />
-                                <InputError
-                                    message={errors.planned_duration_minutes}
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label
-                                    htmlFor="planned-tss"
-                                    className="text-xs text-zinc-400"
+                                    Session Details
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveEditorTab('structure')}
+                                    className={cn(
+                                        'rounded px-3 py-1.5 text-xs font-medium',
+                                        activeEditorTab === 'structure'
+                                            ? 'bg-zinc-800 text-zinc-100'
+                                            : 'text-zinc-500 hover:text-zinc-300',
+                                    )}
                                 >
-                                    Planned TSS
-                                </Label>
-                                <Input
-                                    id="planned-tss"
-                                    type="number"
-                                    min={0}
-                                    disabled={!canManageSessionWrites}
-                                    value={plannedTss}
-                                    onChange={(event) => {
-                                        setPlannedTss(event.target.value);
-                                        clearFieldError('planned_tss');
-                                    }}
-                                    className="border-border bg-background font-mono text-sm text-zinc-200"
-                                />
-                                <InputError message={errors.planned_tss} />
+                                    Workout Structure
+                                </button>
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label
-                                htmlFor="session-notes"
-                                className="text-xs text-zinc-400"
-                            >
-                                Notes
-                            </Label>
-                            <textarea
-                                id="session-notes"
-                                rows={4}
-                                disabled={!canManageSessionWrites}
-                                value={notes}
-                                onChange={(event) => {
-                                    setNotes(event.target.value);
-                                    clearFieldError('notes');
-                                }}
-                                className={cn(
-                                    'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
-                                    'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                                    !canManageSessionWrites &&
-                                        'cursor-default opacity-65',
-                                )}
-                            />
-                            <InputError message={errors.notes} />
-                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-4">
+                            {generalError !== null ? (
+                                <p
+                                    role="alert"
+                                    className="mb-4 rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                                >
+                                    {generalError}
+                                </p>
+                            ) : null}
 
-                        {isEditMode ? (
-                            <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[11px] font-medium tracking-wide text-zinc-300 uppercase">
-                                        Suggested Activities
-                                    </p>
-                                    {isLoadingSessionDetails ? (
-                                        <span className="text-[11px] text-zinc-500">
-                                            Loading...
-                                        </span>
-                                    ) : null}
+                            {statusMessage !== null ? (
+                                <p className="mb-4 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                                    {statusMessage}
+                                </p>
+                            ) : null}
+
+                            {activeEditorTab === 'structure' ? (
+                                <div className="space-y-1.5">
+                                    <WorkoutStructureBuilder
+                                        value={plannedStructure}
+                                        sport={sport}
+                                        trainingTargets={
+                                            athleteTrainingTargets
+                                        }
+                                        disabled={!canManageSessionWrites}
+                                        onChange={(nextStructure) => {
+                                            setPlannedStructure(nextStructure);
+                                            clearFieldError('planned_structure');
+                                        }}
+                                    />
+                                    <InputError message={errors.planned_structure} />
                                 </div>
-
-                                {linkedActivitySummary !== null ? (
-                                    <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 p-2.5">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="flex items-center gap-1.5 text-xs text-sky-200">
-                                                    <Link2 className="h-3.5 w-3.5" />
-                                                    Linked activity
-                                                </p>
-                                                <p className="mt-1 text-xs text-zinc-300">
-                                                    {formatStartedAt(
-                                                        linkedActivitySummary.startedAt,
-                                                    )}
-                                                    {' • '}
-                                                    {formatDurationSeconds(
-                                                        linkedActivitySummary.durationSeconds,
-                                                    )}
-                                                </p>
-                                            </div>
-
-                                            {canManageSessionLinks ? (
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    disabled={!canPerformLinking}
-                                                    onClick={() => {
-                                                        void unlinkActivity();
-                                                    }}
-                                                    className="border-red-500/35 text-red-300 hover:text-red-200"
-                                                >
-                                                    <Unlink className="h-3.5 w-3.5" />
-                                                    {isUnlinkingActivity
-                                                        ? 'Unlinking...'
-                                                        : 'Unlink'}
-                                                </Button>
-                                            ) : null}
+                            ) : (
+                                <div className="space-y-5">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="rounded-md border border-border bg-background/60 px-3 py-2">
+                                            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                                Date
+                                            </p>
+                                            <p className="mt-1 text-xs text-zinc-200">
+                                                {dateLabel}
+                                            </p>
                                         </div>
+                                        <div className="rounded-md border border-border bg-background/60 px-3 py-2">
+                                            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                                Week
+                                            </p>
+                                            <p className="mt-1 font-mono text-xs text-zinc-200">
+                                                {context.trainingWeekId !== null
+                                                    ? `#${context.trainingWeekId}`
+                                                    : 'Unassigned'}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                                        {selectedSession !== null ? (
-                                            <>
-                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
-                                                    <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-                                                        Planned vs Actual
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-zinc-400">
+                                            Sport
+                                        </Label>
+                                        <div className="grid grid-cols-5 gap-2 rounded-lg bg-background/70 p-1">
+                                            {sportOptions.map((option) => {
+                                                const Icon = option.icon;
+
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        disabled={!canManageSessionWrites}
+                                                        onClick={() => {
+                                                            if (!canManageSessionWrites) {
+                                                                return;
+                                                            }
+
+                                                            setSport(option.value);
+                                                            clearFieldError('sport');
+                                                        }}
+                                                        className={cn(
+                                                            'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
+                                                            sport === option.value
+                                                                ? 'border border-zinc-700 bg-zinc-800 text-white'
+                                                                : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
+                                                            !canManageSessionWrites &&
+                                                                'cursor-default opacity-65 hover:bg-transparent hover:text-zinc-500',
+                                                        )}
+                                                    >
+                                                        <Icon className="h-3.5 w-3.5" />
+                                                        <span>{option.label}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <InputError message={errors.sport} />
+                                    </div>
+
+                                    {hasStructuredPlanning ? (
+                                        <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 px-3 py-2.5">
+                                            <p className="text-[11px] font-medium tracking-wide text-sky-200 uppercase">
+                                                Structure-driven targets
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
+                                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                        Planned Duration
                                                     </p>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
-                                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                                Duration
-                                                            </p>
-                                                            <p className="mt-1 text-[11px] text-zinc-300">
-                                                                Planned:{' '}
-                                                                <span className="font-mono text-zinc-100">
-                                                                    {
-                                                                        plannedDurationLabel
-                                                                    }
-                                                                </span>
-                                                            </p>
-                                                            <p className="mt-0.5 text-[11px] text-zinc-300">
-                                                                Actual:{' '}
-                                                                <span className="font-mono text-zinc-100">
-                                                                    {actualDurationLabel}
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
-                                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                                TSS
-                                                            </p>
-                                                            <p className="mt-1 text-[11px] text-zinc-300">
-                                                                Planned:{' '}
-                                                                <span className="font-mono text-zinc-100">
-                                                                    {plannedTssLabel}
-                                                                </span>
-                                                            </p>
-                                                            <p className="mt-0.5 text-[11px] text-zinc-300">
-                                                                Actual:{' '}
-                                                                <span className="font-mono text-zinc-100">
-                                                                    {actualTssLabel}
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-[11px] text-zinc-500">
-                                                        {sessionIsCompleted
-                                                            ? sessionIsAdjusted
-                                                                ? 'Actual values differ from planned values.'
-                                                                : 'Actual values align with planned targets.'
-                                                            : 'Marking complete copies linked duration and available linked TSS. Missing values remain —.'}
+                                                    <p className="mt-1 font-mono text-xs text-zinc-100">
+                                                        {formatDurationMinutes(
+                                                            derivedStructureDurationMinutes,
+                                                        )}
                                                     </p>
                                                 </div>
+                                                <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
+                                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                        Estimated TSS
+                                                    </p>
+                                                    <p className="mt-1 font-mono text-xs text-zinc-100">
+                                                        {formatTssValue(
+                                                            derivedStructureTss,
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] text-zinc-300">
+                                                Planned duration and planned TSS are derived
+                                                from the current workout structure.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label
+                                                    htmlFor="planned-duration-minutes"
+                                                    className="text-xs text-zinc-400"
+                                                >
+                                                    Planned Duration (min)
+                                                </Label>
+                                                <Input
+                                                    id="planned-duration-minutes"
+                                                    ref={plannedDurationInputRef}
+                                                    type="number"
+                                                    min={1}
+                                                    disabled={!canManageSessionWrites}
+                                                    value={plannedDurationMinutes}
+                                                    onChange={(event) => {
+                                                        setPlannedDurationMinutes(
+                                                            event.target.value,
+                                                        );
+                                                        clearFieldError(
+                                                            'planned_duration_minutes',
+                                                        );
+                                                    }}
+                                                    className="border-border bg-background font-mono text-sm text-zinc-200"
+                                                />
+                                                <InputError
+                                                    message={errors.planned_duration_minutes}
+                                                />
+                                            </div>
 
-                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
+                                            <div className="space-y-1.5">
+                                                <Label
+                                                    htmlFor="planned-tss"
+                                                    className="text-xs text-zinc-400"
+                                                >
+                                                    Planned TSS
+                                                </Label>
+                                                <Input
+                                                    id="planned-tss"
+                                                    type="number"
+                                                    min={0}
+                                                    disabled={!canManageSessionWrites}
+                                                    value={plannedTss}
+                                                    onChange={(event) => {
+                                                        setPlannedTss(
+                                                            event.target.value,
+                                                        );
+                                                        clearFieldError(
+                                                            'planned_tss',
+                                                        );
+                                                    }}
+                                                    className="border-border bg-background font-mono text-sm text-zinc-200"
+                                                />
+                                                <InputError
+                                                    message={errors.planned_tss}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5">
+                                        <Label
+                                            htmlFor="session-notes"
+                                            className="text-xs text-zinc-400"
+                                        >
+                                            Notes
+                                        </Label>
+                                        <textarea
+                                            id="session-notes"
+                                            rows={4}
+                                            disabled={!canManageSessionWrites}
+                                            value={notes}
+                                            onChange={(event) => {
+                                                setNotes(event.target.value);
+                                                clearFieldError('notes');
+                                            }}
+                                            className={cn(
+                                                'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
+                                                'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                                                !canManageSessionWrites &&
+                                                    'cursor-default opacity-65',
+                                            )}
+                                        />
+                                        <InputError message={errors.notes} />
+                                    </div>
+
+                                    {isEditMode ? (
+                                        <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-[11px] font-medium tracking-wide text-zinc-300 uppercase">
+                                                    Suggested Activities
+                                                </p>
+                                                {isLoadingSessionDetails ? (
+                                                    <span className="text-[11px] text-zinc-500">
+                                                        Loading...
+                                                    </span>
+                                                ) : null}
+                                            </div>
+
+                                            {linkedActivitySummary !== null ? (
+                                                <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 p-2.5">
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div className="min-w-0">
-                                                            {sessionIsCompleted ? (
-                                                                <p className="flex items-center gap-1.5 text-xs text-emerald-300">
-                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                    Completed
-                                                                    {sessionIsAdjusted ? (
-                                                                        <span className="rounded-full border border-zinc-600/70 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
-                                                                            Adjusted
-                                                                        </span>
-                                                                    ) : null}
-                                                                </p>
-                                                            ) : (
-                                                                <p className="text-xs text-zinc-300">
-                                                                    Ready to mark as completed.
-                                                                </p>
-                                                            )}
-                                                            <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                                {sessionIsCompleted
-                                                                    ? selectedSession.completedAt !== null
-                                                                        ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
-                                                                        : 'Completed'
-                                                                    : 'Uses linked activity values only.'}
+                                                            <p className="flex items-center gap-1.5 text-xs text-sky-200">
+                                                                <Link2 className="h-3.5 w-3.5" />
+                                                                Linked activity
+                                                            </p>
+                                                            <p className="mt-1 text-xs text-zinc-300">
+                                                                {formatStartedAt(
+                                                                    linkedActivitySummary.startedAt,
+                                                                )}
+                                                                {' • '}
+                                                                {formatDurationSeconds(
+                                                                    linkedActivitySummary.durationSeconds,
+                                                                )}
                                                             </p>
                                                         </div>
 
                                                         {canManageSessionLinks ? (
-                                                            sessionIsCompleted ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={!canPerformLinking}
+                                                                onClick={() => {
+                                                                    void unlinkActivity();
+                                                                }}
+                                                                className="border-red-500/35 text-red-300 hover:text-red-200"
+                                                            >
+                                                                <Unlink className="h-3.5 w-3.5" />
+                                                                {isUnlinkingActivity
+                                                                    ? 'Unlinking...'
+                                                                    : 'Unlink'}
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
+
+                                                    {selectedSession !== null ? (
+                                                        <>
+                                                            <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
+                                                                <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
+                                                                    Planned vs Actual
+                                                                </p>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                                        <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                                            Duration
+                                                                        </p>
+                                                                        <p className="mt-1 text-[11px] text-zinc-300">
+                                                                            Planned:{' '}
+                                                                            <span className="font-mono text-zinc-100">
+                                                                                {plannedDurationLabel}
+                                                                            </span>
+                                                                        </p>
+                                                                        <p className="mt-0.5 text-[11px] text-zinc-300">
+                                                                            Actual:{' '}
+                                                                            <span className="font-mono text-zinc-100">
+                                                                                {actualDurationLabel}
+                                                                            </span>
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                                        <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                                            TSS
+                                                                        </p>
+                                                                        <p className="mt-1 text-[11px] text-zinc-300">
+                                                                            Planned:{' '}
+                                                                            <span className="font-mono text-zinc-100">
+                                                                                {plannedTssLabel}
+                                                                            </span>
+                                                                        </p>
+                                                                        <p className="mt-0.5 text-[11px] text-zinc-300">
+                                                                            Actual:{' '}
+                                                                            <span className="font-mono text-zinc-100">
+                                                                                {actualTssLabel}
+                                                                            </span>
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[11px] text-zinc-500">
+                                                                    {sessionIsCompleted
+                                                                        ? sessionIsAdjusted
+                                                                            ? 'Actual values differ from planned values.'
+                                                                            : 'Actual values align with planned targets.'
+                                                                        : 'Marking complete copies linked duration and available linked TSS. Missing values remain —.'}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="space-y-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        {sessionIsCompleted ? (
+                                                                            <p className="flex items-center gap-1.5 text-xs text-emerald-300">
+                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                                Completed
+                                                                                {sessionIsAdjusted ? (
+                                                                                    <span className="rounded-full border border-zinc-600/70 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                                                                                        Adjusted
+                                                                                    </span>
+                                                                                ) : null}
+                                                                            </p>
+                                                                        ) : (
+                                                                            <p className="text-xs text-zinc-300">
+                                                                                Ready to mark as completed.
+                                                                            </p>
+                                                                        )}
+                                                                        <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                                            {sessionIsCompleted
+                                                                                ? selectedSession.completedAt !== null
+                                                                                    ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
+                                                                                    : 'Completed'
+                                                                                : 'Uses linked activity values only.'}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {canManageSessionLinks ? (
+                                                                        sessionIsCompleted ? (
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                disabled={
+                                                                                    !canPerformCompletion
+                                                                                }
+                                                                                onClick={() => {
+                                                                                    void revertSessionCompletion();
+                                                                                }}
+                                                                            >
+                                                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                                                {isRevertingCompletion
+                                                                                    ? 'Reverting...'
+                                                                                    : 'Revert to Planned'}
+                                                                            </Button>
+                                                                        ) : (
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                disabled={
+                                                                                    !canPerformCompletion
+                                                                                }
+                                                                                onClick={() => {
+                                                                                    void completeSession();
+                                                                                }}
+                                                                            >
+                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                                {isCompletingSession
+                                                                                    ? 'Completing...'
+                                                                                    : 'Mark as Completed'}
+                                                                            </Button>
+                                                                        )
+                                                                    ) : null}
+                                                                </div>
+
+                                                                {sessionIsCompleted ? (
+                                                                    <p className="text-[11px] text-zinc-500">
+                                                                        Reverting completion clears
+                                                                        actual duration and actual
+                                                                        TSS, while keeping this
+                                                                        activity linked.
+                                                                    </p>
+                                                                ) : null}
+                                                            </div>
+                                                        </>
+                                                    ) : null}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-zinc-500">
+                                                    No linked activity yet.
+                                                </p>
+                                            )}
+
+                                            {suggestedActivities.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {suggestedActivities.map((activity) => (
+                                                        <div
+                                                            key={activity.id}
+                                                            className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs text-zinc-300">
+                                                                    {formatStartedAt(
+                                                                        activity.startedAt,
+                                                                    )}
+                                                                </p>
+                                                                <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                                    {activity.sport ?? 'other'}
+                                                                    {' • '}
+                                                                    {formatDurationSeconds(
+                                                                        activity.durationSeconds,
+                                                                    )}
+                                                                </p>
+                                                            </div>
+
+                                                            {canManageSessionLinks ? (
                                                                 <Button
                                                                     type="button"
                                                                     size="sm"
                                                                     variant="outline"
                                                                     disabled={
-                                                                        !canPerformCompletion
+                                                                        !canPerformLinking
                                                                     }
                                                                     onClick={() => {
-                                                                        void revertSessionCompletion();
+                                                                        void linkActivity(
+                                                                            activity.id,
+                                                                        );
                                                                     }}
                                                                 >
-                                                                    <RotateCcw className="h-3.5 w-3.5" />
-                                                                    {isRevertingCompletion
-                                                                        ? 'Reverting...'
-                                                                        : 'Revert to Planned'}
+                                                                    <Link2 className="h-3.5 w-3.5" />
+                                                                    {isLinkingActivity
+                                                                        ? 'Linking...'
+                                                                        : 'Link'}
                                                                 </Button>
-                                                            ) : (
-                                                                <Button
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    disabled={
-                                                                        !canPerformCompletion
-                                                                    }
-                                                                    onClick={() => {
-                                                                        void completeSession();
-                                                                    }}
-                                                                >
-                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                    {isCompletingSession
-                                                                        ? 'Completing...'
-                                                                        : 'Mark as Completed'}
-                                                                </Button>
-                                                            )
-                                                        ) : null}
-                                                    </div>
-
-                                                    {sessionIsCompleted ? (
-                                                        <p className="text-[11px] text-zinc-500">
-                                                            Reverting completion clears
-                                                            actual duration and actual
-                                                            TSS, while keeping this
-                                                            activity linked.
-                                                        </p>
-                                                    ) : null}
+                                                            ) : null}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            </>
+                                            ) : !isLoadingSessionDetails ? (
+                                                <p className="text-xs text-zinc-500">
+                                                    No suggested activities found.
+                                                </p>
+                                            ) : null}
+
+                                            <InputError message={errors.activity_id} />
+                                            <InputError message={errors.session} />
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-border px-6 py-4">
+                            <DialogFooter className="gap-2 sm:justify-between">
+                                {isEditMode && canManageSessionWrites ? (
+                                    <div className="mr-auto flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                confirmingDelete
+                                                    ? 'destructive'
+                                                    : 'ghost'
+                                            }
+                                            size="sm"
+                                            className={
+                                                confirmingDelete
+                                                    ? ''
+                                                    : 'text-red-400 hover:text-red-300'
+                                            }
+                                            disabled={isBusy}
+                                            onClick={deleteSession}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            {isDeleting
+                                                ? 'Deleting...'
+                                                : confirmingDelete
+                                                  ? 'Confirm Delete'
+                                                  : 'Delete'}
+                                        </Button>
+
+                                        {confirmingDelete ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={isBusy}
+                                                onClick={() =>
+                                                    setConfirmingDelete(false)
+                                                }
+                                            >
+                                                Cancel
+                                            </Button>
                                         ) : null}
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-zinc-500">
-                                        No linked activity yet.
-                                    </p>
+                                    <span />
                                 )}
 
-                                {suggestedActivities.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {suggestedActivities.map((activity) => (
-                                            <div
-                                                key={activity.id}
-                                                className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
-                                            >
-                                                <div className="min-w-0">
-                                                    <p className="text-xs text-zinc-300">
-                                                        {formatStartedAt(
-                                                            activity.startedAt,
-                                                        )}
-                                                    </p>
-                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                        {activity.sport ?? 'other'}
-                                                        {' • '}
-                                                        {formatDurationSeconds(
-                                                            activity.durationSeconds,
-                                                        )}
-                                                    </p>
-                                                </div>
-
-                                                {canManageSessionLinks ? (
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={
-                                                            !canPerformLinking
-                                                        }
-                                                        onClick={() => {
-                                                            void linkActivity(
-                                                                activity.id,
-                                                            );
-                                                        }}
-                                                    >
-                                                        <Link2 className="h-3.5 w-3.5" />
-                                                        {isLinkingActivity
-                                                            ? 'Linking...'
-                                                            : 'Link'}
-                                                    </Button>
-                                                ) : null}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : !isLoadingSessionDetails ? (
-                                    <p className="text-xs text-zinc-500">
-                                        No suggested activities found.
-                                    </p>
-                                ) : null}
-
-                                <InputError message={errors.activity_id} />
-                                <InputError message={errors.session} />
-                            </div>
-                        ) : null}
-
-                        <DialogFooter className="gap-2 sm:justify-between">
-                            {isEditMode && canManageSessionWrites ? (
-                                <div className="mr-auto flex items-center gap-2">
+                                <div className="flex items-center gap-2">
                                     <Button
                                         type="button"
-                                        variant={
-                                            confirmingDelete
-                                                ? 'destructive'
-                                                : 'ghost'
-                                        }
-                                        size="sm"
-                                        className={
-                                            confirmingDelete
-                                                ? ''
-                                                : 'text-red-400 hover:text-red-300'
-                                        }
+                                        variant="outline"
                                         disabled={isBusy}
-                                        onClick={deleteSession}
+                                        onClick={() => onOpenChange(false)}
                                     >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                        {isDeleting
-                                            ? 'Deleting...'
-                                            : confirmingDelete
-                                              ? 'Confirm Delete'
-                                              : 'Delete'}
+                                        Close
                                     </Button>
 
-                                    {confirmingDelete ? (
+                                    {canManageSessionWrites ? (
                                         <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={isBusy}
-                                            onClick={() =>
-                                                setConfirmingDelete(false)
-                                            }
+                                            type="submit"
+                                            disabled={!canPersistSessionWrites}
                                         >
-                                            Cancel
+                                            {isSubmitting
+                                                ? 'Saving...'
+                                                : isEditMode
+                                                  ? 'Save Changes'
+                                                  : 'Create Session'}
                                         </Button>
                                     ) : null}
                                 </div>
+                            </DialogFooter>
+
+                            {!canManageSessionWrites ? (
+                                <p className="mt-2 text-right text-[11px] text-zinc-500">
+                                    Session fields are read-only in this context.
+                                </p>
                             ) : (
-                                <span />
+                                <p className="mt-2 text-right text-[11px] text-zinc-500">
+                                    Press Enter to save, Esc to close.
+                                </p>
                             )}
 
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={isBusy}
-                                    onClick={() => onOpenChange(false)}
+                            {isBusy ? (
+                                <p
+                                    aria-live="polite"
+                                    className="mt-2 text-right text-[11px] text-zinc-500"
                                 >
-                                    Close
-                                </Button>
-
-                                {canManageSessionWrites ? (
-                                    <Button
-                                        type="submit"
-                                        disabled={!canPersistSessionWrites}
-                                    >
-                                        {isSubmitting
-                                            ? 'Saving...'
-                                            : isEditMode
-                                              ? 'Save Changes'
-                                              : 'Create Session'}
-                                    </Button>
-                                ) : null}
-                            </div>
-                        </DialogFooter>
-
-                        {!canManageSessionWrites ? (
-                            <p className="text-right text-[11px] text-zinc-500">
-                                Session fields are read-only in this context.
-                            </p>
-                        ) : null}
-
-                        {isBusy ? (
-                            <p
-                                aria-live="polite"
-                                className="text-right text-[11px] text-zinc-500"
-                            >
-                                {isDeleting
-                                    ? 'Deleting session...'
-                                    : isLinkingActivity
-                                      ? 'Linking activity...'
-                                      : isUnlinkingActivity
-                                        ? 'Unlinking activity...'
-                                        : isCompletingSession
-                                          ? 'Completing session...'
-                                          : isRevertingCompletion
-                                            ? 'Reverting completion...'
-                                        : 'Saving session...'}
-                            </p>
-                        ) : null}
+                                    {isDeleting
+                                        ? 'Deleting session...'
+                                        : isLinkingActivity
+                                          ? 'Linking activity...'
+                                          : isUnlinkingActivity
+                                            ? 'Unlinking activity...'
+                                            : isCompletingSession
+                                              ? 'Completing session...'
+                                              : isRevertingCompletion
+                                                ? 'Reverting completion...'
+                                            : 'Saving session...'}
+                                </p>
+                            ) : null}
+                        </div>
                     </form>
                 ) : null}
             </DialogContent>
@@ -1154,6 +1315,104 @@ function toSport(value: string): Sport {
     return 'other';
 }
 
+const workoutStructureUnits: WorkoutStructureUnit[] = [
+    'ftp_percent',
+    'max_hr_percent',
+    'threshold_hr_percent',
+    'threshold_speed_percent',
+    'rpe',
+];
+
+const workoutStructureBlockTypes: WorkoutStructureStep['type'][] = [
+    'warmup',
+    'active',
+    'recovery',
+    'cooldown',
+    'two_step_repeats',
+    'three_step_repeats',
+    'repeats',
+    'ramp_up',
+    'ramp_down',
+];
+
+function normalizeEditorWorkoutStructure(
+    structure: TrainingSessionView['plannedStructure'],
+): WorkoutStructure | null {
+    if (structure === null) {
+        return null;
+    }
+
+    const unit = workoutStructureUnits.includes(
+        structure.unit as WorkoutStructureUnit,
+    )
+        ? (structure.unit as WorkoutStructureUnit)
+        : 'rpe';
+    const mode: WorkoutStructureMode = structure.mode === 'target'
+        ? 'target'
+        : 'range';
+
+    return {
+        unit,
+        mode,
+        steps: structure.steps.map((step, index) => ({
+            id: step.id ?? `step-${Date.now()}-${index}`,
+            type: workoutStructureBlockTypes.includes(
+                step.type as WorkoutStructureStep['type'],
+            )
+                ? (step.type as WorkoutStructureStep['type'])
+                : 'active',
+            durationMinutes: Math.max(1, Math.round(step.durationMinutes)),
+            target:
+                step.target === null ||
+                step.target === undefined ||
+                Number.isNaN(step.target)
+                    ? null
+                    : step.target,
+            rangeMin:
+                step.rangeMin === null ||
+                step.rangeMin === undefined ||
+                Number.isNaN(step.rangeMin)
+                    ? null
+                    : step.rangeMin,
+            rangeMax:
+                step.rangeMax === null ||
+                step.rangeMax === undefined ||
+                Number.isNaN(step.rangeMax)
+                    ? null
+                    : step.rangeMax,
+            repeatCount: Math.max(1, Math.round(step.repeatCount ?? 1)),
+            note: step.note ?? '',
+            items:
+                step.items?.map((item, itemIndex) => ({
+                    id: item.id ?? `item-${Date.now()}-${index}-${itemIndex}`,
+                    label: item.label ?? `Step ${itemIndex + 1}`,
+                    durationMinutes: Math.max(
+                        1,
+                        Math.round(item.durationMinutes),
+                    ),
+                    target:
+                        item.target === null ||
+                        item.target === undefined ||
+                        Number.isNaN(item.target)
+                            ? null
+                            : item.target,
+                    rangeMin:
+                        item.rangeMin === null ||
+                        item.rangeMin === undefined ||
+                        Number.isNaN(item.rangeMin)
+                            ? null
+                            : item.rangeMin,
+                    rangeMax:
+                        item.rangeMax === null ||
+                        item.rangeMax === undefined ||
+                        Number.isNaN(item.rangeMax)
+                            ? null
+                            : item.rangeMax,
+                })) ?? null,
+        })),
+    };
+}
+
 function buildPayload(data: {
     trainingWeekId: number | null;
     date: string;
@@ -1161,6 +1420,9 @@ function buildPayload(data: {
     plannedDurationMinutes: string;
     plannedTss: string;
     notes: string;
+    plannedStructure: WorkoutStructure | null;
+    derivedStructureDurationMinutes: number;
+    derivedStructureTss: number | null;
 }): SessionWritePayload {
     const parsedDurationMinutes = Number.parseInt(
         data.plannedDurationMinutes,
@@ -1173,16 +1435,89 @@ function buildPayload(data: {
         training_week_id: data.trainingWeekId,
         date: data.date,
         sport: data.sport,
-        planned_duration_minutes: Number.isFinite(parsedDurationMinutes)
-            ? parsedDurationMinutes
-            : 0,
+        planned_duration_minutes:
+            data.plannedStructure !== null
+                ? Math.max(1, Math.round(data.derivedStructureDurationMinutes))
+                : Number.isFinite(parsedDurationMinutes)
+                  ? parsedDurationMinutes
+                  : 0,
         planned_tss:
-            data.plannedTss.trim() === ''
-                ? null
-                : Number.isFinite(parsedPlannedTss)
-                  ? parsedPlannedTss
-                  : null,
+            data.plannedStructure !== null
+                ? data.derivedStructureTss
+                : data.plannedTss.trim() === ''
+                  ? null
+                  : Number.isFinite(parsedPlannedTss)
+                    ? parsedPlannedTss
+                    : null,
         notes: normalizedNotes === '' ? null : normalizedNotes,
+        planned_structure: normalizePlannedStructureForRequest(
+            data.plannedStructure,
+        ),
+    };
+}
+
+function normalizePlannedStructureForRequest(
+    plannedStructure: WorkoutStructure | null,
+): SessionWritePayload['planned_structure'] {
+    if (
+        plannedStructure === null ||
+        !Array.isArray(plannedStructure.steps) ||
+        plannedStructure.steps.length === 0
+    ) {
+        return null;
+    }
+
+    return {
+        unit: plannedStructure.unit,
+        mode: plannedStructure.mode,
+        steps: plannedStructure.steps.map((step) => {
+            const normalizedNote = step.note.trim();
+
+            return {
+                id: step.id,
+                type: step.type,
+                duration_minutes: Math.max(1, Math.round(step.durationMinutes)),
+                target:
+                    step.target === null || Number.isNaN(step.target)
+                        ? null
+                        : step.target,
+                range_min:
+                    step.rangeMin === null || Number.isNaN(step.rangeMin)
+                        ? null
+                        : step.rangeMin,
+                range_max:
+                    step.rangeMax === null || Number.isNaN(step.rangeMax)
+                        ? null
+                        : step.rangeMax,
+                repeat_count: Math.max(1, Math.round(step.repeatCount)),
+                note: normalizedNote === '' ? null : normalizedNote,
+                items:
+                    step.items?.map((item) => {
+                        return {
+                            id: item.id,
+                            label: item.label,
+                            duration_minutes: Math.max(
+                                1,
+                                Math.round(item.durationMinutes),
+                            ),
+                            target:
+                                item.target === null || Number.isNaN(item.target)
+                                    ? null
+                                    : item.target,
+                            range_min:
+                                item.rangeMin === null ||
+                                Number.isNaN(item.rangeMin)
+                                    ? null
+                                    : item.rangeMin,
+                            range_max:
+                                item.rangeMax === null ||
+                                Number.isNaN(item.rangeMax)
+                                    ? null
+                                    : item.rangeMax,
+                        };
+                    }) ?? null,
+            };
+        }),
     };
 }
 
@@ -1211,6 +1546,21 @@ function extractValidationErrors(payload: unknown): ValidationErrors | null {
             extracted[field] = value[0];
         }
     });
+
+    const plannedStructureError = Object.entries(errors).find(([key, value]) => {
+        return (
+            key.startsWith('planned_structure')
+            && Array.isArray(value)
+            && value.length > 0
+            && typeof value[0] === 'string'
+        );
+    });
+
+    if (plannedStructureError !== undefined) {
+        extracted.planned_structure = (
+            plannedStructureError[1] as Array<string>
+        )[0];
+    }
 
     return extracted;
 }
@@ -1242,6 +1592,35 @@ function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
         plannedTss: session.planned_tss,
         actualTss: session.actual_tss,
         notes: session.notes,
+        plannedStructure:
+            session.planned_structure !== undefined &&
+            session.planned_structure !== null
+                ? {
+                      unit: session.planned_structure.unit as WorkoutStructureUnit,
+                      mode: session.planned_structure.mode as WorkoutStructureMode,
+                      steps: session.planned_structure.steps.map((step) => ({
+                          id: step.id ?? `step-${session.id}-${step.type}`,
+                          type: step.type as WorkoutStructureStep['type'],
+                          durationMinutes: step.duration_minutes,
+                          target: step.target ?? null,
+                          rangeMin: step.range_min ?? null,
+                      rangeMax: step.range_max ?? null,
+                      repeatCount: step.repeat_count ?? 1,
+                      note: step.note ?? '',
+                      items:
+                          step.items?.map((item, itemIndex) => ({
+                              id:
+                                  item.id ??
+                                  `item-${session.id}-${step.type}-${itemIndex}`,
+                              label: item.label ?? `Step ${itemIndex + 1}`,
+                              durationMinutes: item.duration_minutes,
+                              target: item.target ?? null,
+                              rangeMin: item.range_min ?? null,
+                              rangeMax: item.range_max ?? null,
+                          })) ?? null,
+                  })),
+              }
+            : null,
         linkedActivityId: session.linked_activity_id ?? null,
         linkedActivitySummary:
             session.linked_activity_summary !== undefined &&

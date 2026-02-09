@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ImpersonationStartController;
 use App\Http\Controllers\Admin\ImpersonationStopController;
 use App\Http\Controllers\AthleteCalendarController;
 use App\Http\Controllers\AthleteProgressController;
+use App\Http\Controllers\AthleteSessionDetailController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
@@ -40,6 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('progress', AthleteProgressController::class)
         ->name('progress.index');
 
+    Route::get('sessions/{trainingSession}', AthleteSessionDetailController::class)
+        ->name('sessions.show');
+
     Route::get('plans', function () {
         return Inertia::render('plans/index');
     })->name('plans.index');
@@ -52,9 +56,6 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('impersonate.start');
     });
 
-    Route::get('settings/overview', function () {
-        return Inertia::render('settings/overview');
-    })->name('settings.overview');
 });
 
 require __DIR__.'/settings.php';

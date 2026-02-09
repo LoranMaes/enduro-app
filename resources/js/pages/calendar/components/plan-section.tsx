@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Layers } from 'lucide-react';
 import {
     useCallback,
@@ -28,6 +28,7 @@ import {
 } from '../lib/calendar-weeks';
 import {
     SessionEditorModal,
+    type AthleteTrainingTargets,
     type SessionEditorContext,
 } from './session-editor-modal';
 import { WeekSection } from './week-section';
@@ -35,6 +36,16 @@ import { WeekSection } from './week-section';
 type PlanSectionProps = {
     initialSessions: TrainingSessionView[];
     initialWindow: CalendarWindow;
+    providerStatus: Record<
+        string,
+        {
+            connected: boolean;
+            last_synced_at: string | null;
+            last_sync_status: string | null;
+            provider_athlete_id: string | null;
+        }
+    > | null;
+    athleteTrainingTargets: AthleteTrainingTargets | null;
     viewingAthleteName?: string | null;
 };
 
@@ -45,6 +56,8 @@ const sessionsPerPage = 100;
 export function PlanSection({
     initialSessions,
     initialWindow,
+    providerStatus,
+    athleteTrainingTargets,
     viewingAthleteName = null,
 }: PlanSectionProps) {
     const { auth } = usePage<SharedData>().props;
@@ -71,6 +84,24 @@ export function PlanSection({
     const canManageSessionWrites =
         auth.user.role === 'athlete' && !(auth.impersonating ?? false);
     const canManageSessionLinks = auth.user.role === 'athlete';
+    const stravaStatus = providerStatus?.strava ?? null;
+    const integrationLabel =
+        stravaStatus === null
+            ? 'Integrations Unavailable'
+            : stravaStatus.connected
+              ? stravaStatus.last_sync_status === 'queued'
+                  ? 'Strava Sync Queued'
+                  : stravaStatus.last_sync_status === 'running'
+                    ? 'Strava Syncing'
+                    : 'Strava Connected'
+              : 'Strava Disconnected';
+    const integrationDotClass =
+        stravaStatus !== null && stravaStatus.connected
+            ? stravaStatus.last_sync_status === 'queued' ||
+              stravaStatus.last_sync_status === 'running'
+                ? 'bg-amber-500'
+                : 'bg-emerald-500'
+            : 'bg-zinc-500';
     const weeks = useMemo(() => {
         return buildCalendarWeeks(calendarWindow, sessions);
     }, [calendarWindow, sessions]);
@@ -256,6 +287,12 @@ export function PlanSection({
                 return;
             }
 
+            if (session.status === 'completed') {
+                router.visit(`/sessions/${session.id}`);
+
+                return;
+            }
+
             setSessionEditorContext({
                 mode: 'edit',
                 trainingWeekId: session.trainingWeekId,
@@ -388,9 +425,16 @@ export function PlanSection({
                         </p>
                     ) : null}
                     <div className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                        <span
+                            className={cn(
+                                'h-2 w-2 rounded-full',
+                                integrationDotClass,
+                                stravaStatus?.last_sync_status === 'running' &&
+                                    'animate-pulse',
+                            )}
+                        />
                         <span className="text-zinc-400">
-                            Garmin Sync Active
+                            {integrationLabel}
                         </span>
                     </div>
                     <div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-xs font-medium text-zinc-200">
@@ -478,6 +522,7 @@ export function PlanSection({
                 }}
                 canManageSessionWrites={canManageSessionWrites}
                 canManageSessionLinks={canManageSessionLinks}
+                athleteTrainingTargets={athleteTrainingTargets}
                 onSaved={refreshCalendarData}
             />
         </section>

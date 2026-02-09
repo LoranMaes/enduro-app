@@ -29,13 +29,13 @@ return new class extends Migration
             ->join('training_plans', 'training_plans.id', '=', 'training_weeks.training_plan_id')
             ->whereNull('training_sessions.user_id')
             ->orderBy('training_sessions.id')
-            ->chunkById(100, function ($rows): void {
+            ->chunk(100, function ($rows): void {
                 foreach ($rows as $row) {
                     DB::table('training_sessions')
                         ->where('id', $row->id)
                         ->update(['user_id' => $row->user_id]);
                 }
-            }, 'training_sessions.id', 'id');
+            });
 
         Schema::table('training_sessions', function (Blueprint $table): void {
             $table->dropForeign(['training_week_id']);

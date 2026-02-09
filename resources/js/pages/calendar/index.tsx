@@ -18,6 +18,31 @@ type CalendarPageProps = {
         starts_at: string;
         ends_at: string;
     };
+    providerStatus: Record<
+        string,
+        {
+            connected: boolean;
+            last_synced_at: string | null;
+            last_sync_status: string | null;
+            provider_athlete_id: string | null;
+        }
+    > | null;
+    athleteTrainingTargets: {
+        ftp_watts: number | null;
+        max_heart_rate_bpm: number | null;
+        threshold_heart_rate_bpm: number | null;
+        threshold_pace_seconds_per_km: number | null;
+        power_zones: Array<{
+            label: string;
+            min: number;
+            max: number;
+        }>;
+        heart_rate_zones: Array<{
+            label: string;
+            min: number;
+            max: number;
+        }>;
+    } | null;
     viewingAthlete?: {
         id: number;
         name: string;
@@ -35,6 +60,8 @@ export default function CalendarPage({
     trainingPlans: _trainingPlans,
     trainingSessions,
     calendarWindow,
+    providerStatus,
+    athleteTrainingTargets,
     viewingAthlete = null,
 }: CalendarPageProps) {
     void _trainingPlans;
@@ -49,6 +76,8 @@ export default function CalendarPage({
                     <PlanSection
                         initialSessions={sessions}
                         initialWindow={calendarWindow}
+                        providerStatus={providerStatus}
+                        athleteTrainingTargets={athleteTrainingTargets}
                         viewingAthleteName={viewingAthlete?.name ?? null}
                     />
                 </div>

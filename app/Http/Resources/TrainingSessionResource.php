@@ -67,6 +67,7 @@ class TrainingSessionResource extends JsonResource
             'actual_tss' => $this->actual_tss,
             'completed_at' => $this->completed_at?->toISOString(),
             'notes' => $this->notes,
+            'planned_structure' => $this->planned_structure,
             'linked_activity_id' => $linkedActivityId,
             'linked_activity_summary' => $linkedActivitySummary,
             'suggested_activities' => $suggestedActivities,

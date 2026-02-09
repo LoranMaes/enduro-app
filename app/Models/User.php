@@ -27,6 +27,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'timezone',
+        'unit_system',
         'strava_access_token',
         'strava_refresh_token',
         'strava_token_expires_at',
@@ -58,6 +60,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
+            'timezone' => 'string',
+            'unit_system' => 'string',
             'strava_token_expires_at' => 'datetime',
         ];
     }

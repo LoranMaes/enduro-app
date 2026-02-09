@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\ActivityProviderSyncController;
+use App\Http\Controllers\Api\ActivityStreamController;
 use App\Http\Controllers\Api\StravaWebhookEventController;
 use App\Http\Controllers\Api\StravaWebhookVerificationController;
 use App\Http\Controllers\Api\TrainingPlanController;
@@ -46,6 +47,8 @@ Route::middleware([
         'index',
         'show',
     ]);
+    Route::get('activities/{activity}/streams', ActivityStreamController::class)
+        ->name('activities.streams');
     Route::post('activity-providers/{provider}/sync', ActivityProviderSyncController::class)
         ->name('activity-providers.sync');
 });

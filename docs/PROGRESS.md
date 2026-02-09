@@ -1,5 +1,177 @@
 # Endure — Progress Log
 
+## 2026-02-09 (Workout Builder + Session Detail UX Refinement)
+
+- Expanded workout structure payload/model handling for nested block items:
+  - `planned_structure.steps.*.items` is now validated and persisted
+  - added `repeats` block-type validation in session store/update requests
+  - range/target validation now applies to nested repeat/ramp items
+- Improved builder execution UX:
+  - block-list drag/drop now uses a dedicated drag handle + visible insertion line
+  - repeat/ramp inner blocks remain individually editable and persist across reloads
+- Session editor modal hardening:
+  - larger structure-authoring modal width and viewport-safe height
+  - details tab now switches to structure-driven planned metrics when structure exists
+  - planned duration + planned TSS payload values are now derived from structure (manual fields only when no structure exists)
+  - keyboard hint added (`Enter` save, `Esc` close)
+- Rebuilt session-detail surface for fidelity + usability:
+  - graph zoom remains click-drag based (no range sliders)
+  - hover guideline now tracks cursor precisely
+  - elevation renders as a filled background profile
+  - map remains real Leaflet and now keeps focused zoom segment contrast
+  - route hover telemetry panel remains vertically stacked on map
+  - analysis panel label simplified to `Analysis`
+  - planned structure preview is now read-only with hover inspection and summary copy
+  - metrics consolidated into one right-side `Statistics` card
+  - added `Internal Notes` textarea with explicit save action
+  - map moved to second row in detail composition
+- Session-detail composition adjusted again for workflow clarity:
+  - row 1: route map + route statistics side card (internal notes included)
+  - row 2: planned blocks + analysis when structure exists, otherwise full-width analysis
+- chart rendering performance improved via deterministic stream downsampling
+- Verification completed:
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php`
+  - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-09 (Workout Structure Hardening Pass)
+
+- Added athlete performance-anchor persistence for workout builder scaling:
+  - new athlete profile fields:
+    - `ftp_watts`
+    - `max_heart_rate_bpm`
+    - `threshold_heart_rate_bpm`
+    - `threshold_pace_seconds_per_km`
+    - `power_zones` (JSON)
+    - `heart_rate_zones` (JSON)
+  - new migration:
+    - `2026_02_09_142712_add_performance_targets_to_athlete_profiles_table.php`
+  - settings training-preferences validation now enforces:
+    - numeric anchor bounds
+    - threshold HR <= max HR
+    - zone range integrity (`min <= max`)
+- Upgraded athlete Settings → Training Preferences surface:
+  - added editable performance anchors (FTP/HR/pace)
+  - added editable zone tables (power + heart rate)
+  - values persist through existing training-preferences endpoint
+- Wired athlete training targets into calendar/session editor context:
+  - dashboard + athlete calendar controllers now provide `athleteTrainingTargets`
+  - session editor passes these targets into workout builder
+- Rebuilt workout structure builder for stronger execution flow:
+  - unit-aware preview axis labels (with converted values when anchors exist)
+  - explicit range-band visualization in preview
+  - block-type-specific default targets/ranges
+  - grouped repeat/warmup templates:
+    - warmup = phased block in one card
+    - two/three-step repeats remain single editable cards with repeat count
+  - overview tiles added (`Total Duration`, `Estimated TSS`, `Blocks`)
+  - preview blocks are now draggable
+  - list drag/drop now uses clear insertion separators for snappier placement feedback
+- Verification completed:
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Settings/AthleteTrainingPreferencesTest.php tests/Feature/DashboardTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php`
+  - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-09 (Athlete Slicing Parity Implementation Pass)
+
+- Implemented slicing-aligned athlete settings overview as the primary settings surface:
+  - route moved to `/settings/overview` with tab-driven shell
+  - tabs now follow slicing structure:
+    - Profile
+    - Training Preferences
+    - Integrations
+    - Billing & Plans
+  - athlete account label and sidebar tab hierarchy added
+  - profile/training preference persistence wired to dedicated controllers + FormRequests
+- Added persistence for athlete settings fields:
+  - `users`: `timezone`, `unit_system`
+  - `athlete_profiles`: `primary_sport`, `weekly_training_days`, `preferred_rest_day`, `intensity_distribution`
+- Replaced static calendar provider chip behavior:
+  - calendar/dashboard now receive real provider status props
+  - header chip reflects Strava connection/sync state instead of fixed Garmin copy
+- Implemented interval structure backbone for session create/edit:
+  - new `planned_structure` JSON column on `training_sessions`
+  - request validation + controller persistence for structure payload
+  - slicing-style workout structure builder integrated in session editor modal
+  - supports requested block types and editable fields (bike/run-first workflow)
+- Added athlete completed-session detail flow:
+  - new route/controller: `/sessions/{trainingSession}`
+  - completed session click now opens dedicated detail page
+  - detail page includes planned-vs-actual surfaces, stream toggles, and map panel
+- Added provider-agnostic activity stream read layer:
+  - new stream contract + manager resolution
+  - Strava stream provider implementation
+  - `GET /api/activities/{activity}/streams` endpoint
+  - caching support via `ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS`
+  - default stream enablement aligns with requirement:
+    - on by default: heart rate, power, cadence, elevation
+    - optional streams appear after available set; unavailable streams are disabled
+- Updated athlete plans and progress parity surfaces:
+  - `/plans` now slicing-style coming-soon shell
+  - `/progress` expanded with weekly logs section tied to real session aggregates
+- UX hardening follow-up:
+  - session editor modal now stays viewport-safe (`max-height` + internal scroll)
+  - workout structure moved to a dedicated editor tab
+  - modal expands to a wider canvas while authoring workout structure
+  - completed-session detail graph upgraded with:
+    - x-axis mode toggle (`kilometers` default when available, `time` fallback)
+    - drag-select zoom (click + drag on chart), with reset action
+    - axis grid/ticks and hover inspection
+  - route panel upgraded from static SVG to real Leaflet map with route polyline
+  - chart hover now highlights the corresponding route point on the map
+  - zoomed chart segment now maps to a contrasting highlighted route segment and focused map bounds
+  - when no planned blocks exist, the analysis panel renders full-width and planned-block wrapper is omitted
+- Fixed migration failure in training-session ownership backfill:
+  - replaced unsafe `chunkById` path with safe chunk iteration in
+    `2026_02_08_230000_add_user_id_and_nullable_week_to_training_sessions_table.php`
+- Verification completed:
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityStreamsApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/DashboardTest.php tests/Feature/ProgressPageTest.php`
+  - `vendor/bin/sail artisan test --compact tests/Feature/NavigationShellPagesTest.php tests/Feature/Settings/ProfileUpdateTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php`
+
+## 2026-02-09
+
+- Phase 0 athlete parity audit completed against slicing authority:
+  - inspected slicing sources:
+    - `slicing-enduro-app/components/**`
+    - `slicing-enduro-app/screenshots/athlete/**`
+  - inspected current athlete implementation:
+    - sidebar/nav (`resources/js/components/app-sidebar.tsx`)
+    - calendar (`resources/js/pages/calendar/**`)
+    - progress (`resources/js/pages/progress/index.tsx`)
+    - plans (`resources/js/pages/plans/index.tsx`)
+    - settings (`resources/js/pages/settings/**`, `resources/js/layouts/settings/layout.tsx`)
+- Confirmed parity matches (athlete):
+  - sidebar tab set/order currently matches requested athlete tabs:
+    - Calendar
+    - Training Progress
+    - Training Plans
+    - Settings
+  - calendar week-grid composition is in slicing shape:
+    - fixed top header
+    - fixed weekday row
+    - sticky week headers
+    - aligned 7-day columns + summary rail
+  - progress header/range shell broadly matches slicing intent:
+    - long-term analysis header
+    - range controls (`4/8/12/24`)
+    - load trend + consistency section framing
+- Detected parity gaps (athlete):
+  - calendar header still shows static `Garmin Sync Active` copy instead of real provider connection state
+  - no athlete session detail subpage equivalent to slicing training-detail screen; completed-session analysis route/view is missing
+  - no interval block builder (drag/drop planned structure) in session editor
+  - no planned-vs-actual detail surface with streams/map overlay in athlete flow
+  - progress page is missing slicing-style weekly logs section and associated list interaction
+  - plans page is still a starter-style generic card, not slicing-style coming-soon composition
+  - settings are still starter-kit multi-route pages (`profile/password/two-factor/appearance/connections`) instead of slicing tabbed settings shell:
+    - Profile
+    - Training Preferences
+    - Integrations
+    - Billing & Plans
+    - athlete account badge/label
+- Phase 0 is now blocked pending clarification answers before implementation.
+
 ## 2026-02-07
 
 - Backend domain spine generated:

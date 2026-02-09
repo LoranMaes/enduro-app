@@ -27,6 +27,7 @@ class TrainingSession extends Model
         'actual_tss',
         'completed_at',
         'notes',
+        'planned_structure',
     ];
 
     /**
@@ -38,6 +39,7 @@ class TrainingSession extends Model
             'scheduled_date' => 'date',
             'status' => TrainingSessionStatus::class,
             'completed_at' => 'datetime',
+            'planned_structure' => 'array',
         ];
     }
 

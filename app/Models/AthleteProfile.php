@@ -18,6 +18,16 @@ class AthleteProfile extends Model
         'birthdate',
         'weight',
         'height',
+        'primary_sport',
+        'weekly_training_days',
+        'preferred_rest_day',
+        'intensity_distribution',
+        'ftp_watts',
+        'max_heart_rate_bpm',
+        'threshold_heart_rate_bpm',
+        'threshold_pace_seconds_per_km',
+        'power_zones',
+        'heart_rate_zones',
     ];
 
     /**
@@ -29,6 +39,13 @@ class AthleteProfile extends Model
             'birthdate' => 'date',
             'weight' => 'float',
             'height' => 'float',
+            'weekly_training_days' => 'int',
+            'ftp_watts' => 'int',
+            'max_heart_rate_bpm' => 'int',
+            'threshold_heart_rate_bpm' => 'int',
+            'threshold_pace_seconds_per_km' => 'int',
+            'power_zones' => 'array',
+            'heart_rate_zones' => 'array',
         ];
     }
 

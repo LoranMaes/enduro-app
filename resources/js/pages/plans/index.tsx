@@ -1,11 +1,4 @@
 import { Head } from '@inertiajs/react';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -21,21 +14,49 @@ export default function PlansIndex() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Training Plans" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-y-auto rounded-xl p-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Training Plans</CardTitle>
-                        <CardDescription>
-                            Training Plans read-only overview coming soon.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground text-sm">
-                            Plan management workflows will be wired here in a
-                            later phase.
+            <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
+                <div className="mx-auto flex w-full max-w-5xl flex-1 items-center px-6 py-10">
+                    <section className="w-full rounded-2xl border border-border bg-surface p-10">
+                        <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                            Planning Surface
                         </p>
-                    </CardContent>
-                </Card>
+                        <h1 className="mt-2 text-3xl font-medium text-zinc-100">
+                            Training Plans
+                        </h1>
+                        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                            Plan management is coming in a dedicated workflow. In this
+                            phase, daily execution lives in Calendar while coach and AI
+                            plan orchestration remains intentionally out of scope.
+                        </p>
+
+                        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
+                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                    Coach-authored
+                                </p>
+                                <p className="mt-2 text-sm text-zinc-300">
+                                    Structured blocks prepared by assigned coaches.
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
+                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                    AI-assisted
+                                </p>
+                                <p className="mt-2 text-sm text-zinc-300">
+                                    Optional generated templates for athlete review.
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
+                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                    Calendar-linked
+                                </p>
+                                <p className="mt-2 text-sm text-zinc-300">
+                                    Plans feed sessions without replacing athlete control.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
         </AppLayout>
     );

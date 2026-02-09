@@ -4,9 +4,11 @@ namespace App\Services\ActivityProviders\Strava;
 
 use App\Data\Collections\ActivityCollection;
 use App\Data\ExternalActivityDTO;
+use App\Data\ExternalActivityStreamsDTO;
 use App\Models\User;
 use App\Services\ActivityProviders\ActivityProviderTokenManager;
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
+use App\Services\ActivityProviders\Contracts\ActivityStreamProvider;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderInvalidTokenException;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderRateLimitedException;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderRequestException;
@@ -17,7 +19,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
-class StravaActivityProvider implements ActivityProvider
+class StravaActivityProvider implements ActivityProvider, ActivityStreamProvider
 {
     private const PROVIDER = 'strava';
 
@@ -84,6 +86,70 @@ class StravaActivityProvider implements ActivityProvider
         }
 
         return $this->mapPayloadToDto($payload);
+    }
+
+    /**
+     * @param  list<string>  $streamKeys
+     */
+    public function fetchStreams(
+        User $user,
+        string $externalId,
+        array $streamKeys = [],
+    ): ExternalActivityStreamsDTO {
+        $normalizedKeys = $this->normalizeStreamKeys($streamKeys);
+        $requestedKeys = $normalizedKeys === []
+            ? $this->defaultStreamKeys()
+            : $normalizedKeys;
+
+        $response = $this->sendRequest(
+            user: $user,
+            method: 'GET',
+            endpoint: "/activities/{$externalId}/streams",
+            options: [
+                'query' => [
+                    'keys' => implode(',', $requestedKeys),
+                    'key_by_type' => true,
+                ],
+            ],
+        );
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            throw new ActivityProviderRequestException(
+                self::PROVIDER,
+                'Unexpected activity stream payload shape.',
+            );
+        }
+
+        $streams = [];
+        $availableStreams = [];
+
+        foreach ($this->streamKeyMap() as $stravaKey => $normalizedKey) {
+            $streamPayload = $payload[$stravaKey] ?? null;
+
+            if (! is_array($streamPayload)) {
+                continue;
+            }
+
+            $data = $streamPayload['data'] ?? null;
+
+            if (! is_array($data) || $data === []) {
+                continue;
+            }
+
+            /** @var array<int, mixed> $data */
+            $streams[$normalizedKey] = array_values($data);
+            $availableStreams[] = $normalizedKey;
+        }
+
+        return new ExternalActivityStreamsDTO(
+            provider: self::PROVIDER,
+            externalId: $externalId,
+            streams: $streams,
+            availableStreams: array_values(array_unique($availableStreams)),
+            summaryPolyline: null,
+        );
     }
 
     /**
@@ -283,5 +349,58 @@ class StravaActivityProvider implements ActivityProvider
         }
 
         return (int) $retryAfter;
+    }
+
+    /**
+     * @param  list<string>  $streamKeys
+     * @return list<string>
+     */
+    private function normalizeStreamKeys(array $streamKeys): array
+    {
+        $lookup = array_flip($this->streamKeyMap());
+        $normalized = [];
+
+        foreach ($streamKeys as $key) {
+            $normalizedKey = strtolower(trim($key));
+
+            if ($normalizedKey === '') {
+                continue;
+            }
+
+            if (array_key_exists($normalizedKey, $lookup)) {
+                $normalized[] = $lookup[$normalizedKey];
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function streamKeyMap(): array
+    {
+        return [
+            'time' => 'time',
+            'latlng' => 'latlng',
+            'distance' => 'distance',
+            'altitude' => 'elevation',
+            'velocity_smooth' => 'speed',
+            'heartrate' => 'heart_rate',
+            'cadence' => 'cadence',
+            'watts' => 'power',
+            'temp' => 'temperature',
+            'moving' => 'moving',
+            'grade_smooth' => 'grade',
+            'left_right_balance' => 'power_balance_left_right',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function defaultStreamKeys(): array
+    {
+        return array_keys($this->streamKeyMap());
     }
 }

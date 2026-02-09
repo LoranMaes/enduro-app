@@ -25,6 +25,33 @@ export const mapTrainingSession = (
         plannedTss: session.planned_tss,
         actualTss: session.actual_tss,
         notes: session.notes,
+        plannedStructure:
+            session.planned_structure !== undefined &&
+            session.planned_structure !== null
+                ? {
+                      unit: session.planned_structure.unit,
+                      mode: session.planned_structure.mode,
+                      steps: session.planned_structure.steps.map((step) => ({
+                          id: step.id ?? null,
+                          type: step.type,
+                          durationMinutes: step.duration_minutes,
+                          target: step.target ?? null,
+                          rangeMin: step.range_min ?? null,
+                          rangeMax: step.range_max ?? null,
+                          repeatCount: step.repeat_count ?? null,
+                          note: step.note ?? null,
+                          items:
+                              step.items?.map((item) => ({
+                                  id: item.id ?? null,
+                                  label: item.label ?? null,
+                                  durationMinutes: item.duration_minutes,
+                                  target: item.target ?? null,
+                                  rangeMin: item.range_min ?? null,
+                                  rangeMax: item.range_max ?? null,
+                              })) ?? null,
+                      })),
+                  }
+                : null,
         linkedActivityId: session.linked_activity_id ?? null,
         linkedActivitySummary:
             session.linked_activity_summary !== undefined &&

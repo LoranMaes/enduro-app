@@ -40,6 +40,22 @@ it('allows athletes to create update and delete their own sessions', function ()
             'planned_duration_minutes' => 90,
             'planned_tss' => 65,
             'notes' => 'Endurance run',
+            'planned_structure' => [
+                'unit' => 'threshold_hr_percent',
+                'mode' => 'range',
+                'steps' => [
+                    [
+                        'id' => 'step-1',
+                        'type' => 'warmup',
+                        'duration_minutes' => 12,
+                        'target' => null,
+                        'range_min' => 55,
+                        'range_max' => 65,
+                        'repeat_count' => 1,
+                        'note' => null,
+                    ],
+                ],
+            ],
         ]);
 
     $created->assertCreated()
@@ -47,7 +63,8 @@ it('allows athletes to create update and delete their own sessions', function ()
         ->assertJsonPath('data.scheduled_date', '2026-07-03')
         ->assertJsonPath('data.duration_minutes', 90)
         ->assertJsonPath('data.planned_tss', 65)
-        ->assertJsonPath('data.status', 'planned');
+        ->assertJsonPath('data.status', 'planned')
+        ->assertJsonPath('data.planned_structure.unit', 'threshold_hr_percent');
 
     $sessionId = $created->json('data.id');
 
@@ -72,13 +89,30 @@ it('allows athletes to create update and delete their own sessions', function ()
             'planned_duration_minutes' => 120,
             'planned_tss' => 80,
             'notes' => 'Long aerobic ride',
+            'planned_structure' => [
+                'unit' => 'ftp_percent',
+                'mode' => 'target',
+                'steps' => [
+                    [
+                        'id' => 'step-2',
+                        'type' => 'active',
+                        'duration_minutes' => 8,
+                        'target' => 90,
+                        'range_min' => null,
+                        'range_max' => null,
+                        'repeat_count' => 2,
+                        'note' => null,
+                    ],
+                ],
+            ],
         ])
         ->assertOk()
         ->assertJsonPath('data.scheduled_date', '2026-07-04')
         ->assertJsonPath('data.sport', 'bike')
         ->assertJsonPath('data.duration_minutes', 120)
         ->assertJsonPath('data.planned_tss', 80)
-        ->assertJsonPath('data.notes', 'Long aerobic ride');
+        ->assertJsonPath('data.notes', 'Long aerobic ride')
+        ->assertJsonPath('data.planned_structure.mode', 'target');
 
     $this
         ->actingAs($athlete)

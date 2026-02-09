@@ -2,7 +2,9 @@
 
 ## Current Phase
 
-Backend spine + athlete calendar write flow complete, with coach-athlete assignment, admin impersonation, explicit activity/session manual linking, explicit session completion/reversion, and athlete Training Progress read model implemented.
+Backend spine + athlete operational flows are complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
+
+Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
 ## Confidence Level
 
@@ -19,6 +21,9 @@ High — UX validated, backend structure in place
 - Activity ↔ TrainingSession matching is heuristic (date/sport/duration) and may need future confidence tuning before write-side linking is enabled
 - Linking currently supports single explicit attach/detach actions only; no bulk-link workflow yet
 - Completion flow currently copies provider data only; reconciliation UI is manual and explicit, with no auto-completion or derived load science
+- Athlete session-detail chart/map visual fidelity still needs screenshot-level polish against slicing reference
+- Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
+- Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
 
 ## Mitigations
 
@@ -67,6 +72,22 @@ LOCKED for MVP
   - completion requires linked activity
   - completion writes copied `actual_duration_minutes`/`actual_tss`
   - revert preserves activity link and resets completion fields/status
+- Session planned structure persistence is available:
+  - `training_sessions.planned_structure` JSON
+  - explicit validation in training session store/update requests
+  - nested structure items (`steps[*].items`) + `repeats` type validation are supported
+  - no auto-derived metrics or science logic attached
+- Athlete settings persistence is available:
+  - `users`: `timezone`, `unit_system`
+  - `athlete_profiles`: `primary_sport`, `weekly_training_days`, `preferred_rest_day`, `intensity_distribution`
+- Athlete workout anchor persistence is available:
+  - `athlete_profiles`: `ftp_watts`, `max_heart_rate_bpm`, `threshold_heart_rate_bpm`, `threshold_pace_seconds_per_km`
+  - `athlete_profiles`: `power_zones` JSON, `heart_rate_zones` JSON
+  - training-preferences request now validates anchor bounds + zone integrity
+- Activity stream API is available:
+  - provider-agnostic stream contract + Strava implementation
+  - `GET /api/activities/{activity}/streams`
+  - stream payload caching via configurable cache TTL
 
 ## Frontend Status
 
@@ -110,3 +131,30 @@ LOCKED for MVP
   - planned vs completed totals
   - trend chart with explicit missing-data gaps
   - consistency/streak indicators without training-science derivation
+- Settings now use slicing-style tabbed shell at `/settings/overview` with athlete account treatment and real integration state.
+- Calendar/provider header now reflects real Strava connection and sync status instead of static Garmin copy.
+- Session editor includes slicing-style interval builder and persists `planned_structure`.
+- Session editor workout builder now consumes athlete performance anchors and supports:
+  - unit-aware preview axis labels
+  - range-band rendering
+  - grouped repeat/warmup templates
+  - summary tiles (`duration`, `estimated TSS`, `blocks`)
+  - preview drag/drop + block-list insertion markers
+- Session editor now derives planned duration/TSS from structure when structure exists (manual fields only when no structure is defined).
+- Session editor modal now includes dedicated tabs and viewport-safe scroll behavior:
+  - details and structure are split into explicit tabs
+  - structure tab uses wider modal width for interval authoring
+  - modal content stays contained within viewport height
+- Completed athlete sessions now route to a dedicated session-detail page with planned-vs-actual surfaces, stream toggles, and map panel.
+- Session detail now supports interactive workout inspection:
+  - chart x-axis toggle (`kilometers`/`time`, kilometers default when available)
+  - drag-select zoom with reset for focused inspection windows
+  - hover inspection readout for stream values at the active sample
+  - cursor-aligned hover guideline and filled elevation profile rendering
+  - real Leaflet route map with full polyline + focused highlighted segment and hover-synced marker
+  - right-rail consolidated statistics card + internal-notes save surface
+  - read-only planned-structure preview with hover detail
+  - deterministic stream-point downsampling for smoother chart interaction
+  - no-planned-structure sessions collapse to full-width analysis layout (no empty planned-block shell)
+- Plans page now uses slicing-style coming-soon layout.
+- Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.

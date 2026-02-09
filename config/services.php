@@ -53,6 +53,7 @@ return [
         'token_refresh_buffer_seconds' => (int) env('ACTIVITY_PROVIDER_TOKEN_REFRESH_BUFFER_SECONDS', 300),
         'sync_lock_seconds' => (int) env('ACTIVITY_PROVIDER_SYNC_LOCK_SECONDS', 300),
         'lock_retry_seconds' => (int) env('ACTIVITY_PROVIDER_LOCK_RETRY_SECONDS', 30),
+        'stream_cache_seconds' => (int) env('ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS', 900),
     ],
 
     'strava' => [

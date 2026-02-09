@@ -3,6 +3,7 @@
 namespace App\Services\ActivityProviders;
 
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
+use App\Services\ActivityProviders\Contracts\ActivityStreamProvider;
 use App\Services\ActivityProviders\Contracts\OAuthProvider;
 use App\Services\ActivityProviders\Exceptions\UnsupportedActivityProviderException;
 use Illuminate\Contracts\Container\Container;
@@ -79,6 +80,20 @@ class ActivityProviderManager
         );
 
         return $providerInstance;
+    }
+
+    public function streamProvider(string $provider): ActivityStreamProvider
+    {
+        $activityProvider = $this->provider($provider);
+
+        if (! $activityProvider instanceof ActivityStreamProvider) {
+            throw new UnsupportedActivityProviderException(
+                strtolower(trim($provider)),
+                $this->allowedProviders,
+            );
+        }
+
+        return $activityProvider;
     }
 
     public function resolve(string $provider): ActivityProvider

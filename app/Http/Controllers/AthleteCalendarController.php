@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Dashboard\IndexRequest;
 use App\Http\Resources\TrainingPlanResource;
 use App\Http\Resources\TrainingSessionResource;
+use App\Models\ActivityProviderConnection;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\User;
@@ -73,6 +74,8 @@ class AthleteCalendarController extends Controller
             'trainingPlans' => $trainingPlanResource->response()->getData(true),
             'trainingSessions' => $trainingSessionResource->response()->getData(true),
             'calendarWindow' => $calendarWindow,
+            'providerStatus' => $this->resolveProviderStatus($athlete),
+            'athleteTrainingTargets' => $this->resolveAthleteTrainingTargets($athlete),
             'viewingAthlete' => [
                 'id' => $athlete->id,
                 'name' => $athlete->name,
@@ -111,5 +114,152 @@ class AthleteCalendarController extends Controller
             'starts_at' => (string) ($validated['starts_from'] ?? $defaultStartsAt),
             'ends_at' => (string) ($validated['ends_to'] ?? $defaultEndsAt),
         ];
+    }
+
+    /**
+     * @return array<string, array{
+     *     connected: bool,
+     *     last_synced_at: string|null,
+     *     last_sync_status: string|null,
+     *     provider_athlete_id: string|null
+     * }>|null
+     */
+    private function resolveProviderStatus(User $athlete): ?array
+    {
+        $allowedProviders = array_values(array_filter(
+            (array) config('services.activity_providers.allowed', ['strava']),
+            static fn (mixed $provider): bool => is_string($provider) && trim($provider) !== '',
+        ));
+
+        if ($allowedProviders === []) {
+            return null;
+        }
+
+        $connections = ActivityProviderConnection::query()
+            ->where('user_id', $athlete->id)
+            ->whereIn('provider', $allowedProviders)
+            ->get()
+            ->keyBy(fn (ActivityProviderConnection $connection): string => strtolower($connection->provider));
+
+        $status = [];
+
+        foreach ($allowedProviders as $provider) {
+            $normalizedProvider = strtolower(trim($provider));
+            $connection = $connections->get($normalizedProvider);
+            $legacyConnected = $normalizedProvider === 'strava'
+                && trim((string) $athlete->strava_access_token) !== '';
+
+            $status[$normalizedProvider] = [
+                'connected' => $connection instanceof ActivityProviderConnection || $legacyConnected,
+                'last_synced_at' => $connection?->last_synced_at?->toIso8601String(),
+                'last_sync_status' => $connection?->last_sync_status,
+                'provider_athlete_id' => $connection?->provider_athlete_id,
+            ];
+        }
+
+        return $status;
+    }
+
+    /**
+     * @return array{
+     *     ftp_watts: int|null,
+     *     max_heart_rate_bpm: int|null,
+     *     threshold_heart_rate_bpm: int|null,
+     *     threshold_pace_seconds_per_km: int|null,
+     *     power_zones: array<int, array{label: string, min: int, max: int}>,
+     *     heart_rate_zones: array<int, array{label: string, min: int, max: int}>
+     * }|null
+     */
+    private function resolveAthleteTrainingTargets(User $athlete): ?array
+    {
+        if (! $athlete->isAthlete()) {
+            return null;
+        }
+
+        $athlete->loadMissing('athleteProfile');
+
+        return [
+            'ftp_watts' => $athlete->athleteProfile?->ftp_watts,
+            'max_heart_rate_bpm' => $athlete->athleteProfile?->max_heart_rate_bpm,
+            'threshold_heart_rate_bpm' => $athlete->athleteProfile?->threshold_heart_rate_bpm,
+            'threshold_pace_seconds_per_km' => $athlete->athleteProfile?->threshold_pace_seconds_per_km,
+            'power_zones' => $this->defaultPowerZones($athlete->athleteProfile?->power_zones),
+            'heart_rate_zones' => $this->defaultHeartRateZones($athlete->athleteProfile?->heart_rate_zones),
+        ];
+    }
+
+    /**
+     * @return array<int, array{label: string, min: int, max: int}>
+     */
+    private function defaultPowerZones(mixed $zones): array
+    {
+        $fallback = [
+            ['label' => 'Z1', 'min' => 55, 'max' => 75],
+            ['label' => 'Z2', 'min' => 76, 'max' => 90],
+            ['label' => 'Z3', 'min' => 91, 'max' => 105],
+            ['label' => 'Z4', 'min' => 106, 'max' => 120],
+            ['label' => 'Z5', 'min' => 121, 'max' => 150],
+        ];
+
+        return $this->normalizeZones($zones, $fallback);
+    }
+
+    /**
+     * @return array<int, array{label: string, min: int, max: int}>
+     */
+    private function defaultHeartRateZones(mixed $zones): array
+    {
+        $fallback = [
+            ['label' => 'Z1', 'min' => 60, 'max' => 72],
+            ['label' => 'Z2', 'min' => 73, 'max' => 82],
+            ['label' => 'Z3', 'min' => 83, 'max' => 89],
+            ['label' => 'Z4', 'min' => 90, 'max' => 95],
+            ['label' => 'Z5', 'min' => 96, 'max' => 100],
+        ];
+
+        return $this->normalizeZones($zones, $fallback);
+    }
+
+    /**
+     * @param  array<int, array{label: string, min: int, max: int}>  $fallback
+     * @return array<int, array{label: string, min: int, max: int}>
+     */
+    private function normalizeZones(mixed $zones, array $fallback): array
+    {
+        if (! is_array($zones) || count($zones) !== 5) {
+            return $fallback;
+        }
+
+        $normalized = [];
+
+        foreach ($fallback as $index => $defaults) {
+            $zone = $zones[$index] ?? null;
+
+            if (! is_array($zone)) {
+                $normalized[] = $defaults;
+
+                continue;
+            }
+
+            $min = is_numeric($zone['min'] ?? null) ? (int) $zone['min'] : $defaults['min'];
+            $max = is_numeric($zone['max'] ?? null) ? (int) $zone['max'] : $defaults['max'];
+            $label = in_array(($zone['label'] ?? null), ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'], true)
+                ? (string) $zone['label']
+                : $defaults['label'];
+
+            if ($max < $min) {
+                $normalized[] = $defaults;
+
+                continue;
+            }
+
+            $normalized[] = [
+                'label' => $label,
+                'min' => $min,
+                'max' => $max,
+            ];
+        }
+
+        return $normalized;
     }
 }

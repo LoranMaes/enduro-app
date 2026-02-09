@@ -4,6 +4,9 @@ use App\Http\Controllers\Settings\ActivityProviderCallbackController;
 use App\Http\Controllers\Settings\ActivityProviderConnectController;
 use App\Http\Controllers\Settings\ActivityProviderConnectionIndexController;
 use App\Http\Controllers\Settings\ActivityProviderDisconnectController;
+use App\Http\Controllers\Settings\AthleteProfileSettingsController;
+use App\Http\Controllers\Settings\AthleteSettingsOverviewController;
+use App\Http\Controllers\Settings\AthleteTrainingPreferencesController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -11,13 +14,20 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    Route::redirect('settings', '/settings/overview');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('settings/overview', AthleteSettingsOverviewController::class)
+        ->name('settings.overview');
+    Route::patch('settings/overview/profile', AthleteProfileSettingsController::class)
+        ->name('settings.overview.profile.update');
+    Route::patch('settings/overview/training-preferences', AthleteTrainingPreferencesController::class)
+        ->name('settings.overview.training-preferences.update');
+
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');

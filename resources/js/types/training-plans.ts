@@ -27,6 +27,28 @@ export type TrainingSessionApi = {
     planned_tss: number | null;
     actual_tss: number | null;
     notes: string | null;
+    planned_structure?: {
+        unit: string;
+        mode: 'range' | 'target' | string;
+        steps: Array<{
+            id?: string | null;
+            type: string;
+            duration_minutes: number;
+            target?: number | null;
+            range_min?: number | null;
+            range_max?: number | null;
+            repeat_count?: number | null;
+            note?: string | null;
+            items?: Array<{
+                id?: string | null;
+                label?: string | null;
+                duration_minutes: number;
+                target?: number | null;
+                range_min?: number | null;
+                range_max?: number | null;
+            }> | null;
+        }>;
+    } | null;
     linked_activity_id?: number | null;
     linked_activity_summary?: LinkedActivitySummaryApi | null;
     suggested_activities?: SuggestedActivityApi[];
@@ -82,6 +104,28 @@ export type TrainingSessionView = {
     plannedTss: number | null;
     actualTss: number | null;
     notes: string | null;
+    plannedStructure: {
+        unit: string;
+        mode: 'range' | 'target' | string;
+        steps: Array<{
+            id?: string | null;
+            type: string;
+            durationMinutes: number;
+            target?: number | null;
+            rangeMin?: number | null;
+            rangeMax?: number | null;
+            repeatCount?: number | null;
+            note?: string | null;
+            items?: Array<{
+                id?: string | null;
+                label?: string | null;
+                durationMinutes: number;
+                target?: number | null;
+                rangeMin?: number | null;
+                rangeMax?: number | null;
+            }> | null;
+        }>;
+    } | null;
     linkedActivityId: number | null;
     linkedActivitySummary: {
         id: number;

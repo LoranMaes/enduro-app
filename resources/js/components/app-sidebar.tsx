@@ -58,7 +58,9 @@ export function AppSidebar() {
                   title: 'Calendar',
                   href: dashboard().url,
                   icon: CalendarDays,
-                  isActive: (path: string) => path.startsWith('/dashboard'),
+                  isActive: (path: string) =>
+                      path.startsWith('/dashboard') ||
+                      path.startsWith('/sessions'),
               },
               ...(role === 'athlete'
                   ? [

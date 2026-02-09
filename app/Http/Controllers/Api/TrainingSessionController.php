@@ -98,6 +98,7 @@ class TrainingSessionController extends Controller
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
+            'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
         return (new TrainingSessionResource($trainingSession))
@@ -158,6 +159,7 @@ class TrainingSessionController extends Controller
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
+            'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
         return new TrainingSessionResource($trainingSession->refresh());

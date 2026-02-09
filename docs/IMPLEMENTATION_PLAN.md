@@ -179,3 +179,86 @@ Status update:
 - Subscription tiers
 - Feature flags
 - Plan marketplace (later)
+
+---
+
+## Phase 7 — Athlete Slicing Parity (In Progress)
+
+Scope: athlete only, slicing-first, production-safe vertical slices with real backend wiring.
+
+### 7.0 Parity Audit (COMPLETE)
+
+- completed screenshot+component audit for athlete views
+- documented exact mismatches between current app and slicing authority
+- clarified implementation rules for interval structure and stream behavior
+
+### 7.1 Settings Parity (COMPLETE)
+
+- replaced starter settings entrypoint with slicing-style tabbed shell at `/settings/overview`
+- tabs now match athlete slicing structure:
+  - Profile
+  - Training Preferences
+  - Integrations
+  - Billing & Plans
+- added athlete account label/sidebar treatment
+- integrations tab now reflects real provider state; static Garmin copy removed
+- added backend persistence endpoints/validation for profile + training preferences
+
+### 7.2 Calendar + Session Detail Parity (CORE COMPLETE)
+
+- replaced static calendar provider badge with real Strava connection/sync state
+- added slicing-style interval structure builder in session editor
+- persisted `planned_structure` for training sessions with explicit validation
+- added completed-session detail route/page (`/sessions/{trainingSession}`)
+- added planned-vs-actual detail shell with stream toggles and route map surface
+- implemented provider-agnostic activity stream fetching with Strava-first backend support
+
+### 7.3 Progress Parity (COMPLETE FOR V1)
+
+- retained range model (`4/8/12/24`)
+- kept existing trend/consistency framing
+- added slicing-style weekly logs section sourced from session aggregates
+- no physiology/PMC modeling introduced
+
+### 7.4 Plans Parity (COMPLETE FOR V1)
+
+- replaced generic plans placeholder with slicing-style coming-soon surface
+- plans remain explicitly positioned as additive/non-core
+
+### 7.5 Verification (COMPLETE FOR CURRENT SLICE)
+
+- targeted Pest coverage added for new athlete detail/stream behavior
+- `vendor/bin/sail bin pint --dirty --format agent` executed
+- `vendor/bin/sail npm run types` executed
+- targeted feature/api suites passing
+
+### 7.6 Remaining Athlete Gaps (Next)
+
+- add richer parity polish for session-detail chart/map fidelity against slicing source
+- add deterministic visual-seeding updates for interval-heavy completed sessions in athlete screenshots
+- extend targeted tests around `planned_structure` validation edge-cases and stream availability ordering
+
+### 7.7 Workout Structure Hardening (COMPLETE FOR V1)
+
+- athlete training preferences now include editable performance anchors and zone ranges
+- calendar/session-editor now receive athlete target context for unit conversion
+- workout builder now supports:
+  - unit-aware preview axis
+  - range-band preview rendering
+  - block-specific defaults
+  - grouped repeat templates
+  - drag/drop in preview and snappier insertion markers in block list
+  - explicit structure summary (`duration`, `estimated TSS`, `block count`)
+
+### 7.8 Session Detail + Builder Refinement (COMPLETE FOR CURRENT SLICE)
+
+- planned-structure payload now supports nested block items (`steps[*].items[*]`)
+- session request validation now covers nested range/target rules + `repeats` type
+- session editor now derives planned duration/TSS from structure when present
+- session detail now includes:
+  - cursor-aligned hover telemetry on chart
+  - drag-select zoom + focused route highlight
+  - right-rail consolidated statistics card
+  - internal-notes edit/save surface
+  - read-only planned-structure preview with hover summary
+- stream chart rendering now down-samples deterministically for smoother interaction at higher sample counts
