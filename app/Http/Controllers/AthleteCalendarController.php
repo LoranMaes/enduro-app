@@ -10,6 +10,7 @@ use App\Models\ActivityProviderConnection;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Inertia\Inertia;
@@ -17,6 +18,10 @@ use Inertia\Response;
 
 class AthleteCalendarController extends Controller
 {
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
+
     /**
      * Handle the incoming request.
      */
@@ -87,6 +92,7 @@ class AthleteCalendarController extends Controller
                 'duration_seconds',
                 'distance_meters',
                 'elevation_gain_meters',
+                'raw_payload',
             ]);
 
         return Inertia::render('dashboard', [
@@ -106,6 +112,10 @@ class AthleteCalendarController extends Controller
                         'duration_seconds' => $activity->duration_seconds,
                         'distance_meters' => $activity->distance_meters,
                         'elevation_gain_meters' => $activity->elevation_gain_meters,
+                        'resolved_tss' => $this->actualMetricsResolver->resolveActivityTss(
+                            $activity,
+                            $athlete,
+                        ),
                     ],
                 )->values(),
             ],

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Activity;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
@@ -147,4 +148,30 @@ it('filters sessions by training plan and week when provided', function () {
     $byWeek->assertOk();
     $byWeek->assertJsonCount(1, 'data');
     $byWeek->assertJsonPath('data.0.id', $sessionOne->id);
+});
+
+it('returns resolved actual tss from linked activity payload for session reads', function () {
+    $athlete = User::factory()->athlete()->create();
+    $plan = TrainingPlan::factory()->for($athlete)->create();
+    $week = TrainingWeek::factory()->for($plan)->create();
+
+    $session = TrainingSession::factory()->for($week)->create([
+        'status' => 'planned',
+        'actual_tss' => null,
+    ]);
+
+    Activity::factory()->linkedToTrainingSession($session)->create([
+        'athlete_id' => $athlete->id,
+        'raw_payload' => [
+            'suffer_score' => 92,
+        ],
+    ]);
+
+    $response = $this
+        ->actingAs($athlete)
+        ->getJson("/api/training-sessions/{$session->id}");
+
+    $response->assertOk();
+    $response->assertJsonPath('data.actual_tss', null);
+    $response->assertJsonPath('data.resolved_actual_tss', 92);
 });

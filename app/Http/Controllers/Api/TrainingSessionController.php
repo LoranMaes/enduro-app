@@ -17,6 +17,7 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TrainingSessionController extends Controller
 {
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
+
     /**
      * Display a listing of the resource.
      *
@@ -298,14 +303,14 @@ class TrainingSessionController extends Controller
             ]);
         }
 
-        $actualDurationMinutes = $this->mapDurationSecondsToMinutes(
-            $linkedActivity->duration_seconds,
+        $actualDurationMinutes = $this->actualMetricsResolver->resolveActivityDurationMinutes(
+            $linkedActivity,
         );
 
         $trainingSession->update([
             'status' => TrainingSessionStatus::Completed->value,
             'actual_duration_minutes' => $actualDurationMinutes,
-            'actual_tss' => $this->resolveActualTssFromActivity($linkedActivity),
+            'actual_tss' => $this->actualMetricsResolver->resolveActivityTss($linkedActivity, $user),
             'completed_at' => now(),
         ]);
 
@@ -359,41 +364,5 @@ class TrainingSessionController extends Controller
         }
 
         return TrainingSession::query()->whereRaw('1 = 0');
-    }
-
-    private function mapDurationSecondsToMinutes(?int $durationSeconds): ?int
-    {
-        if ($durationSeconds === null || $durationSeconds <= 0) {
-            return null;
-        }
-
-        return max(1, (int) round($durationSeconds / 60));
-    }
-
-    private function resolveActualTssFromActivity(Activity $activity): ?int
-    {
-        $rawPayload = $activity->raw_payload;
-
-        if (! is_array($rawPayload)) {
-            return null;
-        }
-
-        if (! array_key_exists('tss', $rawPayload)) {
-            return null;
-        }
-
-        $value = $rawPayload['tss'];
-
-        if (is_int($value)) {
-            return $value >= 0 ? $value : null;
-        }
-
-        if (is_numeric($value)) {
-            $normalized = (int) round((float) $value);
-
-            return $normalized >= 0 ? $normalized : null;
-        }
-
-        return null;
     }
 }

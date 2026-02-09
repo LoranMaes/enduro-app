@@ -898,5 +898,51 @@
     - `vendor/bin/sail npm run types`
     - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php` (4 passed)
 
+- Hardened athlete Training Progress load trend fidelity (slicing parity follow-up):
+    - fixed SVG scaling distortion by switching chart rendering to preserve geometric aspect ratio
+    - added point-hover inspection state with aligned weekly crosshair + value overlay
+    - trend now renders both:
+        - planned centerline (dashed)
+        - target range band
+        - actual point/line trajectory
+    - backend weekly aggregate now counts real execution from linked activities even when a session is not manually completed yet:
+        - resolves duration from linked activity seconds
+        - resolves actual TSS from `actual_tss`, fallback payload keys (`tss`, `suffer_score`)
+    - no training-science derivation introduced; this remains a direct read-model aggregation pass
+- Validation completed for this fix:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php` (4 passed)
+
+- Historical TSS fallback is now unified across athlete read surfaces:
+    - added `TrainingSessionActualMetricsResolver` for shared actual-metric resolution
+    - `TrainingSessionResource` now exposes:
+        - persisted `actual_tss`
+        - computed `resolved_actual_tss` (payload-first + conservative estimate fallback)
+    - athlete progress, calendar load rail, and session detail now consume resolved values through existing mapping
+    - completion/revert domain semantics remain intact (`actual_tss` persists only on explicit completion)
+- Validation completed for this fix:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/DashboardTest.php` (27 passed)
+
+- Calendar summary + progress aggregation hardening (historical activity visibility):
+    - calendar week summary now includes actual volume/load from synced activities (including linked activity weeks where session status may still be planned)
+    - summary rail now shows per-sport volume chips for quick weekly activity mix scanning
+    - progress backend now includes unlinked activities in weekly actual totals to avoid empty trend/log output when sessions are not pre-planned
+    - training session read payload keeps persisted completion fields but exposes computed `resolved_actual_tss` for UI read-models
+- Validation completed for this fix:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/DashboardTest.php` (28 passed)
+
+Next milestone:
+→ Next session starts with prioritized hardening backlog:
+    - split heavy frontend chunks (`app`, `session-detail`, `landing`)
+    - cache `/admin/analytics` aggregates
+    - verify/add indexes for high-scale admin user table filters (`created_at`, status/query paths)
+    - complete production readiness checklist (supervised workers/reverb, debug off, monitoring/alerts, backup policy, object storage)
+    - finish remaining athlete behavior/performance polish against slicing
+
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

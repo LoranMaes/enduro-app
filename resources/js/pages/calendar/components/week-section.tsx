@@ -106,13 +106,84 @@ export function WeekSection({
         (total, session) => total + (session.plannedTss ?? 0),
         0,
     );
-    const actualLoad = week.sessions.reduce((total, session) => {
-        if (session.status !== 'completed') {
+    const sessionFallbackLoad = week.sessions.reduce((total, session) => {
+        if (session.linkedActivityId !== null) {
             return total;
         }
 
-        return total + (session.actualTss ?? session.plannedTss ?? 0);
+        if (session.actualTss !== null) {
+            return total + session.actualTss;
+        }
+
+        if (session.status === 'completed') {
+            return total + (session.plannedTss ?? 0);
+        }
+
+        return total;
     }, 0);
+    const sessionFallbackDurationMinutes = week.sessions.reduce((total, session) => {
+        if (session.linkedActivityId !== null) {
+            return total;
+        }
+
+        if (session.actualDurationMinutes !== null) {
+            return total + session.actualDurationMinutes;
+        }
+
+        if (session.status === 'completed') {
+            return total + session.durationMinutes;
+        }
+
+        return total;
+    }, 0);
+    const activityLoad = activities.reduce((total, activity) => {
+        return total + (activity.resolvedTss ?? 0);
+    }, 0);
+    const activityDurationMinutes = activities.reduce(
+        (total, activity) => {
+            if (activity.durationSeconds === null || activity.durationSeconds <= 0) {
+                return total;
+            }
+
+            return total + Math.max(1, Math.round(activity.durationSeconds / 60));
+        },
+        0,
+    );
+    const activityVolumeBySportMap = activities.reduce<Map<string, number>>(
+        (carry, activity) => {
+            if (activity.durationSeconds === null || activity.durationSeconds <= 0) {
+                return carry;
+            }
+
+            const sportKey = normalizeSport(activity.sport);
+            const duration = Math.max(1, Math.round(activity.durationSeconds / 60));
+            carry.set(sportKey, (carry.get(sportKey) ?? 0) + duration);
+
+            return carry;
+        },
+        new Map<string, number>(),
+    );
+    const activityVolumeBySport = Array.from(activityVolumeBySportMap.entries())
+        .map(([sport, minutes]) => {
+            return {
+                sport,
+                minutes,
+            };
+        })
+        .sort((left, right) => {
+            const order = sportSortOrder(left.sport) - sportSortOrder(right.sport);
+
+            if (order !== 0) {
+                return order;
+            }
+
+            return right.minutes - left.minutes;
+        });
+    const actualDurationMinutes =
+        activityDurationMinutes + sessionFallbackDurationMinutes;
+    const actualLoad = activityLoad + sessionFallbackLoad;
+    const summaryDuration =
+        actualDurationMinutes > 0 ? actualDurationMinutes : durationMinutes;
     const completedSessions = week.sessions.filter(
         (session) => session.status === 'completed',
     ).length;
@@ -184,11 +255,12 @@ export function WeekSection({
 
                 <aside className="border-t border-border bg-surface/30 md:border-t-0 md:bg-transparent">
                     <WeekSummary
-                        totalDuration={durationMinutes}
+                        totalDuration={summaryDuration}
                         totalTss={actualLoad}
                         plannedTss={plannedLoad}
                         completedSessions={completedSessions}
                         plannedSessions={week.sessions.length}
+                        activityVolumeBySport={activityVolumeBySport}
                         isCurrentWeek={isCurrentWeek}
                     />
                 </aside>
@@ -212,4 +284,32 @@ function isDateInWeek(weekStart: Date, currentDate: Date): boolean {
     const weekEndExclusive = addDays(weekStart, 7);
 
     return weekStart <= currentDate && currentDate < weekEndExclusive;
+}
+
+function normalizeSport(sport: string): string {
+    const normalized = sport.trim().toLowerCase();
+
+    if (normalized === 'ride' || normalized === 'cycling') {
+        return 'bike';
+    }
+
+    if (normalized === 'strength') {
+        return 'gym';
+    }
+
+    if (normalized === '') {
+        return 'other';
+    }
+
+    return normalized;
+}
+
+function sportSortOrder(sport: string): number {
+    return {
+        swim: 0,
+        bike: 1,
+        run: 2,
+        gym: 3,
+        other: 4,
+    }[sport] ?? 5;
 }

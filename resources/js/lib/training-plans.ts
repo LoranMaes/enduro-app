@@ -25,7 +25,7 @@ export const mapTrainingSession = (
         durationMinutes: session.duration_minutes,
         actualDurationMinutes: session.actual_duration_minutes ?? null,
         plannedTss: session.planned_tss,
-        actualTss: session.actual_tss,
+        actualTss: session.resolved_actual_tss ?? session.actual_tss,
         notes: session.notes,
         plannedStructure:
             session.planned_structure !== undefined &&
@@ -99,6 +99,7 @@ export const mapActivity = (activity: ActivityApi): ActivityView => {
         durationSeconds: activity.duration_seconds ?? null,
         distanceMeters: activity.distance_meters ?? null,
         elevationGainMeters: activity.elevation_gain_meters ?? null,
+        resolvedTss: activity.resolved_tss ?? null,
     };
 };
 

@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use App\Enums\TrainingSessionStatus;
 use App\Models\Activity;
+use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use App\Services\ActivityLinkingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,8 +22,15 @@ class TrainingSessionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $requestUser = $request->user();
+        $contextUser = $requestUser instanceof User ? $requestUser : null;
+        $actualMetricsResolver = app(TrainingSessionActualMetricsResolver::class);
         $linkedActivitySummary = null;
         $linkedActivityId = null;
+        $resolvedActualTss = $actualMetricsResolver->resolveActualTss(
+            $this->resource,
+            $contextUser,
+        );
 
         if ($this->relationLoaded('activity') && $this->activity instanceof Activity) {
             $linkedActivityId = $this->activity->id;
@@ -65,6 +74,7 @@ class TrainingSessionResource extends JsonResource
             'actual_duration_minutes' => $this->actual_duration_minutes,
             'planned_tss' => $this->planned_tss,
             'actual_tss' => $this->actual_tss,
+            'resolved_actual_tss' => $resolvedActualTss,
             'completed_at' => $this->completed_at?->toISOString(),
             'notes' => $this->notes,
             'planned_structure' => $this->planned_structure,

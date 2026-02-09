@@ -13,11 +13,14 @@ High — UX validated, backend structure in place
 ## Known Risks
 
 - Performance with large calendars
+- Frontend bundle size remains heavy in key chunks (`app`, `session-detail`, `landing`)
 - Garmin data normalization
 - Overcomplicating early admin tools
 - Admin role-management actions are still partial (suspension is implemented; broader role/billing governance is pending)
 - Remaining visual drift risk from starter-kit primitives still present in non-calendar surfaces
 - External provider operations still need production rollout hardening (queue worker uptime, webhook subscription lifecycle, operational alerting)
+- Admin analytics is currently uncached and can add unnecessary DB load during frequent range switching
+- Admin list scaling needs explicit index verification for created-at + status/filter paths
 - Activity ↔ TrainingSession matching is heuristic (date/sport/duration) and may need future confidence tuning before write-side linking is enabled
 - Linking currently supports single explicit attach/detach actions only; no bulk-link workflow yet
 - Completion flow currently copies provider data only; reconciliation UI is manual and explicit, with no auto-completion or derived load science
@@ -30,9 +33,18 @@ High — UX validated, backend structure in place
 - Virtualized lists
 - Strict scope discipline
 - Feature flags everywhere
+- Short-window caching on analytics aggregates
+- Add/verify table indexes for high-volume admin lists and filters
 - Deliver API logic incrementally behind policy checks
 - Keep coach permissions read-only until assignment + impersonation workflows are fully stabilized
 - Keep admin writes tightly scoped to moderation-only flows (suspension/reactivation) until full governance policy phase
+- Maintain a production readiness checklist before go-live:
+    - supervised queue workers
+    - supervised Reverb
+    - `APP_DEBUG=false`
+    - monitoring/alerts
+    - verified backups
+    - object storage for user uploads
 
 ## UI Chart Guardrails
 
@@ -97,6 +109,9 @@ LOCKED for MVP
     - explicit validation in training session store/update requests
     - nested structure items (`steps[*].items`) + `repeats` type validation are supported
     - no auto-derived metrics or science logic attached
+- Session read payloads now include resolved historical load hints:
+    - `actual_tss` remains persisted write-state
+    - `resolved_actual_tss` is computed for read surfaces using activity payload + conservative fallback estimates
 - Athlete settings persistence is available:
     - `users`: `timezone`, `unit_system`
     - `athlete_profiles`: `primary_sport`, `weekly_training_days`, `preferred_rest_day`, `intensity_distribution`
@@ -186,6 +201,14 @@ LOCKED for MVP
     - planned vs completed totals
     - trend chart with explicit missing-data gaps
     - consistency/streak indicators without training-science derivation
+- Training Progress chart hardening is applied for slicing parity:
+    - fixed chart aspect ratio to prevent horizontal stretching
+    - hover crosshair + week value overlay now align with active data point
+    - load trend now renders planned centerline + target band + actual trajectory together
+    - actual weekly totals now include linked-activity fallback values when sessions are not manually completed yet
+    - unlinked synced activities now contribute to actual weekly totals to prevent empty historical graphs/logs
+- Calendar and session detail now consume resolved historical TSS for load/summary rendering without mutating session write-state.
+- Calendar week summary now includes per-sport actual volume chips based on synced activity volume.
 - Settings now use slicing-style tabbed shell at `/settings/overview` with athlete account treatment and real integration state.
 - Calendar/provider header now reflects real Strava connection and sync status instead of static Garmin copy.
 - Session editor includes slicing-style interval builder and persists `planned_structure`.

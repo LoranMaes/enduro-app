@@ -6,6 +6,10 @@ type WeekSummaryProps = {
     plannedTss?: number;
     completedSessions: number;
     plannedSessions: number;
+    activityVolumeBySport?: Array<{
+        sport: string;
+        minutes: number;
+    }>;
     isCurrentWeek?: boolean;
 };
 
@@ -15,6 +19,7 @@ export function WeekSummary({
     plannedTss = 0,
     completedSessions,
     plannedSessions,
+    activityVolumeBySport = [],
     isCurrentWeek = false,
 }: WeekSummaryProps) {
     const compliance =
@@ -58,6 +63,19 @@ export function WeekSummary({
                 >
                     {hasData ? formatDuration(totalDuration) : '—'}
                 </span>
+                {activityVolumeBySport.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {activityVolumeBySport.map((item) => (
+                            <span
+                                key={item.sport}
+                                className="rounded border border-border/70 bg-zinc-900/40 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400"
+                            >
+                                {formatSportLabel(item.sport)}{' '}
+                                {formatDurationShort(item.minutes)}
+                            </span>
+                        ))}
+                    </div>
+                ) : null}
             </div>
 
             <div className="flex flex-col">
@@ -116,4 +134,23 @@ function formatDuration(totalMinutes: number): string {
     const minutes = totalMinutes % 60;
 
     return `${hours}h ${minutes}m`;
+}
+
+function formatDurationShort(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours <= 0) {
+        return `${minutes}m`;
+    }
+
+    if (minutes <= 0) {
+        return `${hours}h`;
+    }
+
+    return `${hours}h${minutes}`;
+}
+
+function formatSportLabel(sport: string): string {
+    return sport.toUpperCase();
 }

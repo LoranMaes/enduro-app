@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +19,9 @@ class ActivityResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $requestUser = $request->user();
+        $contextUser = $requestUser instanceof User ? $requestUser : null;
+        $actualMetricsResolver = app(TrainingSessionActualMetricsResolver::class);
         $linkedSessionSummary = null;
 
         if ($this->relationLoaded('trainingSession') && $this->trainingSession !== null) {
@@ -43,6 +48,10 @@ class ActivityResource extends JsonResource
             'duration_seconds' => $this->duration_seconds,
             'distance_meters' => $this->distance_meters,
             'elevation_gain_meters' => $this->elevation_gain_meters,
+            'resolved_tss' => $actualMetricsResolver->resolveActivityTss(
+                $this->resource,
+                $contextUser,
+            ),
             'raw_payload' => $this->raw_payload,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

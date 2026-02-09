@@ -45,6 +45,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function ProgressIndex({ range, summary, weeks }: ProgressPageProps) {
     const [isSwitchingRange, setIsSwitchingRange] = useState(false);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const hasVisibleLoadData = weeks.some((week) => {
         return week.actual_tss !== null || week.planned_tss !== null;
     });
@@ -95,6 +96,12 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
                 y: point.actualY,
             })),
         );
+        const plannedSegments = buildLineSegments(
+            points.map((point) => ({
+                x: point.x,
+                y: point.plannedY,
+            })),
+        );
 
         const targetBands = points
             .slice(0, -1)
@@ -135,15 +142,21 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
             yMax,
             points,
             actualSegments,
+            plannedSegments,
             targetBands,
             chartWidth,
             chartHeight,
             chartPaddingX,
             chartPaddingY,
             innerHeight,
+            stepX,
             gridLines: 4,
         };
     }, [weeks]);
+
+    const activePointIndex =
+        hoveredIndex === null ? Math.max(0, weeks.length - 1) : hoveredIndex;
+    const activePoint = trend.points[activePointIndex];
 
     const switchRange = (weeksRange: number): void => {
         if (weeksRange === range.weeks || isSwitchingRange) {
@@ -263,13 +276,38 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
                         </div>
 
                         <div className="relative mt-5 h-[340px] overflow-hidden rounded-xl border border-border/70 bg-background/60">
+                            {activePoint !== undefined ? (
+                                <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[11px]">
+                                    <p className="text-zinc-400">
+                                        {activePoint.label}
+                                    </p>
+                                    <div className="mt-1 flex items-center gap-3">
+                                        <span className="inline-flex items-center gap-1 text-zinc-300">
+                                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                            <span>Actual</span>
+                                            <span className="font-mono">
+                                                {activePoint.actualTss ?? '—'}
+                                            </span>
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-sky-300">
+                                            <span className="h-2 w-2 rounded-full bg-sky-500/60" />
+                                            <span>Planned</span>
+                                            <span className="font-mono">
+                                                {activePoint.plannedTss ?? '—'}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null}
+
                             {hasVisibleLoadData ? (
                                 <svg
                                     viewBox={`0 0 ${trend.chartWidth} ${trend.chartHeight}`}
                                     className="h-full w-full"
-                                    preserveAspectRatio="none"
+                                    preserveAspectRatio="xMidYMid meet"
                                     role="img"
                                     aria-label="Training load trend chart"
+                                    onMouseLeave={() => setHoveredIndex(null)}
                                 >
                                     {Array.from(
                                         { length: trend.gridLines + 1 },
@@ -292,11 +330,56 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
                                         },
                                     )}
 
+                                    {trend.points.map((point, index) => {
+                                        if (point === undefined) {
+                                            return null;
+                                        }
+
+                                        const hitWidth =
+                                            weeks.length > 1
+                                                ? Math.max(14, trend.stepX)
+                                                : trend.chartWidth - trend.chartPaddingX * 2;
+                                        const startX = Math.max(
+                                            trend.chartPaddingX,
+                                            point.x - hitWidth / 2,
+                                        );
+                                        const maxStartX =
+                                            trend.chartWidth -
+                                            trend.chartPaddingX -
+                                            hitWidth;
+
+                                        return (
+                                            <rect
+                                                key={`hover-hit-${point.label}`}
+                                                x={Math.min(startX, maxStartX)}
+                                                y={trend.chartPaddingY}
+                                                width={hitWidth}
+                                                height={trend.innerHeight}
+                                                fill="transparent"
+                                                onMouseEnter={() =>
+                                                    setHoveredIndex(index)
+                                                }
+                                            />
+                                        );
+                                    })}
+
                                     {trend.targetBands.map((segment, index) => (
                                         <polygon
                                             key={index}
                                             points={segment}
                                             fill="rgba(14,116,144,0.18)"
+                                        />
+                                    ))}
+
+                                    {trend.plannedSegments.map((segment, index) => (
+                                        <path
+                                            key={`planned-${index}`}
+                                            d={segment}
+                                            fill="none"
+                                            stroke="rgb(14,116,144)"
+                                            strokeOpacity={0.9}
+                                            strokeWidth={1.8}
+                                            strokeDasharray="6 6"
                                         />
                                     ))}
 
@@ -309,6 +392,22 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
                                             strokeWidth={2}
                                         />
                                     ))}
+
+                                    {activePoint !== undefined &&
+                                    activePointIndex >= 0 ? (
+                                        <line
+                                            x1={activePoint.x}
+                                            y1={trend.chartPaddingY}
+                                            x2={activePoint.x}
+                                            y2={
+                                                trend.chartPaddingY +
+                                                trend.innerHeight
+                                            }
+                                            stroke="rgba(113,113,122,0.6)"
+                                            strokeWidth={1}
+                                            strokeDasharray="3 3"
+                                        />
+                                    ) : null}
 
                                     {trend.points.map((point, index) => {
                                         if (point.actualY === null) {
@@ -327,6 +426,30 @@ export default function ProgressIndex({ range, summary, weeks }: ProgressPagePro
                                             />
                                         );
                                     })}
+
+                                    {activePoint !== undefined &&
+                                    activePoint.actualY !== null ? (
+                                        <circle
+                                            cx={activePoint.x}
+                                            cy={activePoint.actualY}
+                                            r={5}
+                                            fill="rgb(16,185,129)"
+                                            stroke="rgb(24,24,27)"
+                                            strokeWidth={2}
+                                        />
+                                    ) : null}
+
+                                    {activePoint !== undefined &&
+                                    activePoint.plannedY !== null ? (
+                                        <circle
+                                            cx={activePoint.x}
+                                            cy={activePoint.plannedY}
+                                            r={4}
+                                            fill="rgb(14,116,144)"
+                                            stroke="rgb(24,24,27)"
+                                            strokeWidth={1.5}
+                                        />
+                                    ) : null}
 
                                     <text
                                         x={trend.chartPaddingX}

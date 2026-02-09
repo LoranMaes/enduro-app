@@ -26,6 +26,7 @@ export type TrainingSessionApi = {
     actual_duration_minutes?: number | null;
     planned_tss: number | null;
     actual_tss: number | null;
+    resolved_actual_tss?: number | null;
     notes: string | null;
     planned_structure?: {
         unit: string;
@@ -83,6 +84,7 @@ export type ActivityApi = {
     duration_seconds: number | null;
     distance_meters: number | null;
     elevation_gain_meters: number | null;
+    resolved_tss?: number | null;
 };
 
 export type ApiCollectionResponse<TData> = {
@@ -185,4 +187,5 @@ export type ActivityView = {
     durationSeconds: number | null;
     distanceMeters: number | null;
     elevationGainMeters: number | null;
+    resolvedTss: number | null;
 };

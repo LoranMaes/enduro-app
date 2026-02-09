@@ -49,6 +49,7 @@ type CalendarPageProps = {
         id: number;
         name: string;
     } | null;
+    headTitle?: string;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -66,6 +67,7 @@ export default function CalendarPage({
     providerStatus,
     athleteTrainingTargets,
     viewingAthlete = null,
+    headTitle = 'Calendar',
 }: CalendarPageProps) {
     void _trainingPlans;
     const sessions = mapTrainingSessionCollection(trainingSessions);
@@ -73,7 +75,7 @@ export default function CalendarPage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Calendar" />
+            <Head title={headTitle} />
 
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">

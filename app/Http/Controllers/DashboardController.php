@@ -10,6 +10,7 @@ use App\Models\ActivityProviderConnection;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,10 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
+
     /**
      * Display the dashboard.
      */
@@ -83,6 +88,7 @@ class DashboardController extends Controller
                 'duration_seconds',
                 'distance_meters',
                 'elevation_gain_meters',
+                'raw_payload',
             ]);
 
         return Inertia::render('dashboard', [
@@ -102,6 +108,10 @@ class DashboardController extends Controller
                         'duration_seconds' => $activity->duration_seconds,
                         'distance_meters' => $activity->distance_meters,
                         'elevation_gain_meters' => $activity->elevation_gain_meters,
+                        'resolved_tss' => $this->actualMetricsResolver->resolveActivityTss(
+                            $activity,
+                            $request->user(),
+                        ),
                     ],
                 )->values(),
             ],

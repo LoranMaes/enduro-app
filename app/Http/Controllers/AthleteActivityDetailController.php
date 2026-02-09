@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\ActivityProviderConnection;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,6 +13,10 @@ use Inertia\Response;
 
 class AthleteActivityDetailController extends Controller
 {
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
+
     /**
      * Handle the incoming request.
      */
@@ -27,7 +32,7 @@ class AthleteActivityDetailController extends Controller
         }
 
         return Inertia::render('calendar/session-detail', [
-            'session' => $this->sessionPayloadFromActivity($activity),
+            'session' => $this->sessionPayloadFromActivity($activity, $user),
             'providerStatus' => $this->resolveProviderStatus($user),
             'isActivityOnly' => true,
         ]);
@@ -59,9 +64,9 @@ class AthleteActivityDetailController extends Controller
      *     suggested_activities: array<int, array<string, mixed>>
      * }
      */
-    private function sessionPayloadFromActivity(Activity $activity): array
+    private function sessionPayloadFromActivity(Activity $activity, User $athlete): array
     {
-        $durationMinutes = max(1, (int) round((int) ($activity->duration_seconds ?? 0) / 60));
+        $durationMinutes = $this->actualMetricsResolver->resolveActivityDurationMinutes($activity) ?? 0;
 
         return [
             'id' => -$activity->id,
@@ -74,7 +79,10 @@ class AthleteActivityDetailController extends Controller
             'duration_minutes' => $durationMinutes,
             'actual_duration_minutes' => $durationMinutes,
             'planned_tss' => null,
-            'actual_tss' => null,
+            'actual_tss' => $this->actualMetricsResolver->resolveActivityTss(
+                $activity,
+                $athlete,
+            ),
             'notes' => null,
             'planned_structure' => null,
             'linked_activity_id' => $activity->id,

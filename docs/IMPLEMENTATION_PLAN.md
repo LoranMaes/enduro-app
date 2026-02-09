@@ -315,3 +315,41 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
   - internal-notes edit/save surface
   - read-only planned-structure preview with hover summary
 - stream chart rendering now down-samples deterministically for smoother interaction at higher sample counts
+
+### 7.9 Progress Chart Fidelity Hardening (COMPLETE FOR CURRENT SLICE)
+
+- athlete Training Progress trend chart corrected to avoid horizontal distortion (`preserveAspectRatio` guardrail)
+- trend now explicitly shows:
+  - planned centerline
+  - target range band
+  - actual weekly trajectory
+- backend weekly aggregation now includes linked-activity actuals when manual completion has not yet been triggered:
+  - duration fallback from activity duration
+  - TSS fallback from activity payload (`tss`, `suffer_score`)
+  - conservative estimate fallback from power/HR anchors when payload TSS is missing
+- training session API responses now expose:
+  - persisted `actual_tss` (domain source of truth)
+  - computed `resolved_actual_tss` for athlete read surfaces (graph/detail/calendar load)
+- progress aggregation now also includes unlinked synced activities in actual weekly totals
+- calendar week summary now uses activity-backed actual volume/load and exposes per-sport volume breakdown chips
+- no predictive load modeling or physiology calculations introduced in this slice
+
+---
+
+## Next Session TODO (Prioritized)
+
+1. Frontend bundle hardening:
+   - split heavy chunks further (`app`, `session-detail`, `landing`) to reduce initial payload cost.
+2. Admin analytics query caching:
+   - add short cache windows for `/admin/analytics` to reduce repeated DB pressure.
+3. Admin users table scale indexes:
+   - verify/add optimized indexes for `users.created_at` and status/filter query paths.
+4. Production runtime hardening checklist:
+   - supervised queue workers
+   - supervised Reverb process
+   - `APP_DEBUG=false`
+   - monitoring + alerts
+   - backup policy
+   - object storage for uploads
+5. Athlete slicing parity polish:
+   - remaining work is behavior/performance polish, not architectural rewrites.

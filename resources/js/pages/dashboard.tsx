@@ -64,6 +64,7 @@ export default function Dashboard({
             providerStatus={providerStatus}
             athleteTrainingTargets={athleteTrainingTargets}
             viewingAthlete={viewingAthlete}
+            headTitle="Dashboard"
         />
     );
 }
