@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Filter, Shield } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ArrowLeft, Eye, Filter, Shield } from 'lucide-react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -49,7 +49,7 @@ type PaginatedLogs = {
         label: string;
         active: boolean;
     }>;
-    meta: {
+    meta?: {
         current_page: number;
         from: number | null;
         last_page: number;
@@ -62,6 +62,8 @@ type PaginatedLogs = {
 
 type AdminUserShowPageProps = {
     user: AdminUser;
+    statusMessage?: string | null;
+    backUrl: string;
     filters: {
         scope: 'causer' | 'subject' | 'all' | string;
         event: string | null;
@@ -73,6 +75,12 @@ type AdminUserShowPageProps = {
     }>;
     eventOptions: string[];
     logs: PaginatedLogs;
+    suspension: {
+        is_suspended: boolean;
+        suspended_at: string | null;
+        suspended_reason: string | null;
+        suspended_by_name: string | null;
+    };
 };
 
 const tabs = [
@@ -82,15 +90,30 @@ const tabs = [
 
 export default function AdminUserShow({
     user,
+    statusMessage,
+    backUrl,
     filters,
     scopeOptions,
     eventOptions,
     logs,
+    suspension,
 }: AdminUserShowPageProps) {
     const [activeTab, setActiveTab] = useState<'overview' | 'logs'>('logs');
     const [selectedLog, setSelectedLog] = useState<ActivityLogItem | null>(
         null,
     );
+    const [suspensionReason, setSuspensionReason] = useState('');
+    const [isSubmittingSuspension, setIsSubmittingSuspension] = useState(false);
+
+    const safeLogMeta = logs.meta ?? {
+        current_page: 1,
+        from: null,
+        last_page: 1,
+        path: '',
+        per_page: filters.per_page,
+        to: null,
+        total: logs.data.length,
+    };
 
     const breadcrumbs: BreadcrumbItem[] = useMemo(() => {
         return [
@@ -136,6 +159,40 @@ export default function AdminUserShow({
         );
     };
 
+    const suspendUser = (): void => {
+        if (suspensionReason.trim().length < 10 || isSubmittingSuspension) {
+            return;
+        }
+
+        setIsSubmittingSuspension(true);
+
+        router.post(
+            `/admin/users/${user.id}/suspend`,
+            { reason: suspensionReason.trim() },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setIsSubmittingSuspension(false);
+                },
+            },
+        );
+    };
+
+    const unsuspendUser = (): void => {
+        if (isSubmittingSuspension) {
+            return;
+        }
+
+        setIsSubmittingSuspension(true);
+
+        router.delete(`/admin/users/${user.id}/suspend`, {
+            preserveScroll: true,
+            onFinish: () => {
+                setIsSubmittingSuspension(false);
+            },
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${user.name} • User Detail`} />
@@ -155,10 +212,25 @@ export default function AdminUserShow({
                         <p className="text-sm text-zinc-500">{user.email}</p>
                     </div>
 
-                    <StatusPill status={user.status} />
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={backUrl}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 hover:text-zinc-100"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            Back
+                        </Link>
+                        <StatusPill status={user.status} />
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto px-6 py-6">
+                    {statusMessage ? (
+                        <div className="mb-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-300">
+                            {statusMessage}
+                        </div>
+                    ) : null}
+
                     <div className="mb-5 inline-flex rounded-lg border border-border bg-surface p-1">
                         {tabs.map((tab) => (
                             <button
@@ -177,22 +249,95 @@ export default function AdminUserShow({
                     </div>
 
                     {activeTab === 'overview' ? (
-                        <section className="grid gap-4 md:grid-cols-4">
-                            <OverviewCard
-                                label="Role"
-                                value={user.role ?? '—'}
-                            />
-                            <OverviewCard label="Status" value={user.status} />
-                            <OverviewCard
-                                label="Training Plans"
-                                value={user.plan_label}
-                            />
-                            <OverviewCard
-                                label="Impersonation"
-                                value={
-                                    user.can_impersonate ? 'Allowed' : 'Blocked'
-                                }
-                            />
+                        <section className="space-y-4">
+                            <div className="grid gap-4 md:grid-cols-4">
+                                <OverviewCard label="Role" value={user.role ?? '—'} />
+                                <OverviewCard label="Status" value={user.status} />
+                                <OverviewCard
+                                    label="Training Plans"
+                                    value={user.plan_label}
+                                />
+                                <OverviewCard
+                                    label="Impersonation"
+                                    value={
+                                        user.can_impersonate
+                                            ? 'Allowed'
+                                            : 'Blocked'
+                                    }
+                                />
+                            </div>
+
+                            {user.role !== 'admin' ? (
+                                <div className="rounded-xl border border-border bg-surface p-4">
+                                    <h2 className="text-sm font-medium text-zinc-100">
+                                        Moderation
+                                    </h2>
+
+                                    {suspension.is_suspended ? (
+                                        <div className="mt-3 space-y-3">
+                                            <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2">
+                                                <p className="text-xs text-zinc-300">
+                                                    This user is currently
+                                                    suspended.
+                                                </p>
+                                                <p className="mt-1 text-xs text-zinc-500">
+                                                    Suspended by{' '}
+                                                    {suspension.suspended_by_name ??
+                                                        'Unknown'}{' '}
+                                                    on{' '}
+                                                    {formatDateTime(
+                                                        suspension.suspended_at,
+                                                    )}
+                                                </p>
+                                                <p className="mt-2 text-xs text-zinc-400">
+                                                    {suspension.suspended_reason ??
+                                                        'No reason recorded.'}
+                                                </p>
+                                            </div>
+
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                className="h-9"
+                                                disabled={isSubmittingSuspension}
+                                                onClick={unsuspendUser}
+                                            >
+                                                {isSubmittingSuspension
+                                                    ? 'Updating...'
+                                                    : 'Reactivate User'}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-3 space-y-3">
+                                            <textarea
+                                                value={suspensionReason}
+                                                onChange={(event) =>
+                                                    setSuspensionReason(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                placeholder="Describe why this account is being suspended..."
+                                                className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                className="h-9"
+                                                disabled={
+                                                    isSubmittingSuspension ||
+                                                    suspensionReason.trim()
+                                                        .length < 10
+                                                }
+                                                onClick={suspendUser}
+                                            >
+                                                {isSubmittingSuspension
+                                                    ? 'Suspending...'
+                                                    : 'Suspend User'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
                         </section>
                     ) : (
                         <section className="space-y-4">
@@ -289,7 +434,7 @@ export default function AdminUserShow({
 
                                 <div className="ml-auto flex items-center gap-2 text-xs text-zinc-500">
                                     <Filter className="h-3.5 w-3.5" />
-                                    {logs.meta.total} log entries
+                                    {safeLogMeta.total} log entries
                                 </div>
                             </div>
 
@@ -361,8 +506,8 @@ export default function AdminUserShow({
 
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="text-xs text-zinc-500">
-                                    Showing {logs.meta.from ?? 0}–
-                                    {logs.meta.to ?? 0} of {logs.meta.total}
+                                    Showing {safeLogMeta.from ?? 0}–
+                                    {safeLogMeta.to ?? 0} of {safeLogMeta.total}
                                 </p>
                                 <div className="flex items-center gap-1">
                                     {logs.links.map((link, index) => (
@@ -406,7 +551,7 @@ export default function AdminUserShow({
                     }
                 }}
             >
-                <DialogContent className="max-w-3xl border-border bg-surface text-zinc-100">
+                <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden border-border bg-surface text-zinc-100">
                     <DialogHeader>
                         <DialogTitle className="text-base">
                             Log #{selectedLog?.id}
@@ -414,7 +559,7 @@ export default function AdminUserShow({
                     </DialogHeader>
 
                     {selectedLog !== null ? (
-                        <div className="space-y-3">
+                        <div className="space-y-3 overflow-y-auto pr-1">
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <LogDetail label="Time">
                                     {formatDateTime(selectedLog.created_at)}
@@ -433,30 +578,21 @@ export default function AdminUserShow({
                                 </LogDetail>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <pre className="max-h-72 overflow-auto rounded border border-border bg-background p-3 text-[11px] text-zinc-300">
-                                    {JSON.stringify(
-                                        selectedLog.changes.old ?? {},
-                                        null,
-                                        2,
-                                    )}
-                                </pre>
-                                <pre className="max-h-72 overflow-auto rounded border border-border bg-background p-3 text-[11px] text-zinc-300">
-                                    {JSON.stringify(
-                                        selectedLog.changes.attributes ?? {},
-                                        null,
-                                        2,
-                                    )}
-                                </pre>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                                <JsonPanel
+                                    label="Previous values"
+                                    payload={selectedLog.changes.old ?? {}}
+                                />
+                                <JsonPanel
+                                    label="Next values"
+                                    payload={selectedLog.changes.attributes ?? {}}
+                                />
                             </div>
 
-                            <pre className="max-h-72 overflow-auto rounded border border-border bg-background p-3 text-[11px] text-zinc-400">
-                                {JSON.stringify(
-                                    selectedLog.properties,
-                                    null,
-                                    2,
-                                )}
-                            </pre>
+                            <JsonPanel
+                                label="Properties"
+                                payload={selectedLog.properties}
+                            />
                         </div>
                     ) : null}
                 </DialogContent>
@@ -481,7 +617,7 @@ function LogDetail({
     children,
 }: {
     label: string;
-    children: React.ReactNode;
+    children: ReactNode;
 }) {
     return (
         <div className="rounded-md border border-border bg-background px-3 py-2">
@@ -489,6 +625,25 @@ function LogDetail({
                 {label}
             </p>
             <p className="mt-1 text-xs text-zinc-200">{children}</p>
+        </div>
+    );
+}
+
+function JsonPanel({
+    label,
+    payload,
+}: {
+    label: string;
+    payload: Record<string, unknown>;
+}) {
+    return (
+        <div className="rounded-md border border-border bg-background p-3">
+            <p className="mb-2 text-[10px] tracking-wide text-zinc-500 uppercase">
+                {label}
+            </p>
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-[11px] text-zinc-300">
+                {JSON.stringify(payload, null, 2)}
+            </pre>
         </div>
     );
 }
@@ -527,6 +682,14 @@ function StatusPill({ status }: { status: string }) {
         return (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-950/40 px-2.5 py-1 text-[11px] font-medium tracking-wide text-red-300 uppercase">
                 Rejected
+            </span>
+        );
+    }
+
+    if (status === 'suspended') {
+        return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-medium tracking-wide text-zinc-200 uppercase">
+                Suspended
             </span>
         );
     }

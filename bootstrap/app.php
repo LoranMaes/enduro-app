@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdminUser;
 use App\Http\Middleware\EnsureApprovedCoach;
+use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogUserActivity;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureAdminUser::class,
             'approved_coach' => EnsureApprovedCoach::class,
+            'not_suspended' => EnsureNotSuspended::class,
             'log_activity' => LogUserActivity::class,
         ]);
 

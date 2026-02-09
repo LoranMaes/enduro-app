@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -40,6 +41,9 @@ class User extends Authenticatable
         'strava_access_token',
         'strava_refresh_token',
         'strava_token_expires_at',
+        'suspended_at',
+        'suspended_by_user_id',
+        'suspension_reason',
     ];
 
     /**
@@ -73,6 +77,7 @@ class User extends Authenticatable
             'timezone' => 'string',
             'unit_system' => 'string',
             'strava_token_expires_at' => 'datetime',
+            'suspended_at' => 'datetime',
         ];
     }
 
@@ -89,6 +94,11 @@ class User extends Authenticatable
     public function coachApplication(): HasOne
     {
         return $this->hasOne(CoachApplication::class);
+    }
+
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspended_by_user_id');
     }
 
     public function coachedAthletes(): BelongsToMany
@@ -146,6 +156,11 @@ class User extends Authenticatable
         return $this->role === UserRole::Admin;
     }
 
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
     public function canManageActivityProviderConnections(): bool
     {
         return $this->isAthlete() || $this->isAdmin();
@@ -178,6 +193,9 @@ class User extends Authenticatable
                 'role',
                 'timezone',
                 'unit_system',
+                'suspended_at',
+                'suspended_by_user_id',
+                'suspension_reason',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

@@ -177,11 +177,33 @@ Status update:
 - Coach-athlete assignment backbone is implemented (model, migration, policies, query scoping, read-only coach views, tests).
 - Coach access is now assignment-aware and read-only for calendar data.
 - Admin console + users directory + session impersonation are now implemented and validated:
-  - admin sidebar scope corrected to `Admin Console` + `Users`
+  - admin sidebar scope includes:
+    - `Admin Console`
+    - `Users`
+    - `Analytics`
+    - `Coach Applications`
   - impersonation start/stop routes implemented
   - Inertia impersonation context shared globally
   - impersonated sessions use role-correct navigation context
   - training-data writes are blocked while impersonating
+- Admin moderation + reporting hardening is now implemented:
+  - user suspension lifecycle:
+    - `POST /admin/users/{user}/suspend`
+    - `DELETE /admin/users/{user}/suspend`
+    - `not_suspended` middleware enforcement on authenticated web/API paths
+  - users directory now supports server-side:
+    - search
+    - role/status filters
+    - sort
+    - pagination
+    - created-at visibility
+  - admin analytics surface (`/admin/analytics`) now reports:
+    - range-based user growth (total/athlete/coach lines)
+    - coach pipeline
+    - platform usage
+    - sync health
+    - moderation
+    - system ops
 - Next in this phase is explicit role-management/admin account actions (separate scope), without expanding into training-data write access.
 - Role-aware auth/onboarding is now implemented:
   - login/register screens redesigned in Endure style

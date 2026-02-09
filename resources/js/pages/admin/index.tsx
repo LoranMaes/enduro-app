@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Search, Shield, UserRound, UsersRound } from 'lucide-react';
+import {
+    BarChart3,
+    Eye,
+    Search,
+    Shield,
+    UserRound,
+    UsersRound,
+} from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
@@ -126,7 +133,7 @@ export default function AdminIndex({
                             />
                         </section>
 
-                        <section className="grid gap-4 lg:grid-cols-3">
+                        <section className="grid gap-4 lg:grid-cols-4">
                             <Link
                                 href={adminUsersIndex().url}
                                 className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
@@ -142,6 +149,24 @@ export default function AdminIndex({
                                         </p>
                                     </div>
                                     <UsersRound className="h-4 w-4 text-zinc-500" />
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/admin/analytics"
+                                className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-zinc-100">
+                                            Analytics
+                                        </p>
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Range-based trends for growth,
+                                            sync-health, and moderation.
+                                        </p>
+                                    </div>
+                                    <BarChart3 className="h-4 w-4 text-zinc-500" />
                                 </div>
                             </Link>
 
@@ -379,6 +404,7 @@ function StatusPill({ status }: { status: string }) {
     const value = status.toLowerCase();
     const isActive = value === 'active';
     const isRejected = value === 'rejected';
+    const isSuspended = value === 'suspended';
 
     return (
         <div>
@@ -388,6 +414,8 @@ function StatusPill({ status }: { status: string }) {
                         ? 'bg-emerald-950/30 text-emerald-500'
                         : isRejected
                           ? 'bg-red-950/35 text-red-300'
+                          : isSuspended
+                            ? 'bg-zinc-800 text-zinc-300'
                           : 'bg-amber-950/35 text-amber-300'
                 }`}
             >

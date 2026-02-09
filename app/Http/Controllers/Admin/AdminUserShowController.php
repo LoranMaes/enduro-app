@@ -110,10 +110,18 @@ class AdminUserShowController extends Controller
         $user->loadMissing([
             'coachProfile',
             'coachApplication',
+            'suspendedBy:id,name,first_name,last_name,email',
         ]);
+
+        $previousUrl = url()->previous();
+        $backUrl = str_contains($previousUrl, '/admin/users')
+            ? $previousUrl
+            : route('admin.users.index');
 
         return Inertia::render('admin/users/show', [
             'user' => $this->adminUserPresenter->toListItem($user, $admin),
+            'statusMessage' => $request->session()->get('status'),
+            'backUrl' => $backUrl,
             'filters' => [
                 'scope' => $scope,
                 'event' => $event,
@@ -126,6 +134,12 @@ class AdminUserShowController extends Controller
             ],
             'eventOptions' => $eventOptions,
             'logs' => $logs,
+            'suspension' => [
+                'is_suspended' => $user->isSuspended(),
+                'suspended_at' => $user->suspended_at?->toIso8601String(),
+                'suspended_reason' => $user->suspension_reason,
+                'suspended_by_name' => $user->suspendedBy?->fullName(),
+            ],
         ]);
     }
 

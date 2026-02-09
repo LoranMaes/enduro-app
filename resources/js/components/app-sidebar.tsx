@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    BarChart3,
     CalendarDays,
     ClipboardCheck,
     Eye,
@@ -52,6 +53,12 @@ export function AppSidebar() {
                   href: adminUsersIndex().url,
                   icon: UsersRound,
                   isActive: (path: string) => path.startsWith('/admin/users'),
+              },
+              {
+                  title: 'Analytics',
+                  href: '/admin/analytics',
+                  icon: BarChart3,
+                  isActive: (path: string) => path.startsWith('/admin/analytics'),
               },
               {
                   title: 'Coach Applications',

@@ -14,6 +14,7 @@ class AdminUserPresenter
      *     role: string|null,
      *     status: string,
      *     plan_label: string,
+     *     created_at: string|null,
      *     can_impersonate: bool,
      *     is_current: bool
      * }
@@ -37,6 +38,7 @@ class AdminUserPresenter
             'role' => $user->role?->value ?? 'athlete',
             'status' => $this->status($user),
             'plan_label' => $planLabel,
+            'created_at' => $user->created_at?->toIso8601String(),
             'can_impersonate' => $this->canImpersonate($user),
             'is_current' => $user->is($admin),
         ];
@@ -44,6 +46,10 @@ class AdminUserPresenter
 
     public function status(User $user): string
     {
+        if ($user->isSuspended()) {
+            return 'suspended';
+        }
+
         if (! $user->isCoach()) {
             return 'active';
         }
@@ -64,7 +70,7 @@ class AdminUserPresenter
 
     public function canImpersonate(User $user): bool
     {
-        if ($user->isAdmin()) {
+        if ($user->isAdmin() || $user->isSuspended()) {
             return false;
         }
 

@@ -23,6 +23,7 @@ Route::middleware([
     AddQueuedCookiesToResponse::class,
     StartSession::class,
     'auth',
+    'not_suspended',
     'approved_coach',
     'log_activity',
 ])->group(function (): void {

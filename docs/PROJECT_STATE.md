@@ -15,7 +15,7 @@ High — UX validated, backend structure in place
 - Performance with large calendars
 - Garmin data normalization
 - Overcomplicating early admin tools
-- Admin role-management actions are not implemented yet (impersonation-only admin interaction is currently supported)
+- Admin role-management actions are still partial (suspension is implemented; broader role/billing governance is pending)
 - Remaining visual drift risk from starter-kit primitives still present in non-calendar surfaces
 - External provider operations still need production rollout hardening (queue worker uptime, webhook subscription lifecycle, operational alerting)
 - Activity ↔ TrainingSession matching is heuristic (date/sport/duration) and may need future confidence tuning before write-side linking is enabled
@@ -32,7 +32,14 @@ High — UX validated, backend structure in place
 - Feature flags everywhere
 - Deliver API logic incrementally behind policy checks
 - Keep coach permissions read-only until assignment + impersonation workflows are fully stabilized
-- Keep admin interaction supervisory/read-only (impersonation + user directory) until a dedicated admin write-policy phase
+- Keep admin writes tightly scoped to moderation-only flows (suspension/reactivation) until full governance policy phase
+
+## UI Chart Guardrails
+
+- Do not render analytics SVG charts with `preserveAspectRatio="none"` because it stretches axes and distorts line geometry.
+- All trend charts must expose point-level hover inspection (crosshair + values) so data remains readable and actionable.
+- Prefer stable chart aspect-ratio behavior (`xMidYMid meet`) and avoid fullscreen stretching inside fixed-height cards.
+- When range toggles are enabled (`4w/8w/12w/24w`), x-axis labels and hover values must remain aligned with the selected data window.
 
 ## Design Status
 
@@ -64,6 +71,11 @@ LOCKED for MVP
 - Admin audit detail route is available:
     - `GET /admin/users/{user}`
     - filterable/paginated user activity logs with value-inspection modal
+- Admin moderation + analytics routes are available:
+    - `GET /admin/analytics`
+    - `POST /admin/users/{user}/suspend`
+    - `DELETE /admin/users/{user}/suspend`
+    - suspension is enforced through `not_suspended` middleware on authenticated web/API paths
 - Read-only activity/session correlation is available:
     - `TrainingSessionResource` exposes `suggested_activities`
     - `ActivityResource` exposes `linked_session_id`
@@ -117,8 +129,22 @@ LOCKED for MVP
     - adjusted week-band rhythm and summary rail width
     - planned-session metric hierarchy aligned (stacked duration/TSS + planned marker)
 - Sidebar is now slicing-style fixed icon rail with role-aware entries.
-- Admin sidebar now matches slicing scope (non-impersonating admin sees only Admin Console + Users).
-- Admin users/recent-signups tables now include direct links to per-user detail/audit view.
+- Admin sidebar now includes:
+    - Admin Console
+    - Users
+    - Analytics
+    - Coach Applications
+- Admin users directory now supports:
+    - search
+    - role/status filtering
+    - sorting
+    - pagination
+    - created-at visibility
+- Admin users/recent-signups tables include direct links to per-user detail/audit view.
+- Admin user detail now includes:
+    - explicit back navigation
+    - suspend/reactivate moderation controls
+    - resilient log modal payload layout
 - Persistent impersonation banner is active during impersonated sessions with explicit stop action.
 - Coach directory now renders real assigned-athlete data and links into read-only athlete calendar views.
 - Core theme tokens/fonts were hardened to slicing palette + typography baselines.
@@ -139,7 +165,7 @@ LOCKED for MVP
     - `Month`
     - contextual `Jump to current week` action when off current week
 - Calendar prepend extension is now anchor-preserved to avoid jumpy month shifts when loading past weeks.
-- Unlinked activity rows are now inspectable through a dedicated athlete read-only detail route (`/activities/{activity}`).
+- Unlinked activity rows are now inspectable through a dedicated athlete read-only detail route (`/activity-details/{activity}`).
 - Session editor now includes manual activity linking controls:
     - suggested activities list
     - linked activity summary

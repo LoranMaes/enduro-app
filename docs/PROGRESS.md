@@ -1,5 +1,58 @@
 # Endure — Progress Log
 
+## 2026-02-09 (Admin Analytics Chart Correctness Follow-up)
+
+- Fixed admin user-growth role counting bug:
+    - normalized enum-casted `role` values (`UserRole`) before athlete/coach bucket comparison in `AdminAnalyticsController`
+    - athlete/coach growth series now count correctly
+- Fixed analytics chart usability regression:
+    - removed stretched SVG behavior (`preserveAspectRatio="none"`)
+    - chart now uses non-distorting aspect handling
+    - added hover inspection layer with crosshair + point values for selected week
+- Added persistent chart guardrails to docs to prevent recurrence:
+    - see `docs/PROJECT_STATE.md` → `UI Chart Guardrails`
+
+## 2026-02-09 (Admin Analytics + Moderation Hardening)
+
+- Added admin analytics surface and routing:
+    - new route/page: `GET /admin/analytics`
+    - new controller: `AdminAnalyticsController`
+    - range-aware reporting (`4w/8w/12w/24w`) with real data sections:
+        - user growth (total/athlete/coach lines)
+        - coach pipeline
+        - platform usage
+        - sync health
+        - moderation
+        - system ops
+- Added user suspension moderation backbone:
+    - migration: `2026_02_09_203958_add_suspension_columns_to_users_table.php`
+    - `users` now store:
+        - `suspended_at`
+        - `suspended_by_user_id`
+        - `suspension_reason`
+    - new middleware: `EnsureNotSuspended` and route alias `not_suspended`
+    - suspension enforced on web and API authenticated paths
+    - new admin actions:
+        - `POST /admin/users/{user}/suspend`
+        - `DELETE /admin/users/{user}/suspend`
+    - suspended users are non-impersonatable and get blocked from normal access
+- Hardened admin user directory (`/admin/users`):
+    - server-side search/filter/sort + pagination
+    - added status filtering and sorting
+    - added `Created at` column for rapid recent-account review
+    - added table controls without mock data
+- Hardened admin user detail (`/admin/users/{user}`):
+    - explicit back navigation link
+    - moderation card for suspend/reactivate
+    - fixed log modal overflow by wrapping/scrolling JSON payload fields safely
+    - added defensive fallback for missing log meta payloads
+- Admin navigation now includes `Analytics` in admin console mode.
+- Verification completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminUserManagementTest.php tests/Feature/AdminImpersonationTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php tests/Feature/NavigationShellPagesTest.php`
+
 ## 2026-02-09 (Calendar Stability + Activity Detail Clickthrough Tweaks)
 
 - Removed sticky-header seam/bleed between calendar mode controls and weekday axis by making both sticky bars fully opaque.

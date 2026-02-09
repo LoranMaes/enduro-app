@@ -25,6 +25,7 @@ class ImpersonationStartController extends Controller
         );
 
         abort_if($user->isAdmin(), 422, 'Impersonating another admin is not supported.');
+        abort_if($user->isSuspended(), 422, 'Suspended accounts cannot be impersonated.');
 
         if ($user->isCoach()) {
             $user->loadMissing('coachProfile');

@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminConsoleController;
 use App\Http\Controllers\Admin\AdminUserIndexController;
 use App\Http\Controllers\Admin\AdminUserShowController;
+use App\Http\Controllers\Admin\AdminUserSuspensionController;
 use App\Http\Controllers\Admin\CoachApplicationFileShowController;
 use App\Http\Controllers\Admin\CoachApplicationIndexController;
 use App\Http\Controllers\Admin\CoachApplicationReviewController;
@@ -26,27 +28,27 @@ Route::get('/', function (Request $request) {
 })->name('home');
 
 Route::get('dashboard', DashboardController::class)
-    ->middleware(['auth', 'verified', 'approved_coach'])
+    ->middleware(['auth', 'verified', 'not_suspended', 'approved_coach'])
     ->name('dashboard');
 
 Route::get('coach/pending-approval', CoachPendingApprovalController::class)
-    ->middleware('auth')
+    ->middleware(['auth', 'not_suspended'])
     ->name('coach.pending-approval');
 
 Route::get(
     'coach/applications/{coachApplication}/files/{coachApplicationFile}',
     CoachApplicationFileShowController::class,
 )
-    ->middleware('auth')
+    ->middleware(['auth', 'not_suspended'])
     ->whereNumber('coachApplication')
     ->whereNumber('coachApplicationFile')
     ->name('coach.applications.files.show');
 
 Route::post('admin/impersonate/stop', ImpersonationStopController::class)
-    ->middleware(['auth', 'log_activity'])
+    ->middleware(['auth', 'not_suspended', 'log_activity'])
     ->name('admin.impersonate.stop');
 
-Route::middleware(['auth', 'verified', 'log_activity'])->group(function (): void {
+Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(function (): void {
     Route::get('athletes', function () {
         return Inertia::render('athletes/index');
     })->middleware('approved_coach')->name('athletes.index');
@@ -76,10 +78,17 @@ Route::middleware(['auth', 'verified', 'log_activity'])->group(function (): void
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', AdminConsoleController::class)->name('index');
+        Route::get('/analytics', AdminAnalyticsController::class)->name('analytics');
         Route::get('/users', AdminUserIndexController::class)->name('users.index');
         Route::get('/users/{user}', AdminUserShowController::class)
             ->whereNumber('user')
             ->name('users.show');
+        Route::post('/users/{user}/suspend', [AdminUserSuspensionController::class, 'store'])
+            ->whereNumber('user')
+            ->name('users.suspend');
+        Route::delete('/users/{user}/suspend', [AdminUserSuspensionController::class, 'destroy'])
+            ->whereNumber('user')
+            ->name('users.unsuspend');
         Route::get('/coach-applications', CoachApplicationIndexController::class)
             ->name('coach-applications.index');
         Route::post('/coach-applications/{coachApplication}/review', CoachApplicationReviewController::class)

@@ -36,7 +36,15 @@ class AdminConsoleController extends Controller
             ->count();
 
         $recentUsers = User::query()
-            ->select('id', 'name', 'email', 'role', 'email_verified_at')
+            ->select([
+                'id',
+                'name',
+                'email',
+                'role',
+                'email_verified_at',
+                'created_at',
+                'suspended_at',
+            ])
             ->withCount('trainingPlans')
             ->with([
                 'coachProfile:id,user_id,is_approved',

@@ -220,6 +220,7 @@ it('restricts admin pages to admins', function () {
 
     $this->actingAs($athlete)->get('/admin')->assertForbidden();
     $this->actingAs($athlete)->get('/admin/users')->assertForbidden();
+    $this->actingAs($athlete)->get('/admin/analytics')->assertForbidden();
     $this->actingAs($athlete)->get('/admin/coach-applications')->assertForbidden();
 
     $this
@@ -227,6 +228,12 @@ it('restricts admin pages to admins', function () {
         ->get('/admin')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('admin/index'));
+
+    $this
+        ->actingAs($admin)
+        ->get('/admin/analytics')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('admin/analytics'));
 
     $this
         ->actingAs($admin)
@@ -257,7 +264,7 @@ it('marks athletes as active in the admin users table', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/users/index')
-            ->where('users', fn ($users): bool => collect($users)->contains(
+            ->where('users.data', fn ($users): bool => collect($users)->contains(
                 fn (array $listedUser): bool => (int) $listedUser['id'] === $athlete->id
                     && (string) $listedUser['status'] === 'active',
             )));
@@ -278,7 +285,7 @@ it('exposes pending coaches as non-impersonatable in admin user lists', function
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/users/index')
-            ->where('users', fn ($users): bool => collect($users)->contains(
+            ->where('users.data', fn ($users): bool => collect($users)->contains(
                 fn (array $listedUser): bool => (int) $listedUser['id'] === $coach->id
                     && (string) $listedUser['status'] === 'pending'
                     && $listedUser['can_impersonate'] === false,
