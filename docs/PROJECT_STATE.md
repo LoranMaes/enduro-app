@@ -18,7 +18,7 @@ High — UX validated, backend structure in place
 - External provider operations still need production rollout hardening (queue worker uptime, webhook subscription lifecycle, operational alerting)
 - Activity ↔ TrainingSession matching is heuristic (date/sport/duration) and may need future confidence tuning before write-side linking is enabled
 - Linking currently supports single explicit attach/detach actions only; no bulk-link workflow yet
-- Completion flow currently copies provider data only; no derived load science or reconciliation workflow exists yet
+- Completion flow currently copies provider data only; reconciliation UI is manual and explicit, with no auto-completion or derived load science
 
 ## Mitigations
 
@@ -100,6 +100,10 @@ LOCKED for MVP
   - explicit `Revert to Planned` when completed
   - completion/revert feedback states without optimistic mutation
   - athlete-context only (coach/admin remain read-only)
+- Calendar/session reconciliation UX now distinguishes post-activity states clearly:
+  - linked planned sessions show `Ready to complete`
+  - completed sessions show subtle `Adjusted` marker when actual values materially differ
+  - session editor includes explicit planned-vs-actual comparison blocks (duration/TSS)
 - Training Progress (`/progress`) is now a real athlete-only read surface:
   - range filters (`4/8/12/24` weeks)
   - average load/volume from session aggregates

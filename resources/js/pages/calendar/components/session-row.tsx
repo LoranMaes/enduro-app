@@ -11,6 +11,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TrainingSessionView } from '@/types/training-plans';
+import {
+    isSessionAdjusted,
+    isSessionCompleted,
+    isSessionReadyToComplete,
+} from './session-reconciliation';
 
 const sportConfig: Record<
     string,
@@ -88,7 +93,9 @@ export function SessionRow({
 }: SessionRowProps) {
     const config = sportConfig[session.sport] ?? sportConfig.rest;
     const SportIcon = config.icon;
-    const isCompleted = session.isCompleted || session.status === 'completed';
+    const isCompleted = isSessionCompleted(session);
+    const isAdjusted = isSessionAdjusted(session);
+    const isReadyToComplete = isSessionReadyToComplete(session);
     const displayDurationMinutes =
         isCompleted && session.actualDurationMinutes !== null
             ? session.actualDurationMinutes
@@ -100,6 +107,7 @@ export function SessionRow({
     const isSkipped = session.status === 'skipped';
     const isPlanned = session.status === 'planned';
     const isLinked = session.linkedActivityId !== null;
+    const isPlannedWithoutActivity = isPlanned && !isLinked;
     const durationParts = formatDurationParts(displayDurationMinutes);
 
     const interactiveStatusStyle: Record<string, string> = {
@@ -128,6 +136,17 @@ export function SessionRow({
         currentStatusStyle =
             'bg-transparent border-dashed border-zinc-700/50 opacity-50 hover:opacity-80 hover:border-zinc-500 hover:bg-zinc-900/20';
     }
+
+    const reconciliationStateStyle = cn(
+        isReadyToComplete &&
+            (isInteractive
+                ? 'border-sky-500/35 hover:border-sky-400/55'
+                : 'border-sky-500/35'),
+        isAdjusted &&
+            (isInteractive
+                ? 'border-zinc-600/90 hover:border-zinc-500'
+                : 'border-zinc-600/90'),
+    );
 
     const activate = (): void => {
         if (isOverlay || !isInteractive) {
@@ -158,6 +177,7 @@ export function SessionRow({
             className={cn(
                 'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
                 currentStatusStyle,
+                reconciliationStateStyle,
                 compact ? 'min-h-[56px] gap-0.5' : 'min-h-[72px] gap-1',
                 isOverlay && 'cursor-default',
                 !isOverlay && !isInteractive && 'cursor-default',
@@ -208,7 +228,7 @@ export function SessionRow({
 
                 {!isOverlay && !compact ? (
                     <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                        {isCompleted ? (
+                        {isCompleted && !isAdjusted ? (
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         ) : null}
                         {session.status === 'skipped' ? (
@@ -217,12 +237,23 @@ export function SessionRow({
                         {session.status === 'partial' ? (
                             <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
                         ) : null}
-                        {isPlanned ? (
+                        {isAdjusted ? (
+                            <span className="inline-flex items-center rounded-full border border-zinc-600/80 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                                Adjusted
+                            </span>
+                        ) : null}
+                        {isReadyToComplete ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/45 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
+                                <Link2 className="h-2.5 w-2.5" />
+                                Ready
+                            </span>
+                        ) : null}
+                        {isPlannedWithoutActivity ? (
                             <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-emerald-500/80">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/85" />
                             </span>
                         ) : null}
-                        {isLinked ? (
+                        {isLinked && !isReadyToComplete && !isAdjusted ? (
                             <span
                                 className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-sky-400/45 bg-sky-500/10 text-sky-300"
                                 aria-label="Linked activity"
@@ -276,6 +307,15 @@ export function SessionRow({
                     </div>
                 ) : null}
             </div>
+
+            {!compact && !isOverlay && isReadyToComplete ? (
+                <p className="text-[10px] text-zinc-400">Ready to complete</p>
+            ) : null}
+            {!compact && !isOverlay && isAdjusted ? (
+                <p className="text-[10px] text-zinc-400">
+                    Completed with adjusted values
+                </p>
+            ) : null}
 
             {showDate ? (
                 <p className="pl-0 text-[11px] text-zinc-500">

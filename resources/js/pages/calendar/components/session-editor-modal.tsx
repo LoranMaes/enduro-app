@@ -46,6 +46,10 @@ import type {
     TrainingSessionApi,
     TrainingSessionView,
 } from '@/types/training-plans';
+import {
+    isSessionAdjusted,
+    isSessionCompleted,
+} from './session-reconciliation';
 
 type SessionEditorMode = 'create' | 'edit';
 type Sport = 'swim' | 'bike' | 'run' | 'gym' | 'other';
@@ -163,14 +167,26 @@ export function SessionEditorModal({
         isEditMode && context !== null
             ? (sessionDetails ?? context.session)
             : null;
-    const isSessionCompleted =
-        selectedSession?.isCompleted ??
-        selectedSession?.status === 'completed';
+    const sessionIsCompleted =
+        selectedSession !== null && isSessionCompleted(selectedSession);
+    const sessionIsAdjusted =
+        selectedSession !== null && isSessionAdjusted(selectedSession);
     const linkedActivitySummary = selectedSession?.linkedActivitySummary ?? null;
     const suggestedActivities =
         selectedSession?.suggestedActivities.filter(
             (activity) => activity.id !== selectedSession.linkedActivityId,
         ) ?? [];
+    const plannedDurationLabel =
+        selectedSession !== null
+            ? formatDurationMinutes(selectedSession.durationMinutes)
+            : '—';
+    const actualDurationLabel = sessionIsCompleted
+        ? formatDurationMinutes(selectedSession?.actualDurationMinutes ?? null)
+        : formatDurationSecondsValue(linkedActivitySummary?.durationSeconds ?? null);
+    const plannedTssLabel = formatTssValue(selectedSession?.plannedTss ?? null);
+    const actualTssLabel = sessionIsCompleted
+        ? formatTssValue(selectedSession?.actualTss ?? null)
+        : '—';
 
     const dialogTitle = isEditMode ? 'Edit Session' : 'Create Session';
     const dialogDescription = isEditMode
@@ -838,64 +854,133 @@ export function SessionEditorModal({
                                         </div>
 
                                         {selectedSession !== null ? (
-                                            <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
-                                                <div className="min-w-0">
-                                                    {isSessionCompleted ? (
-                                                        <p className="flex items-center gap-1.5 text-xs text-emerald-300">
-                                                            <CheckCircle2 className="h-3.5 w-3.5" />
-                                                            Completed
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-xs text-zinc-400">
-                                                            Ready to mark as completed.
-                                                        </p>
-                                                    )}
-                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                        {isSessionCompleted
-                                                            ? selectedSession.completedAt !== null
-                                                                ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
-                                                                : 'Completed'
-                                                            : 'Uses linked activity values only.'}
+                                            <>
+                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
+                                                    <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
+                                                        Planned vs Actual
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                                Duration
+                                                            </p>
+                                                            <p className="mt-1 text-[11px] text-zinc-300">
+                                                                Planned:{' '}
+                                                                <span className="font-mono text-zinc-100">
+                                                                    {
+                                                                        plannedDurationLabel
+                                                                    }
+                                                                </span>
+                                                            </p>
+                                                            <p className="mt-0.5 text-[11px] text-zinc-300">
+                                                                Actual:{' '}
+                                                                <span className="font-mono text-zinc-100">
+                                                                    {actualDurationLabel}
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                                                TSS
+                                                            </p>
+                                                            <p className="mt-1 text-[11px] text-zinc-300">
+                                                                Planned:{' '}
+                                                                <span className="font-mono text-zinc-100">
+                                                                    {plannedTssLabel}
+                                                                </span>
+                                                            </p>
+                                                            <p className="mt-0.5 text-[11px] text-zinc-300">
+                                                                Actual:{' '}
+                                                                <span className="font-mono text-zinc-100">
+                                                                    {actualTssLabel}
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[11px] text-zinc-500">
+                                                        {sessionIsCompleted
+                                                            ? sessionIsAdjusted
+                                                                ? 'Actual values differ from planned values.'
+                                                                : 'Actual values align with planned targets.'
+                                                            : 'Marking complete copies linked duration and available linked TSS. Missing values remain —.'}
                                                     </p>
                                                 </div>
 
-                                                {canManageSessionLinks ? (
-                                                    isSessionCompleted ? (
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="outline"
-                                                            disabled={
-                                                                !canPerformCompletion
-                                                            }
-                                                            onClick={() => {
-                                                                void revertSessionCompletion();
-                                                            }}
-                                                        >
-                                                            <RotateCcw className="h-3.5 w-3.5" />
-                                                            {isRevertingCompletion
-                                                                ? 'Reverting...'
-                                                                : 'Revert to Planned'}
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            disabled={
-                                                                !canPerformCompletion
-                                                            }
-                                                            onClick={() => {
-                                                                void completeSession();
-                                                            }}
-                                                        >
-                                                            <CheckCircle2 className="h-3.5 w-3.5" />
-                                                            {isCompletingSession
-                                                                ? 'Completing...'
-                                                                : 'Mark as Completed'}
-                                                        </Button>
-                                                    )
-                                                ) : null}
-                                            </div>
+                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            {sessionIsCompleted ? (
+                                                                <p className="flex items-center gap-1.5 text-xs text-emerald-300">
+                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                    Completed
+                                                                    {sessionIsAdjusted ? (
+                                                                        <span className="rounded-full border border-zinc-600/70 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                                                                            Adjusted
+                                                                        </span>
+                                                                    ) : null}
+                                                                </p>
+                                                            ) : (
+                                                                <p className="text-xs text-zinc-300">
+                                                                    Ready to mark as completed.
+                                                                </p>
+                                                            )}
+                                                            <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                                {sessionIsCompleted
+                                                                    ? selectedSession.completedAt !== null
+                                                                        ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
+                                                                        : 'Completed'
+                                                                    : 'Uses linked activity values only.'}
+                                                            </p>
+                                                        </div>
+
+                                                        {canManageSessionLinks ? (
+                                                            sessionIsCompleted ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={
+                                                                        !canPerformCompletion
+                                                                    }
+                                                                    onClick={() => {
+                                                                        void revertSessionCompletion();
+                                                                    }}
+                                                                >
+                                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                                    {isRevertingCompletion
+                                                                        ? 'Reverting...'
+                                                                        : 'Revert to Planned'}
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    disabled={
+                                                                        !canPerformCompletion
+                                                                    }
+                                                                    onClick={() => {
+                                                                        void completeSession();
+                                                                    }}
+                                                                >
+                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                    {isCompletingSession
+                                                                        ? 'Completing...'
+                                                                        : 'Mark as Completed'}
+                                                                </Button>
+                                                            )
+                                                        ) : null}
+                                                    </div>
+
+                                                    {sessionIsCompleted ? (
+                                                        <p className="text-[11px] text-zinc-500">
+                                                            Reverting completion clears
+                                                            actual duration and actual
+                                                            TSS, while keeping this
+                                                            activity linked.
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                            </>
                                         ) : null}
                                     </div>
                                 ) : (
@@ -1185,7 +1270,7 @@ function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
 
 function formatDurationSeconds(durationSeconds: number | null): string {
     if (durationSeconds === null || Number.isNaN(durationSeconds)) {
-        return 'Unknown duration';
+        return '—';
     }
 
     const roundedMinutes = Math.max(1, Math.round(durationSeconds / 60));
@@ -1201,6 +1286,41 @@ function formatDurationSeconds(durationSeconds: number | null): string {
     }
 
     return `${minutes}m`;
+}
+
+function formatDurationSecondsValue(durationSeconds: number | null): string {
+    if (durationSeconds === null || Number.isNaN(durationSeconds)) {
+        return '—';
+    }
+
+    return formatDurationSeconds(durationSeconds);
+}
+
+function formatDurationMinutes(durationMinutes: number | null): string {
+    if (durationMinutes === null || Number.isNaN(durationMinutes)) {
+        return '—';
+    }
+
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    if (hours > 0) {
+        return `${hours}h`;
+    }
+
+    return `${minutes}m`;
+}
+
+function formatTssValue(tss: number | null): string {
+    if (tss === null || Number.isNaN(tss)) {
+        return '—';
+    }
+
+    return `${tss}`;
 }
 
 function formatStartedAt(startedAt: string | null): string {

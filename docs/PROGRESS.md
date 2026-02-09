@@ -519,5 +519,19 @@
   - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php` (23 passed)
   - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php` (25 passed)
 
+- Implemented athlete post-activity reconciliation UX hardening (frontend-only):
+  - calendar session rows now distinguish:
+    - planned without linked activity
+    - linked and ready-to-complete
+    - completed
+    - completed with adjusted values
+  - session editor modal now shows explicit planned-vs-actual comparison when activity is linked
+  - completion copy behavior and revert clearing behavior are now explicitly communicated in modal copy
+  - no backend, policy, route, or domain logic changes introduced
+- Validation completed for this pass:
+  - `vendor/bin/sail bin pint --dirty --format agent`
+  - `vendor/bin/sail npm run types`
+  - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php` (4 passed)
+
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

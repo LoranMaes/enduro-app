@@ -95,6 +95,10 @@ Status update:
 - Manual activity linking is now enabled via explicit athlete actions, while automatic matching and metrics derivation remain out of scope.
 - Manual session completion is now enabled as a distinct explicit step after linking; no automatic completion or training metric derivation has been introduced.
 - Athlete Training Progress page is now implemented as a read-only session-derived surface (`/progress`) with range filtering, trend visualization, and consistency indicators.
+- Post-activity reconciliation UX is now hardened in calendar/editor surfaces:
+  - linked session rows expose ready-to-complete state
+  - completed rows now indicate adjusted outcomes when actual values materially differ
+  - session editor shows explicit planned-vs-actual comparison and clear completion/revert effects
 
 ---
 
