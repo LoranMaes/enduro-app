@@ -1,188 +1,326 @@
 # Endure — Progress Log
 
+## 2026-02-09 (Calendar Stability + Activity Detail Clickthrough Tweaks)
+
+- Removed sticky-header seam/bleed between calendar mode controls and weekday axis by making both sticky bars fully opaque.
+- Hardened infinite-scroll prepend behavior:
+    - added synchronous past/future load guards to prevent duplicate prepend fetches
+    - switched prepend scroll preservation to anchor-based restoration (`data-week-start`) to prevent random jump-to-month behavior
+- Added activity detail clickthrough for unlinked activities:
+    - new athlete route: `GET /activities/{activity}`
+    - unlinked activity rows now navigate to read-only detail analysis view
+    - linked activity rows redirect to their linked session detail route
+- Updated shared session-detail page to support activity-only read mode (`isActivityOnly`) with notes editing disabled.
+- Verification completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/ActivityDetailPageTest.php tests/Feature/Calendar/SessionDetailPageTest.php tests/Feature/DashboardTest.php tests/Feature/Activities/ActivityAutoLinkServiceTest.php`
+
+## 2026-02-09 (Calendar Rework: Activity Overlay + Sync State + View Modes)
+
+- Implemented calendar activity overlay wiring using real activity reads:
+    - dashboard/athlete calendar payloads now include in-window `activities`
+    - calendar day columns now render synced activity rows (linked/unlinked state shown)
+    - no mock data introduced; existing read endpoints reused
+- Added automatic activity-to-session linking during provider sync:
+    - new service: `ActivityAutoLinkService`
+    - sync pipeline now runs auto-link after Strava persistence
+    - matching is explicit and conservative (same athlete/day/sport + duration threshold)
+    - provider upserts now preserve existing manual links
+- Hardened calendar sync awareness:
+    - header now includes explicit `Sync` action next to provider status
+    - provider pill state updates from realtime events and polling fallback
+    - calendar refreshes sessions + activities when sync reaches `success`
+- Implemented athlete calendar view-mode controls:
+    - modes: `Infinite` (default), `Day`, `Week`, `Month`
+    - non-infinite modes get previous/next range navigation
+    - `Jump to current week` appears when out of current-week context
+- Fixed infinite-scroll stability issue:
+    - removed unintended recenter resets tied to prop churn
+    - preserved one-time initial centering while keeping infinite loading behavior
+- Verification completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Activities/ActivityAutoLinkServiceTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-09 (Admin Observability + Coach Review UX + Realtime Calendar Sync Hardening)
+
+- Added admin observability backbone with Spatie activity logs:
+    - dependency installed: `spatie/laravel-activitylog`
+    - published config + migrations:
+        - `2026_02_09_173810_create_activity_log_table.php`
+        - `2026_02_09_173811_add_event_column_to_activity_log_table.php`
+        - `2026_02_09_173812_add_batch_uuid_column_to_activity_log_table.php`
+    - model-level change logging enabled for core mutable domains
+    - request-level mutating action logging middleware added (`log_activity`) with sensitive-field redaction
+- Added admin user-detail logging surface:
+    - new route + controller:
+        - `GET /admin/users/{user}`
+    - new page:
+        - `resources/js/pages/admin/users/show.tsx`
+    - includes:
+        - overview/log tabs
+        - paginated activity table
+        - scope/event/per-page filters
+        - value popup for old/new property payloads
+- Hardened admin user listings:
+    - users list + recent signups now include explicit detail links to user detail page
+    - pending/rejected coach accounts are now non-impersonatable in backend and UI
+    - athlete status now resolves to `active` (no false `pending` status)
+- Hardened coach review workflow UX:
+    - coach applications page now supports status tabs:
+        - Pending
+        - Accepted
+        - Rejected
+    - metrics split into total/pending/accepted/rejected
+    - backend filtering supported via `?status=...`
+- Hardened auth onboarding UX:
+    - register flow now supports Enter key progression/submit via form submit semantics
+    - coach file rename input now supports keyboard confirm/cancel:
+        - Enter = confirm rename
+        - Escape = cancel rename
+    - pending-approval page now explicitly shows rejected state + rejection reason
+- Hardened realtime activity-sync awareness:
+    - calendar now subscribes to sync status broadcasts and updates header provider pill live
+    - calendar auto-refreshes session window when sync reaches `success`
+    - settings sync surfaces now update transient status/error messages based on live broadcast events
+- Fixed settings overview render loop:
+    - removed recursive `useForm.setData` synchronization effects that caused `Maximum update depth exceeded`
+    - settings page now renders/stays stable without infinite browser error logging
+- Verification completed:
+    - `vendor/bin/sail npx prettier --write ...` (touched TSX files)
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/Auth/CoachApprovalFlowTest.php tests/Feature/Auth/RegistrationTest.php tests/Feature/NavigationShellPagesTest.php`
+
+## 2026-02-09 (Auth + Coach Approval Flow Hardening)
+
+- Implemented role-aware registration backbone on Fortify:
+    - registration now captures `first_name` + `last_name` separately (while keeping `name` for compatibility)
+    - role branch added in `CreateNewUser`:
+        - athlete path creates `athlete_profiles` onboarding fields from submitted multi-step payload
+        - coach path creates:
+            - `coach_profiles.is_approved = false`
+            - `coach_applications` submission record
+            - `coach_application_files` attachments persisted on local disk
+- Added coach approval domain layer:
+    - new migrations:
+        - `2026_02_09_161614_add_first_name_and_last_name_to_users_table.php`
+        - `2026_02_09_161614_create_coach_applications_table.php`
+        - `2026_02_09_161615_create_coach_application_files_table.php`
+    - new models:
+        - `CoachApplication`
+        - `CoachApplicationFile`
+    - new middleware:
+        - `approved_coach` (redirects unapproved coaches to pending screen)
+- Added pending-approval experience for coaches:
+    - new route: `/coach/pending-approval`
+    - new Inertia page: `auth/pending-approval`
+    - coach can review submitted answers + uploaded files (preview links)
+- Added admin review tooling for coach applications:
+    - new admin tab/page: `/admin/coach-applications`
+    - accordion-style application list with left-side answers and right-side single-file preview navigator
+    - explicit approve/reject actions with review notes
+    - admin dashboard now includes pending coach applications widget + metric
+- Added secure application file preview endpoints:
+    - admin route for review previews
+    - coach owner route for pending-screen previews
+    - authorization checks enforced in controller
+- Redesigned auth UI surfaces to match Endure style:
+    - new split auth layout
+    - refreshed login screen
+    - multi-step register flow:
+        - athlete steps: account -> preferences -> zones -> integrations/tutorial
+        - coach steps: account -> profile -> motivation + document uploads
+    - coach upload UX includes rename/delete list behavior with extension lock and explicit confirm/cancel controls
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npx prettier --write ...` (touched auth/admin TSX files)
+    - `vendor/bin/sail artisan test --compact tests/Feature/Auth/RegistrationTest.php tests/Feature/Auth/CoachApprovalFlowTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/DashboardTest.php tests/Feature/Api/TrainingSessionReadApiTest.php`
+
 ## 2026-02-09 (Workout Builder + Session Detail UX Refinement)
 
 - Expanded workout structure payload/model handling for nested block items:
-  - `planned_structure.steps.*.items` is now validated and persisted
-  - added `repeats` block-type validation in session store/update requests
-  - range/target validation now applies to nested repeat/ramp items
+    - `planned_structure.steps.*.items` is now validated and persisted
+    - added `repeats` block-type validation in session store/update requests
+    - range/target validation now applies to nested repeat/ramp items
 - Improved builder execution UX:
-  - block-list drag/drop now uses a dedicated drag handle + visible insertion line
-  - repeat/ramp inner blocks remain individually editable and persist across reloads
+    - block-list drag/drop now uses a dedicated drag handle + visible insertion line
+    - repeat/ramp inner blocks remain individually editable and persist across reloads
 - Session editor modal hardening:
-  - larger structure-authoring modal width and viewport-safe height
-  - details tab now switches to structure-driven planned metrics when structure exists
-  - planned duration + planned TSS payload values are now derived from structure (manual fields only when no structure exists)
-  - keyboard hint added (`Enter` save, `Esc` close)
+    - larger structure-authoring modal width and viewport-safe height
+    - details tab now switches to structure-driven planned metrics when structure exists
+    - planned duration + planned TSS payload values are now derived from structure (manual fields only when no structure exists)
+    - keyboard hint added (`Enter` save, `Esc` close)
 - Rebuilt session-detail surface for fidelity + usability:
-  - graph zoom remains click-drag based (no range sliders)
-  - hover guideline now tracks cursor precisely
-  - elevation renders as a filled background profile
-  - map remains real Leaflet and now keeps focused zoom segment contrast
-  - route hover telemetry panel remains vertically stacked on map
-  - analysis panel label simplified to `Analysis`
-  - planned structure preview is now read-only with hover inspection and summary copy
-  - metrics consolidated into one right-side `Statistics` card
-  - added `Internal Notes` textarea with explicit save action
-  - map moved to second row in detail composition
+    - graph zoom remains click-drag based (no range sliders)
+    - hover guideline now tracks cursor precisely
+    - elevation renders as a filled background profile
+    - map remains real Leaflet and now keeps focused zoom segment contrast
+    - route hover telemetry panel remains vertically stacked on map
+    - analysis panel label simplified to `Analysis`
+    - planned structure preview is now read-only with hover inspection and summary copy
+    - metrics consolidated into one right-side `Statistics` card
+    - added `Internal Notes` textarea with explicit save action
+    - map moved to second row in detail composition
 - Session-detail composition adjusted again for workflow clarity:
-  - row 1: route map + route statistics side card (internal notes included)
-  - row 2: planned blocks + analysis when structure exists, otherwise full-width analysis
-  - right side card compacted with a `Statistics / Internal Notes` switcher to keep row-1 height tighter
-  - planned vs actual summary reduced to compact badge-style chips
+    - row 1: route map + route statistics side card (internal notes included)
+    - row 2: planned blocks + analysis when structure exists, otherwise full-width analysis
+    - right side card compacted with a `Statistics / Internal Notes` switcher to keep row-1 height tighter
+    - planned vs actual summary reduced to compact badge-style chips
 - chart rendering performance improved via deterministic stream downsampling
 - Verification completed:
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php`
-  - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
 
 ## 2026-02-09 (Workout Structure Hardening Pass)
 
 - Added athlete performance-anchor persistence for workout builder scaling:
-  - new athlete profile fields:
-    - `ftp_watts`
-    - `max_heart_rate_bpm`
-    - `threshold_heart_rate_bpm`
-    - `threshold_pace_seconds_per_km`
-    - `power_zones` (JSON)
-    - `heart_rate_zones` (JSON)
-  - new migration:
-    - `2026_02_09_142712_add_performance_targets_to_athlete_profiles_table.php`
-  - settings training-preferences validation now enforces:
-    - numeric anchor bounds
-    - threshold HR <= max HR
-    - zone range integrity (`min <= max`)
+    - new athlete profile fields:
+        - `ftp_watts`
+        - `max_heart_rate_bpm`
+        - `threshold_heart_rate_bpm`
+        - `threshold_pace_minutes_per_km`
+        - `power_zones` (JSON)
+        - `heart_rate_zones` (JSON)
+    - new migration:
+        - `2026_02_09_142712_add_performance_targets_to_athlete_profiles_table.php`
+    - settings training-preferences validation now enforces:
+        - numeric anchor bounds
+        - threshold HR <= max HR
+        - zone range integrity (`min <= max`)
 - Upgraded athlete Settings → Training Preferences surface:
-  - added editable performance anchors (FTP/HR/pace)
-  - added editable zone tables (power + heart rate)
-  - values persist through existing training-preferences endpoint
+    - added editable performance anchors (FTP/HR/pace)
+    - added editable zone tables (power + heart rate)
+    - values persist through existing training-preferences endpoint
 - Wired athlete training targets into calendar/session editor context:
-  - dashboard + athlete calendar controllers now provide `athleteTrainingTargets`
-  - session editor passes these targets into workout builder
+    - dashboard + athlete calendar controllers now provide `athleteTrainingTargets`
+    - session editor passes these targets into workout builder
 - Rebuilt workout structure builder for stronger execution flow:
-  - unit-aware preview axis labels (with converted values when anchors exist)
-  - explicit range-band visualization in preview
-  - block-type-specific default targets/ranges
-  - grouped repeat/warmup templates:
-    - warmup = phased block in one card
-    - two/three-step repeats remain single editable cards with repeat count
-  - overview tiles added (`Total Duration`, `Estimated TSS`, `Blocks`)
-  - preview blocks are now draggable
-  - list drag/drop now uses clear insertion separators for snappier placement feedback
+    - unit-aware preview axis labels (with converted values when anchors exist)
+    - explicit range-band visualization in preview
+    - block-type-specific default targets/ranges
+    - grouped repeat/warmup templates:
+        - warmup = phased block in one card
+        - two/three-step repeats remain single editable cards with repeat count
+    - overview tiles added (`Total Duration`, `Estimated TSS`, `Blocks`)
+    - preview blocks are now draggable
+    - list drag/drop now uses clear insertion separators for snappier placement feedback
 - Verification completed:
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Settings/AthleteTrainingPreferencesTest.php tests/Feature/DashboardTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php`
-  - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Settings/AthleteTrainingPreferencesTest.php tests/Feature/DashboardTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
 
 ## 2026-02-09 (Athlete Slicing Parity Implementation Pass)
 
 - Implemented slicing-aligned athlete settings overview as the primary settings surface:
-  - route moved to `/settings/overview` with tab-driven shell
-  - tabs now follow slicing structure:
-    - Profile
-    - Training Preferences
-    - Integrations
-    - Billing & Plans
-  - athlete account label and sidebar tab hierarchy added
-  - profile/training preference persistence wired to dedicated controllers + FormRequests
+    - route moved to `/settings/overview` with tab-driven shell
+    - tabs now follow slicing structure:
+        - Profile
+        - Training Preferences
+        - Integrations
+        - Billing & Plans
+    - athlete account label and sidebar tab hierarchy added
+    - profile/training preference persistence wired to dedicated controllers + FormRequests
 - Added persistence for athlete settings fields:
-  - `users`: `timezone`, `unit_system`
-  - `athlete_profiles`: `primary_sport`, `weekly_training_days`, `preferred_rest_day`, `intensity_distribution`
+    - `users`: `timezone`, `unit_system`
+    - `athlete_profiles`: `primary_sport`, `weekly_training_days`, `preferred_rest_day`, `intensity_distribution`
 - Replaced static calendar provider chip behavior:
-  - calendar/dashboard now receive real provider status props
-  - header chip reflects Strava connection/sync state instead of fixed Garmin copy
+    - calendar/dashboard now receive real provider status props
+    - header chip reflects Strava connection/sync state instead of fixed Garmin copy
 - Implemented interval structure backbone for session create/edit:
-  - new `planned_structure` JSON column on `training_sessions`
-  - request validation + controller persistence for structure payload
-  - slicing-style workout structure builder integrated in session editor modal
-  - supports requested block types and editable fields (bike/run-first workflow)
+    - new `planned_structure` JSON column on `training_sessions`
+    - request validation + controller persistence for structure payload
+    - slicing-style workout structure builder integrated in session editor modal
+    - supports requested block types and editable fields (bike/run-first workflow)
 - Added athlete completed-session detail flow:
-  - new route/controller: `/sessions/{trainingSession}`
-  - completed session click now opens dedicated detail page
-  - detail page includes planned-vs-actual surfaces, stream toggles, and map panel
+    - new route/controller: `/sessions/{trainingSession}`
+    - completed session click now opens dedicated detail page
+    - detail page includes planned-vs-actual surfaces, stream toggles, and map panel
 - Added provider-agnostic activity stream read layer:
-  - new stream contract + manager resolution
-  - Strava stream provider implementation
-  - `GET /api/activities/{activity}/streams` endpoint
-  - caching support via `ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS`
-  - default stream enablement aligns with requirement:
-    - on by default: heart rate, power, cadence, elevation
-    - optional streams appear after available set; unavailable streams are disabled
+    - new stream contract + manager resolution
+    - Strava stream provider implementation
+    - `GET /api/activities/{activity}/streams` endpoint
+    - caching support via `ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS`
+    - default stream enablement aligns with requirement:
+        - on by default: heart rate, power, cadence, elevation
+        - optional streams appear after available set; unavailable streams are disabled
 - Updated athlete plans and progress parity surfaces:
-  - `/plans` now slicing-style coming-soon shell
-  - `/progress` expanded with weekly logs section tied to real session aggregates
+    - `/plans` now slicing-style coming-soon shell
+    - `/progress` expanded with weekly logs section tied to real session aggregates
 - UX hardening follow-up:
-  - session editor modal now stays viewport-safe (`max-height` + internal scroll)
-  - workout structure moved to a dedicated editor tab
-  - modal expands to a wider canvas while authoring workout structure
-  - completed-session detail graph upgraded with:
-    - x-axis mode toggle (`kilometers` default when available, `time` fallback)
-    - drag-select zoom (click + drag on chart), with reset action
-    - axis grid/ticks and hover inspection
-  - route panel upgraded from static SVG to real Leaflet map with route polyline
-  - chart hover now highlights the corresponding route point on the map
-  - zoomed chart segment now maps to a contrasting highlighted route segment and focused map bounds
-  - when no planned blocks exist, the analysis panel renders full-width and planned-block wrapper is omitted
+    - session editor modal now stays viewport-safe (`max-height` + internal scroll)
+    - workout structure moved to a dedicated editor tab
+    - modal expands to a wider canvas while authoring workout structure
+    - completed-session detail graph upgraded with:
+        - x-axis mode toggle (`kilometers` default when available, `time` fallback)
+        - drag-select zoom (click + drag on chart), with reset action
+        - axis grid/ticks and hover inspection
+    - route panel upgraded from static SVG to real Leaflet map with route polyline
+    - chart hover now highlights the corresponding route point on the map
+    - zoomed chart segment now maps to a contrasting highlighted route segment and focused map bounds
+    - when no planned blocks exist, the analysis panel renders full-width and planned-block wrapper is omitted
 - Fixed migration failure in training-session ownership backfill:
-  - replaced unsafe `chunkById` path with safe chunk iteration in
-    `2026_02_08_230000_add_user_id_and_nullable_week_to_training_sessions_table.php`
+    - replaced unsafe `chunkById` path with safe chunk iteration in
+      `2026_02_08_230000_add_user_id_and_nullable_week_to_training_sessions_table.php`
 - Verification completed:
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityStreamsApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/DashboardTest.php tests/Feature/ProgressPageTest.php`
-  - `vendor/bin/sail artisan test --compact tests/Feature/NavigationShellPagesTest.php tests/Feature/Settings/ProfileUpdateTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityStreamsApiTest.php tests/Feature/Calendar/SessionDetailPageTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/DashboardTest.php tests/Feature/ProgressPageTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/NavigationShellPagesTest.php tests/Feature/Settings/ProfileUpdateTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php`
 
 ## 2026-02-09
 
 - Phase 0 athlete parity audit completed against slicing authority:
-  - inspected slicing sources:
-    - `slicing-enduro-app/components/**`
-    - `slicing-enduro-app/screenshots/athlete/**`
-  - inspected current athlete implementation:
-    - sidebar/nav (`resources/js/components/app-sidebar.tsx`)
-    - calendar (`resources/js/pages/calendar/**`)
-    - progress (`resources/js/pages/progress/index.tsx`)
-    - plans (`resources/js/pages/plans/index.tsx`)
-    - settings (`resources/js/pages/settings/**`, `resources/js/layouts/settings/layout.tsx`)
+    - inspected slicing sources:
+        - `slicing-enduro-app/components/**`
+        - `slicing-enduro-app/screenshots/athlete/**`
+    - inspected current athlete implementation:
+        - sidebar/nav (`resources/js/components/app-sidebar.tsx`)
+        - calendar (`resources/js/pages/calendar/**`)
+        - progress (`resources/js/pages/progress/index.tsx`)
+        - plans (`resources/js/pages/plans/index.tsx`)
+        - settings (`resources/js/pages/settings/**`, `resources/js/layouts/settings/layout.tsx`)
 - Confirmed parity matches (athlete):
-  - sidebar tab set/order currently matches requested athlete tabs:
-    - Calendar
-    - Training Progress
-    - Training Plans
-    - Settings
-  - calendar week-grid composition is in slicing shape:
-    - fixed top header
-    - fixed weekday row
-    - sticky week headers
-    - aligned 7-day columns + summary rail
-  - progress header/range shell broadly matches slicing intent:
-    - long-term analysis header
-    - range controls (`4/8/12/24`)
-    - load trend + consistency section framing
+    - sidebar tab set/order currently matches requested athlete tabs:
+        - Calendar
+        - Training Progress
+        - Training Plans
+        - Settings
+    - calendar week-grid composition is in slicing shape:
+        - fixed top header
+        - fixed weekday row
+        - sticky week headers
+        - aligned 7-day columns + summary rail
+    - progress header/range shell broadly matches slicing intent:
+        - long-term analysis header
+        - range controls (`4/8/12/24`)
+        - load trend + consistency section framing
 - Detected parity gaps (athlete):
-  - calendar header still shows static `Garmin Sync Active` copy instead of real provider connection state
-  - no athlete session detail subpage equivalent to slicing training-detail screen; completed-session analysis route/view is missing
-  - no interval block builder (drag/drop planned structure) in session editor
-  - no planned-vs-actual detail surface with streams/map overlay in athlete flow
-  - progress page is missing slicing-style weekly logs section and associated list interaction
-  - plans page is still a starter-style generic card, not slicing-style coming-soon composition
-  - settings are still starter-kit multi-route pages (`profile/password/two-factor/appearance/connections`) instead of slicing tabbed settings shell:
-    - Profile
-    - Training Preferences
-    - Integrations
-    - Billing & Plans
-    - athlete account badge/label
+    - calendar header still shows static `Garmin Sync Active` copy instead of real provider connection state
+    - no athlete session detail subpage equivalent to slicing training-detail screen; completed-session analysis route/view is missing
+    - no interval block builder (drag/drop planned structure) in session editor
+    - no planned-vs-actual detail surface with streams/map overlay in athlete flow
+    - progress page is missing slicing-style weekly logs section and associated list interaction
+    - plans page is still a starter-style generic card, not slicing-style coming-soon composition
+    - settings are still starter-kit multi-route pages (`profile/password/two-factor/appearance/connections`) instead of slicing tabbed settings shell:
+        - Profile
+        - Training Preferences
+        - Integrations
+        - Billing & Plans
+        - athlete account badge/label
 - Phase 0 is now blocked pending clarification answers before implementation.
 
 ## 2026-02-07
 
 - Backend domain spine generated:
-  - models + relationships
-  - migrations
-  - policies
-  - API resources
-  - API controllers (stubbed)
-  - API routes
+    - models + relationships
+    - migrations
+    - policies
+    - API resources
+    - API controllers (stubbed)
+    - API routes
 - Added `role` to users (`athlete`, `coach`, `admin`)
 - Registered policy mappings for core training entities
 - API auth decision recorded: use Fortify/session `auth` middleware (no Sanctum in baseline)
@@ -191,521 +329,521 @@
 - Dashboard data loading moved to Inertia server props (no client-side fetch for plan reads)
 - Implemented TrainingWeek read endpoints (`index`, `show`) with policy-aware scoping and nested sessions
 - Added read performance controls for TrainingPlan + TrainingWeek index endpoints:
-  - `per_page`
-  - `starts_from`
-  - `ends_to`
-  - paginated response shape (`data`, `links`, `meta`)
+    - `per_page`
+    - `starts_from`
+    - `ends_to`
+    - paginated response shape (`data`, `links`, `meta`)
 - Added/updated API tests for:
-  - training plan pagination + date filters
-  - training week read access behavior
-  - authenticated endpoint behavior updates
+    - training plan pagination + date filters
+    - training week read access behavior
+    - authenticated endpoint behavior updates
 - Implemented TrainingSession read endpoints (`index`, `show`) for calendar backbone
 - Added TrainingSession read filters:
-  - `from`
-  - `to`
-  - `training_plan_id`
-  - `training_week_id`
+    - `from`
+    - `to`
+    - `training_plan_id`
+    - `training_week_id`
 - Added TrainingSession read tests for:
-  - auth requirements
-  - athlete own-data access
-  - athlete forbidden cross-user access
-  - admin full access
-  - coach empty collection behavior
-  - date window filtering
+    - auth requirements
+    - athlete own-data access
+    - athlete forbidden cross-user access
+    - admin full access
+    - coach empty collection behavior
+    - date window filtering
 - Implemented TrainingWeek CRUD (`store`, `update`, `destroy`) with policy checks
 - Added explicit TrainingWeek write validation via FormRequests:
-  - required `starts_at` / `ends_at`
-  - date ordering (`starts_at < ends_at`)
-  - non-overlapping weeks within the same training plan
+    - required `starts_at` / `ends_at`
+    - date ordering (`starts_at < ends_at`)
+    - non-overlapping weeks within the same training plan
 - Added focused TrainingWeek CRUD API tests for auth, ownership, admin, overlap, and invalid date ranges
 - Added deterministic visual verification seeders:
-  - `VisualSeeder`
-  - `Visual/AdminVisualSeeder`
-  - `Visual/CoachVisualSeeder`
-  - `Visual/AthleteVisualSeeder`
-  - deterministic role users + predictable plan/week/session calendar data
+    - `VisualSeeder`
+    - `Visual/AdminVisualSeeder`
+    - `Visual/CoachVisualSeeder`
+    - `Visual/AthleteVisualSeeder`
+    - deterministic role users + predictable plan/week/session calendar data
 - Implemented role-aware navigation shells (athlete/coach/admin/settings route surfaces)
 - Refactored athlete calendar to slicing-first composition using real backend data:
-  - single calendar canvas
-  - fixed top calendar header
-  - fixed weekday row
-  - sticky week headers
-  - 7 aligned day columns + right weekly summary rail
-  - read-only interaction posture preserved
+    - single calendar canvas
+    - fixed top calendar header
+    - fixed weekday row
+    - sticky week headers
+    - 7 aligned day columns + right weekly summary rail
+    - read-only interaction posture preserved
 - Reworked sidebar from starter-kit panel navigation to slicing-style fixed icon rail:
-  - icon stack + active blue indicator dot
-  - role-aware nav visibility retained
-  - role badge + sign-out controls aligned to slicing layout
+    - icon stack + active blue indicator dot
+    - role-aware nav visibility retained
+    - role badge + sign-out controls aligned to slicing layout
 - Removed/neutralized starter-kit visual token drift:
-  - slicing-aligned dark tokens in `resources/css/app.css`
-  - Inter + JetBrains Mono font loading in app shell
-  - bootstrap background set to slicing dark to avoid initial flash mismatch
+    - slicing-aligned dark tokens in `resources/css/app.css`
+    - Inter + JetBrains Mono font loading in app shell
+    - bootstrap background set to slicing dark to avoid initial flash mismatch
 - Updated calendar session visuals toward slicing `SessionCard` behavior:
-  - removed planned badge
-  - status icon rules aligned
-  - mono metric row + left sport accent strip + density/rhythm parity updates
+    - removed planned badge
+    - status icon rules aligned
+    - mono metric row + left sport accent strip + density/rhythm parity updates
 - Updated docs to track frontend slicing convergence and backend readiness
 
 ## 2026-02-08
 
 - Completed athlete calendar visual parity hardening pass (frontend-only, read-only behavior unchanged):
-  - scroll ownership locked to calendar canvas (page wrapper overflow hidden)
-  - duplicate day-column vertical separators removed
-  - current-week emphasis reduced to subtle header treatment (no full-week tint / left stripe)
-  - weekly summary rail width adjusted to slicing proportions
-  - week/day vertical rhythm normalized for consistent band height
-  - day-cell inset spacing tightened for closer date-to-session scan flow
-  - planned-session contrast increased (title + primary duration metric)
-  - session metrics restructured to stacked mono duration/TSS blocks
-  - planned-state right-side marker aligned to slicing composition
+    - scroll ownership locked to calendar canvas (page wrapper overflow hidden)
+    - duplicate day-column vertical separators removed
+    - current-week emphasis reduced to subtle header treatment (no full-week tint / left stripe)
+    - weekly summary rail width adjusted to slicing proportions
+    - week/day vertical rhythm normalized for consistent band height
+    - day-cell inset spacing tightened for closer date-to-session scan flow
+    - planned-session contrast increased (title + primary duration metric)
+    - session metrics restructured to stacked mono duration/TSS blocks
+    - planned-state right-side marker aligned to slicing composition
 - Verified frontend safety with targeted TypeScript check (`npm run types`) after the pass.
 - No backend/API/routes/policy changes in this update.
 - Implemented TrainingSession write support (backend-only):
-  - added `StoreTrainingSessionRequest`
-  - added `UpdateTrainingSessionRequest`
-  - added enum-backed sport validation via `TrainingSessionSport` (`swim`, `bike`, `run`, `gym`, `other`)
-  - enforced session date within selected `TrainingWeek` range
-  - enforced week accessibility validation for athlete/admin write paths
+    - added `StoreTrainingSessionRequest`
+    - added `UpdateTrainingSessionRequest`
+    - added enum-backed sport validation via `TrainingSessionSport` (`swim`, `bike`, `run`, `gym`, `other`)
+    - enforced session date within selected `TrainingWeek` range
+    - enforced week accessibility validation for athlete/admin write paths
 - Implemented `TrainingSessionController` write methods:
-  - `store` returns `201` + `TrainingSessionResource`
-  - `update` returns `200` + `TrainingSessionResource`
-  - `destroy` returns `204`
-  - policy checks applied for create/update/delete; coach write access remains denied
+    - `store` returns `201` + `TrainingSessionResource`
+    - `update` returns `200` + `TrainingSessionResource`
+    - `destroy` returns `204`
+    - policy checks applied for create/update/delete; coach write access remains denied
 - Added `tests/Feature/Api/TrainingSessionCrudApiTest.php` covering:
-  - auth required
-  - athlete own create/update/delete
-  - athlete forbidden cross-athlete mutation
-  - admin full mutation
-  - coach forbidden (`403`)
-  - validation failures for invalid week, date outside week range, missing required fields
+    - auth required
+    - athlete own create/update/delete
+    - athlete forbidden cross-athlete mutation
+    - admin full mutation
+    - coach forbidden (`403`)
+    - validation failures for invalid week, date outside week range, missing required fields
 - Verification completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php` (23 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php` (23 passed)
 - Wired athlete-only TrainingSession write interactions into calendar UI (frontend-only):
-  - create modal triggered from empty day cells / add button
-  - edit modal triggered from session row click
-  - delete action with explicit confirmation in edit modal
-  - all writes call existing API routes (`store` / `update` / `destroy`) via Wayfinder route helpers
-  - backend validation errors render inline in the modal
-  - successful writes reload calendar data from real backend props
-  - role gating enforced: only `auth.user.role === 'athlete'` can trigger write affordances; non-athletes remain read-only
+    - create modal triggered from empty day cells / add button
+    - edit modal triggered from session row click
+    - delete action with explicit confirmation in edit modal
+    - all writes call existing API routes (`store` / `update` / `destroy`) via Wayfinder route helpers
+    - backend validation errors render inline in the modal
+    - successful writes reload calendar data from real backend props
+    - role gating enforced: only `auth.user.role === 'athlete'` can trigger write affordances; non-athletes remain read-only
 - Frontend verification completed:
-  - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail npm run types`
 - Implemented coach-athlete assignment backbone (backend-first):
-  - added `coach_athlete_assignments` table with:
-    - `coach_id` FK
-    - `athlete_id` FK
-    - unique `(coach_id, athlete_id)`
-    - cascading deletes
-  - added `CoachAthleteAssignment` model
-  - added `User` relationships:
-    - `coachedAthletes()`
-    - `coaches()`
+    - added `coach_athlete_assignments` table with:
+        - `coach_id` FK
+        - `athlete_id` FK
+        - unique `(coach_id, athlete_id)`
+        - cascading deletes
+    - added `CoachAthleteAssignment` model
+    - added `User` relationships:
+        - `coachedAthletes()`
+        - `coaches()`
 - Updated assignment-aware authorization and read scoping:
-  - policies now allow coach read access only for assigned athletes
-  - coach write access remains denied for plans/weeks/sessions/activities
-  - dashboard + API read controllers (`TrainingPlan`, `TrainingWeek`, `TrainingSession`) now scope coach collections to assigned athletes only
+    - policies now allow coach read access only for assigned athletes
+    - coach write access remains denied for plans/weeks/sessions/activities
+    - dashboard + API read controllers (`TrainingPlan`, `TrainingWeek`, `TrainingSession`) now scope coach collections to assigned athletes only
 - Implemented read-only coach view enablement:
-  - added `CoachAthleteIndexController` for assigned-athlete directory props
-  - added `AthleteCalendarController` for coach/admin athlete calendar viewing
-  - wired `/coaches` to assigned-athlete directory with real Inertia props
-  - wired `/athletes/{athlete}` to reuse existing calendar page in read-only coach context
-  - added contextual calendar header text: `Viewing athlete: {name}`
-  - kept athlete calendar composition unchanged
+    - added `CoachAthleteIndexController` for assigned-athlete directory props
+    - added `AthleteCalendarController` for coach/admin athlete calendar viewing
+    - wired `/coaches` to assigned-athlete directory with real Inertia props
+    - wired `/athletes/{athlete}` to reuse existing calendar page in read-only coach context
+    - added contextual calendar header text: `Viewing athlete: {name}`
+    - kept athlete calendar composition unchanged
 - Extended deterministic visual seeders:
-  - seeded three deterministic athletes with plans/weeks/sessions
-  - seeded one coach assigned to all three athletes
+    - seeded three deterministic athletes with plans/weeks/sessions
+    - seeded one coach assigned to all three athletes
 - Added/updated tests:
-  - `tests/Feature/CoachAthleteAssignmentTest.php`
-  - `tests/Feature/CoachCalendarReadAccessTest.php`
-  - updated existing coach read assertions in plan/week/session read API tests for assignment-aware behavior
+    - `tests/Feature/CoachAthleteAssignmentTest.php`
+    - `tests/Feature/CoachCalendarReadAccessTest.php`
+    - updated existing coach read assertions in plan/week/session read API tests for assignment-aware behavior
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/DashboardTest.php` (46 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/DashboardTest.php` (46 passed)
 
 - Implemented admin console + impersonation system (session-based, read-only-first):
-  - added admin-only route guard middleware (`admin`)
-  - added admin routes:
-    - `GET /admin`
-    - `GET /admin/users`
-    - `POST /admin/impersonate/{user}`
-    - `POST /admin/impersonate/stop`
-  - added backend controllers:
-    - `AdminConsoleController`
-    - `AdminUserIndexController`
-    - `ImpersonationStartController`
-    - `ImpersonationStopController`
-  - added Inertia shared impersonation context:
-    - `auth.impersonating`
-    - `auth.original_user`
-    - `auth.impersonated_user`
+    - added admin-only route guard middleware (`admin`)
+    - added admin routes:
+        - `GET /admin`
+        - `GET /admin/users`
+        - `POST /admin/impersonate/{user}`
+        - `POST /admin/impersonate/stop`
+    - added backend controllers:
+        - `AdminConsoleController`
+        - `AdminUserIndexController`
+        - `ImpersonationStartController`
+        - `ImpersonationStopController`
+    - added Inertia shared impersonation context:
+        - `auth.impersonating`
+        - `auth.original_user`
+        - `auth.impersonated_user`
 - Corrected admin navigation behavior to slicing rules:
-  - admin (not impersonating) sidebar now shows only:
-    - Admin Console
-    - Users
-  - impersonated sessions now show role-correct sidebar automatically
+    - admin (not impersonating) sidebar now shows only:
+        - Admin Console
+        - Users
+    - impersonated sessions now show role-correct sidebar automatically
 - Added persistent impersonation banner with stop action across app layout.
 - Enforced read-only training writes during impersonation:
-  - write-policy guard for plan/week/session/activity create/update/delete/restore/forceDelete
-  - API routes now include session middleware (`StartSession`) so impersonation context is available for policy enforcement
+    - write-policy guard for plan/week/session/activity create/update/delete/restore/forceDelete
+    - API routes now include session middleware (`StartSession`) so impersonation context is available for policy enforcement
 - Added admin impersonation + role-navigation test coverage:
-  - `tests/Feature/AdminImpersonationTest.php`
-  - updated `tests/Feature/NavigationShellPagesTest.php`
+    - `tests/Feature/AdminImpersonationTest.php`
+    - updated `tests/Feature/NavigationShellPagesTest.php`
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php` (54 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/CoachAthleteAssignmentTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php` (54 passed)
 
 - Implemented provider-agnostic external activity read scaffolding (backend-only):
-  - added provider contract:
-    - `app/Services/ActivityProviders/Contracts/ActivityProvider.php`
-  - added normalized DTO + typed collection:
-    - `app/Data/ExternalActivityDTO.php`
-    - `app/Data/Collections/ActivityCollection.php`
-  - added provider manager/registry with allowed-provider enforcement:
-    - `app/Services/ActivityProviders/ActivityProviderManager.php`
-  - added explicit provider exceptions:
-    - unsupported provider
-    - unauthorized
-    - invalid token
-    - rate limited
-    - token missing
-    - request failure
-  - container wiring added in `AppServiceProvider` with provider map from `config/services.php`
+    - added provider contract:
+        - `app/Services/ActivityProviders/Contracts/ActivityProvider.php`
+    - added normalized DTO + typed collection:
+        - `app/Data/ExternalActivityDTO.php`
+        - `app/Data/Collections/ActivityCollection.php`
+    - added provider manager/registry with allowed-provider enforcement:
+        - `app/Services/ActivityProviders/ActivityProviderManager.php`
+    - added explicit provider exceptions:
+        - unsupported provider
+        - unauthorized
+        - invalid token
+        - rate limited
+        - token missing
+        - request failure
+    - container wiring added in `AppServiceProvider` with provider map from `config/services.php`
 
 - Implemented Strava read-only provider:
-  - `app/Services/ActivityProviders/Strava/StravaActivityProvider.php`
-  - read endpoints used:
-    - `/athlete/activities`
-    - `/activities/{id}`
-  - centralized HTTP client setup (base URL + bearer token + JSON)
-  - explicit failure handling for:
-    - missing token
-    - invalid/expired token (`401`)
-    - unauthorized (`403`)
-    - rate limit (`429`)
-  - explicit mapping from Strava payload to normalized DTO fields
+    - `app/Services/ActivityProviders/Strava/StravaActivityProvider.php`
+    - read endpoints used:
+        - `/athlete/activities`
+        - `/activities/{id}`
+    - centralized HTTP client setup (base URL + bearer token + JSON)
+    - explicit failure handling for:
+        - missing token
+        - invalid/expired token (`401`)
+        - unauthorized (`403`)
+        - rate limit (`429`)
+    - explicit mapping from Strava payload to normalized DTO fields
 
 - Added minimal persistence layer for normalized provider activities:
-  - `app/Services/Activities/ExternalActivityPersister.php`
-  - upsert by (`athlete_id`, `provider`, `external_id`)
-  - no training-session linking or derived metrics
+    - `app/Services/Activities/ExternalActivityPersister.php`
+    - upsert by (`athlete_id`, `provider`, `external_id`)
+    - no training-session linking or derived metrics
 
 - Extended schema for external activity storage:
-  - `users`:
-    - `strava_access_token`
-    - `strava_refresh_token`
-    - `strava_token_expires_at`
-  - `activities`:
-    - renamed `source` → `provider`
-    - added `athlete_id`, `sport`, `started_at`, `duration_seconds`, `distance_meters`, `elevation_gain_meters`
-    - made `training_session_id` nullable
-    - added indexes + unique constraint on (`athlete_id`, `provider`, `external_id`)
+    - `users`:
+        - `strava_access_token`
+        - `strava_refresh_token`
+        - `strava_token_expires_at`
+    - `activities`:
+        - renamed `source` → `provider`
+        - added `athlete_id`, `sport`, `started_at`, `duration_seconds`, `distance_meters`, `elevation_gain_meters`
+        - made `training_session_id` nullable
+        - added indexes + unique constraint on (`athlete_id`, `provider`, `external_id`)
 
 - Implemented read-only activities API:
-  - controller:
-    - `ActivityController@index`
-    - `ActivityController@show`
-  - routes:
-    - `GET /api/activities`
-    - `GET /api/activities/{activity}`
-  - request validation:
-    - `per_page`
-    - `provider`
-    - `from` / `to`
-  - role-scoped access:
-    - athlete: own activities
-    - coach: assigned athletes only
-    - admin: all
-  - pagination shape preserved (`data`, `links`, `meta`)
+    - controller:
+        - `ActivityController@index`
+        - `ActivityController@show`
+    - routes:
+        - `GET /api/activities`
+        - `GET /api/activities/{activity}`
+    - request validation:
+        - `per_page`
+        - `provider`
+        - `from` / `to`
+    - role-scoped access:
+        - athlete: own activities
+        - coach: assigned athletes only
+        - admin: all
+    - pagination shape preserved (`data`, `links`, `meta`)
 
 - Added/updated tests:
-  - `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php`
-  - `tests/Feature/ActivityProviders/StravaActivityProviderTest.php`
-  - `tests/Feature/Api/ActivityReadApiTest.php`
-  - updated `tests/Feature/Api/DomainSpineRoutesTest.php` for implemented activities index
+    - `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php`
+    - `tests/Feature/ActivityProviders/StravaActivityProviderTest.php`
+    - `tests/Feature/Api/ActivityReadApiTest.php`
+    - updated `tests/Feature/Api/DomainSpineRoutesTest.php` for implemented activities index
 
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/DomainSpineRoutesTest.php` (14 passed)
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/CoachCalendarReadAccessTest.php` (39 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/DomainSpineRoutesTest.php` (14 passed)
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/CoachCalendarReadAccessTest.php` (39 passed)
 
 - Implemented provider-agnostic OAuth connection and sync backbone (Strava first):
-  - added OAuth provider contract:
-    - `app/Services/ActivityProviders/Contracts/OAuthProvider.php`
-  - added normalized OAuth token DTO:
-    - `app/Data/OAuthProviderTokensDTO.php`
-  - extended provider manager to resolve both:
-    - activity providers
-    - OAuth providers
+    - added OAuth provider contract:
+        - `app/Services/ActivityProviders/Contracts/OAuthProvider.php`
+    - added normalized OAuth token DTO:
+        - `app/Data/OAuthProviderTokensDTO.php`
+    - extended provider manager to resolve both:
+        - activity providers
+        - OAuth providers
 - Added durable provider connection persistence:
-  - new table + model:
-    - `activity_provider_connections`
-    - `App\Models\ActivityProviderConnection`
-  - stores:
-    - encrypted `access_token`
-    - encrypted `refresh_token`
-    - `token_expires_at`
-    - provider athlete id
-    - sync tracking (`last_synced_at`, `last_sync_status`, `last_sync_reason`)
+    - new table + model:
+        - `activity_provider_connections`
+        - `App\Models\ActivityProviderConnection`
+    - stores:
+        - encrypted `access_token`
+        - encrypted `refresh_token`
+        - `token_expires_at`
+        - provider athlete id
+        - sync tracking (`last_synced_at`, `last_sync_status`, `last_sync_reason`)
 - Implemented Strava OAuth provider (read scopes, connect/callback/refresh support):
-  - `app/Services/ActivityProviders/Strava/StravaOAuthProvider.php`
-  - OAuth endpoints wired against:
-    - `https://www.strava.com/oauth/authorize`
-    - `https://www.strava.com/oauth/token`
+    - `app/Services/ActivityProviders/Strava/StravaOAuthProvider.php`
+    - OAuth endpoints wired against:
+        - `https://www.strava.com/oauth/authorize`
+        - `https://www.strava.com/oauth/token`
 - Implemented centralized token lifecycle management:
-  - `ActivityProviderTokenManager` detects near-expiry and refreshes tokens through OAuth provider abstractions
-  - `ActivityProviderConnectionStore` handles upsert/disconnect/sync status updates and legacy Strava token compatibility
+    - `ActivityProviderTokenManager` detects near-expiry and refreshes tokens through OAuth provider abstractions
+    - `ActivityProviderConnectionStore` handles upsert/disconnect/sync status updates and legacy Strava token compatibility
 - Implemented sync orchestration:
-  - `ActivitySyncService` fetches provider activities, persists via `ExternalActivityPersister`, and tracks sync status
-  - added API endpoint:
-    - `POST /api/activity-providers/{provider}/sync`
-  - role behavior:
-    - athlete/admin allowed
-    - coach forbidden
+    - `ActivitySyncService` fetches provider activities, persists via `ExternalActivityPersister`, and tracks sync status
+    - added API endpoint:
+        - `POST /api/activity-providers/{provider}/sync`
+    - role behavior:
+        - athlete/admin allowed
+        - coach forbidden
 - Implemented web OAuth routes/controllers (auth-protected):
-  - connect redirect
-  - callback exchange/store
-  - disconnect
-  - routes under `settings/connections/*`
+    - connect redirect
+    - callback exchange/store
+    - disconnect
+    - routes under `settings/connections/*`
 - Added Settings → Connections UI (Inertia, real backend state, no mock data):
-  - `resources/js/pages/settings/connections.tsx`
-  - shows connection status + last sync + connect/disconnect + sync now
-  - wired into settings navigation and settings overview links
+    - `resources/js/pages/settings/connections.tsx`
+    - shows connection status + last sync + connect/disconnect + sync now
+    - wired into settings navigation and settings overview links
 - Config/environment updates:
-  - expanded `config/services.php` for OAuth provider map + Strava OAuth credentials/scopes + sync refresh settings
-  - added required env variables to `.env.example`
+    - expanded `config/services.php` for OAuth provider map + Strava OAuth credentials/scopes + sync refresh settings
+    - added required env variables to `.env.example`
 - Added test coverage:
-  - `tests/Feature/Settings/ActivityProviderConnectionsTest.php`
-  - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
-  - `tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php`
-  - updated `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php` for OAuth provider resolution
+    - `tests/Feature/Settings/ActivityProviderConnectionsTest.php`
+    - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
+    - `tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php`
+    - updated `tests/Feature/ActivityProviders/ActivityProviderManagerTest.php` for OAuth provider resolution
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (27 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (27 passed)
 
 - Upgraded provider sync to queue-backed execution with lock safety:
-  - added sync run tracking model/table:
-    - `ActivityProviderSyncRun`
-    - `activity_provider_sync_runs`
-  - added async dispatcher + job:
-    - `ActivitySyncDispatcher`
-    - `SyncActivityProviderJob`
-  - sync endpoint behavior changed:
-    - `POST /api/activity-providers/{provider}/sync`
-    - now returns `202` + queued payload (`status`, `provider`, `sync_run_id`)
-  - one sync lock per `provider + user` enforced via cache lock
-  - deterministic retry/backoff implemented:
-    - lock-contention release delay
-    - rate-limit-aware requeue (uses `Retry-After` when provided; otherwise exponential delay)
-  - connection sync statuses expanded in practice:
-    - `queued`
-    - `running`
-    - `rate_limited`
-    - `failed`
-    - `success`
+    - added sync run tracking model/table:
+        - `ActivityProviderSyncRun`
+        - `activity_provider_sync_runs`
+    - added async dispatcher + job:
+        - `ActivitySyncDispatcher`
+        - `SyncActivityProviderJob`
+    - sync endpoint behavior changed:
+        - `POST /api/activity-providers/{provider}/sync`
+        - now returns `202` + queued payload (`status`, `provider`, `sync_run_id`)
+    - one sync lock per `provider + user` enforced via cache lock
+    - deterministic retry/backoff implemented:
+        - lock-contention release delay
+        - rate-limit-aware requeue (uses `Retry-After` when provided; otherwise exponential delay)
+    - connection sync statuses expanded in practice:
+        - `queued`
+        - `running`
+        - `rate_limited`
+        - `failed`
+        - `success`
 
 - Added Strava webhook ingestion + verification (Strava-first, provider-safe structure):
-  - new webhook routes:
-    - `GET /api/webhooks/strava` (verification handshake)
-    - `POST /api/webhooks/strava` (event ingestion)
-  - new webhook persistence model/table:
-    - `ActivityProviderWebhookEvent`
-    - `activity_provider_webhook_events`
-  - idempotent event storage enforced by unique (`provider`, `payload_hash`)
-  - processing behavior:
-    - `create` / `update` activity events queue targeted sync for connected athlete
-    - `delete` activity events soft-delete matching local activity record
-    - unsupported/unmapped events are stored and marked ignored
-  - optional subscription-id matching supported through config for stricter ingestion safety
+    - new webhook routes:
+        - `GET /api/webhooks/strava` (verification handshake)
+        - `POST /api/webhooks/strava` (event ingestion)
+    - new webhook persistence model/table:
+        - `ActivityProviderWebhookEvent`
+        - `activity_provider_webhook_events`
+    - idempotent event storage enforced by unique (`provider`, `payload_hash`)
+    - processing behavior:
+        - `create` / `update` activity events queue targeted sync for connected athlete
+        - `delete` activity events soft-delete matching local activity record
+        - unsupported/unmapped events are stored and marked ignored
+    - optional subscription-id matching supported through config for stricter ingestion safety
 
 - Added soft-delete support for external activities:
-  - migration:
-    - `add_deleted_at_to_activities_table`
-  - `Activity` now uses `SoftDeletes`
-  - persister restored to handle upserts against previously deleted activity rows
+    - migration:
+        - `add_deleted_at_to_activities_table`
+    - `Activity` now uses `SoftDeletes`
+    - persister restored to handle upserts against previously deleted activity rows
 
 - Updated settings connections UX for async sync lifecycle:
-  - sync action now expects `202 queued`
-  - sync status labels rendered from real backend connection state (`queued`, `running`, `rate_limited`, `failed`, `success`)
-  - no fake status data introduced
+    - sync action now expects `202 queued`
+    - sync status labels rendered from real backend connection state (`queued`, `running`, `rate_limited`, `failed`, `success`)
+    - no fake status data introduced
 
 - Added/updated tests for queue + webhook hardening:
-  - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
-  - `tests/Feature/Api/ActivityProviderSyncJobTest.php`
-  - `tests/Feature/Api/ActivityProviderWebhookTest.php`
-  - existing provider/token/read/settings tests kept green
+    - `tests/Feature/Api/ActivityProviderSyncApiTest.php`
+    - `tests/Feature/Api/ActivityProviderSyncJobTest.php`
+    - `tests/Feature/Api/ActivityProviderWebhookTest.php`
+    - existing provider/token/read/settings tests kept green
 
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
 
 - Enabled real-time sync status updates with Laravel Reverb:
-  - installed broadcasting + Reverb scaffolding (`config/broadcasting.php`, `config/reverb.php`, `routes/channels.php`)
-  - added broadcast event:
-    - `ActivityProviderSyncStatusUpdated`
-  - wired sync status transitions to broadcast from `ActivityProviderConnectionStore`
-  - private user channel used:
-    - `App.Models.User.{id}`
-  - settings connections page now subscribes via Echo and reloads provider data when status events arrive
-  - queue/webhook/status behavior unchanged functionally; this step adds live UI propagation only
-  - Sail container networking updated for Reverb websocket traffic:
-    - exposed container port `8080` via `FORWARD_REVERB_PORT`
+    - installed broadcasting + Reverb scaffolding (`config/broadcasting.php`, `config/reverb.php`, `routes/channels.php`)
+    - added broadcast event:
+        - `ActivityProviderSyncStatusUpdated`
+    - wired sync status transitions to broadcast from `ActivityProviderConnectionStore`
+    - private user channel used:
+        - `App.Models.User.{id}`
+    - settings connections page now subscribes via Echo and reloads provider data when status events arrive
+    - queue/webhook/status behavior unchanged functionally; this step adds live UI propagation only
+    - Sail container networking updated for Reverb websocket traffic:
+        - exposed container port `8080` via `FORWARD_REVERB_PORT`
 - Frontend Echo setup completed:
-  - added `resources/js/lib/echo.ts`
-  - initialized Echo on app boot in `resources/js/app.tsx`
-  - added CSRF meta tag in app root view for private channel auth
-  - installer-injected `@laravel/echo-react` import was replaced with explicit `laravel-echo` + `pusher-js` setup for deterministic control
+    - added `resources/js/lib/echo.ts`
+    - initialized Echo on app boot in `resources/js/app.tsx`
+    - added CSRF meta tag in app root view for private channel auth
+    - installer-injected `@laravel/echo-react` import was replaced with explicit `laravel-echo` + `pusher-js` setup for deterministic control
 - Added event assertions to sync tests:
-  - queued status event dispatched from sync API queueing flow
-  - running/success/rate_limited events dispatched from sync job flow
+    - queued status event dispatched from sync API queueing flow
+    - running/success/rate_limited events dispatched from sync job flow
 - Validation completed after Reverb wiring:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/ActivityProviderSyncApiTest.php tests/Feature/Api/ActivityProviderSyncJobTest.php tests/Feature/Api/ActivityProviderWebhookTest.php tests/Feature/Settings/ActivityProviderConnectionsTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php` (34 passed)
 
 - Implemented read-only Activity ↔ TrainingSession linking hints (backend-only):
-  - added `ActivityLinkingService` for deterministic suggestion queries by:
-    - athlete ownership
-    - same sport
-    - same calendar date
-    - unlinked activities only
-    - duration proximity ordering
-  - updated `TrainingSessionResource` to include `suggested_activities` (minimal fields only)
-  - updated `ActivityResource` to expose `linked_session_id` (+ `linked_session_uid` helper)
-  - confirmed no write endpoints, no auto-linking, and no metric derivation were introduced
+    - added `ActivityLinkingService` for deterministic suggestion queries by:
+        - athlete ownership
+        - same sport
+        - same calendar date
+        - unlinked activities only
+        - duration proximity ordering
+    - updated `TrainingSessionResource` to include `suggested_activities` (minimal fields only)
+    - updated `ActivityResource` to expose `linked_session_id` (+ `linked_session_uid` helper)
+    - confirmed no write endpoints, no auto-linking, and no metric derivation were introduced
 - Added linking-focused tests:
-  - `tests/Feature/Services/ActivityLinkingServiceTest.php`
-  - `tests/Feature/Api/ActivityLinkingResourceTest.php`
+    - `tests/Feature/Services/ActivityLinkingServiceTest.php`
+    - `tests/Feature/Api/ActivityLinkingResourceTest.php`
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (20 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (20 passed)
 
 - Implemented manual Activity ↔ TrainingSession linking (explicit actions, no auto-binding):
-  - added API endpoints:
-    - `POST /api/training-sessions/{training_session}/link-activity`
-    - `DELETE /api/training-sessions/{training_session}/unlink-activity`
-  - added FormRequests:
-    - `LinkActivityToSessionRequest`
-    - `UnlinkActivityFromSessionRequest`
-  - controller-level validation and guards now enforce:
-    - session policy authorization (`linkActivity`, `unlinkActivity`)
-    - same-athlete ownership between session/activity
-    - conflict rejection when activity is linked elsewhere
-    - conflict rejection when session already has a different linked activity
-  - admin link/unlink is blocked by policy unless admin is impersonating an athlete (then treated as athlete context)
+    - added API endpoints:
+        - `POST /api/training-sessions/{training_session}/link-activity`
+        - `DELETE /api/training-sessions/{training_session}/unlink-activity`
+    - added FormRequests:
+        - `LinkActivityToSessionRequest`
+        - `UnlinkActivityFromSessionRequest`
+    - controller-level validation and guards now enforce:
+        - session policy authorization (`linkActivity`, `unlinkActivity`)
+        - same-athlete ownership between session/activity
+        - conflict rejection when activity is linked elsewhere
+        - conflict rejection when session already has a different linked activity
+    - admin link/unlink is blocked by policy unless admin is impersonating an athlete (then treated as athlete context)
 - Updated API resource contracts:
-  - `TrainingSessionResource` now includes:
-    - `linked_activity_id`
-    - `linked_activity_summary`
-    - `suggested_activities` (computed only for session show context)
-  - `ActivityResource` now includes:
-    - `linked_session_summary` when relation is loaded
+    - `TrainingSessionResource` now includes:
+        - `linked_activity_id`
+        - `linked_activity_summary`
+        - `suggested_activities` (computed only for session show context)
+    - `ActivityResource` now includes:
+        - `linked_session_summary` when relation is loaded
 - Frontend calendar wiring (athlete-only link UX):
-  - session editor modal now shows:
-    - linked activity summary
-    - suggested activities list
-    - explicit Link / Unlink actions with loading and error feedback
-  - role gating updated:
-    - athletes can link/unlink
-    - coaches/admins do not see link controls
-    - impersonated athlete context can access link/unlink controls while session write fields remain read-only
-  - session rows show subtle linked-activity indicator
+    - session editor modal now shows:
+        - linked activity summary
+        - suggested activities list
+        - explicit Link / Unlink actions with loading and error feedback
+    - role gating updated:
+        - athletes can link/unlink
+        - coaches/admins do not see link controls
+        - impersonated athlete context can access link/unlink controls while session write fields remain read-only
+    - session rows show subtle linked-activity indicator
 - Added/updated tests:
-  - `tests/Feature/Api/TrainingSessionActivityLinkApiTest.php`
-  - `tests/Feature/Api/ActivityLinkingResourceTest.php` (extended)
+    - `tests/Feature/Api/TrainingSessionActivityLinkApiTest.php`
+    - `tests/Feature/Api/ActivityLinkingResourceTest.php` (extended)
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/ActivityReadApiTest.php` (44 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/ActivityLinkingResourceTest.php tests/Feature/Services/ActivityLinkingServiceTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/ActivityReadApiTest.php` (44 passed)
 
 - Implemented manual TrainingSession completion using linked Activity (explicit, non-automatic):
-  - added completion endpoints:
-    - `POST /api/training-sessions/{training_session}/complete`
-    - `POST /api/training-sessions/{training_session}/revert-completion`
-  - added FormRequests:
-    - `CompleteTrainingSessionRequest`
-    - `RevertTrainingSessionCompletionRequest`
-  - added policy methods:
-    - `complete`
-    - `revertCompletion`
-  - admin direct completion writes denied; impersonated athlete context is allowed
+    - added completion endpoints:
+        - `POST /api/training-sessions/{training_session}/complete`
+        - `POST /api/training-sessions/{training_session}/revert-completion`
+    - added FormRequests:
+        - `CompleteTrainingSessionRequest`
+        - `RevertTrainingSessionCompletionRequest`
+    - added policy methods:
+        - `complete`
+        - `revertCompletion`
+    - admin direct completion writes denied; impersonated athlete context is allowed
 - Added session completion persistence fields:
-  - `training_sessions.actual_duration_minutes` (nullable)
-  - `training_sessions.completed_at` (nullable)
-  - model/resource support for:
-    - `is_completed`
-    - `completed_at`
-    - `actual_duration_minutes`
-    - `actual_tss`
+    - `training_sessions.actual_duration_minutes` (nullable)
+    - `training_sessions.completed_at` (nullable)
+    - model/resource support for:
+        - `is_completed`
+        - `completed_at`
+        - `actual_duration_minutes`
+        - `actual_tss`
 - Completion semantics implemented:
-  - completion requires linked activity
-  - status transitions:
-    - `planned` → `completed` (explicit action only)
-    - `completed` → `planned` via revert endpoint
-  - values copied from linked activity (no training-science derivation):
-    - duration from activity duration seconds (minute conversion)
-    - `actual_tss` copied only if explicit `tss` exists in activity payload; otherwise null
-  - revert clears `actual_*` + `completed_at` while retaining linked activity
+    - completion requires linked activity
+    - status transitions:
+        - `planned` → `completed` (explicit action only)
+        - `completed` → `planned` via revert endpoint
+    - values copied from linked activity (no training-science derivation):
+        - duration from activity duration seconds (minute conversion)
+        - `actual_tss` copied only if explicit `tss` exists in activity payload; otherwise null
+    - revert clears `actual_*` + `completed_at` while retaining linked activity
 - Frontend calendar completion UX wired (athlete-only):
-  - session editor modal now exposes:
-    - `Mark as Completed`
-    - `Revert to Planned`
-  - completion actions include loading + validation error feedback
-  - completed sessions display clear, restrained status cues
-  - coach/admin remain read-only; impersonated athlete context behaves as athlete
+    - session editor modal now exposes:
+        - `Mark as Completed`
+        - `Revert to Planned`
+    - completion actions include loading + validation error feedback
+    - completed sessions display clear, restrained status cues
+    - coach/admin remain read-only; impersonated athlete context behaves as athlete
 - Added tests:
-  - `tests/Feature/Api/TrainingSessionCompletionApiTest.php`
-  - `tests/Feature/Calendar/SessionCompletionUiPropsTest.php` (Inertia rendering props coverage)
+    - `tests/Feature/Api/TrainingSessionCompletionApiTest.php`
+    - `tests/Feature/Calendar/SessionCompletionUiPropsTest.php` (Inertia rendering props coverage)
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Calendar/SessionCompletionUiPropsTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (60 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Calendar/SessionCompletionUiPropsTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php` (60 passed)
 
 - Implemented athlete Training Progress read model page (`/progress`) using real session aggregates:
-  - added athlete-only backend controller + request validation:
-    - `AthleteProgressController`
-    - `Progress/IndexRequest`
-  - range selector now supports validated windows: `4`, `8`, `12`, `24` weeks
-  - page now renders:
-    - average weekly load/volume
-    - planned vs completed totals
-    - load trend chart with explicit gaps when data is missing
-    - consistency + current streak indicators
-  - no training science, prediction, or speculative metrics added
+    - added athlete-only backend controller + request validation:
+        - `AthleteProgressController`
+        - `Progress/IndexRequest`
+    - range selector now supports validated windows: `4`, `8`, `12`, `24` weeks
+    - page now renders:
+        - average weekly load/volume
+        - planned vs completed totals
+        - load trend chart with explicit gaps when data is missing
+        - consistency + current streak indicators
+    - no training science, prediction, or speculative metrics added
 - Completed calendar behavior parity updates:
-  - initial calendar load now centers the current week in the owned scroll container
-  - infinite vertical week loading added in both directions:
-    - prepends past windows
-    - appends future windows
-  - uses existing `GET /api/training-sessions` read endpoint with date-window queries
-  - no write logic changes and no calendar layout redesign introduced
+    - initial calendar load now centers the current week in the owned scroll container
+    - infinite vertical week loading added in both directions:
+        - prepends past windows
+        - appends future windows
+    - uses existing `GET /api/training-sessions` read endpoint with date-window queries
+    - no write logic changes and no calendar layout redesign introduced
 - Added/updated tests:
-  - `tests/Feature/ProgressPageTest.php`
-  - `tests/Feature/DashboardTest.php` (session-first payload assertions retained/extended)
-  - `tests/Feature/Api/TrainingSessionCrudApiTest.php` and existing read/navigation coverage remain green
+    - `tests/Feature/ProgressPageTest.php`
+    - `tests/Feature/DashboardTest.php` (session-first payload assertions retained/extended)
+    - `tests/Feature/Api/TrainingSessionCrudApiTest.php` and existing read/navigation coverage remain green
 - Validation completed:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php` (23 passed)
-  - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php` (25 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php` (23 passed)
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php` (25 passed)
 
 - Implemented athlete post-activity reconciliation UX hardening (frontend-only):
-  - calendar session rows now distinguish:
-    - planned without linked activity
-    - linked and ready-to-complete
-    - completed
-    - completed with adjusted values
-  - session editor modal now shows explicit planned-vs-actual comparison when activity is linked
-  - completion copy behavior and revert clearing behavior are now explicitly communicated in modal copy
-  - no backend, policy, route, or domain logic changes introduced
+    - calendar session rows now distinguish:
+        - planned without linked activity
+        - linked and ready-to-complete
+        - completed
+        - completed with adjusted values
+    - session editor modal now shows explicit planned-vs-actual comparison when activity is linked
+    - completion copy behavior and revert clearing behavior are now explicitly communicated in modal copy
+    - no backend, policy, route, or domain logic changes introduced
 - Validation completed for this pass:
-  - `vendor/bin/sail bin pint --dirty --format agent`
-  - `vendor/bin/sail npm run types`
-  - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php` (4 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php` (4 passed)
 
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).

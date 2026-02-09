@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CoachProfile;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
@@ -115,6 +116,24 @@ it('rejects attempts to impersonate another admin', function () {
         ->assertUnprocessable();
 });
 
+it('blocks impersonating unapproved coaches', function () {
+    $admin = User::factory()->admin()->create();
+    $coach = User::factory()->coach()->create();
+
+    CoachProfile::query()->updateOrCreate(
+        ['user_id' => $coach->id],
+        ['is_approved' => false],
+    );
+
+    $this
+        ->actingAs($admin)
+        ->post("/admin/impersonate/{$coach->id}")
+        ->assertUnprocessable();
+
+    expect(session('impersonation.original_user_id'))->toBeNull();
+    expect(session('impersonation.impersonated_user_id'))->toBeNull();
+});
+
 it('blocks impersonated admin sessions from writing training data', function () {
     $admin = User::factory()->admin()->create();
     $athlete = User::factory()->athlete()->create();
@@ -201,6 +220,7 @@ it('restricts admin pages to admins', function () {
 
     $this->actingAs($athlete)->get('/admin')->assertForbidden();
     $this->actingAs($athlete)->get('/admin/users')->assertForbidden();
+    $this->actingAs($athlete)->get('/admin/coach-applications')->assertForbidden();
 
     $this
         ->actingAs($admin)
@@ -213,4 +233,54 @@ it('restricts admin pages to admins', function () {
         ->get('/admin/users')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('admin/users/index'));
+
+    $this
+        ->actingAs($admin)
+        ->get('/admin/users/'.$athlete->id)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('admin/users/show'));
+
+    $this
+        ->actingAs($admin)
+        ->get('/admin/coach-applications')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('admin/coach-applications/index'));
+});
+
+it('marks athletes as active in the admin users table', function () {
+    $admin = User::factory()->admin()->create();
+    $athlete = User::factory()->athlete()->create();
+
+    $this
+        ->actingAs($admin)
+        ->get('/admin/users')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/users/index')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $listedUser): bool => (int) $listedUser['id'] === $athlete->id
+                    && (string) $listedUser['status'] === 'active',
+            )));
+});
+
+it('exposes pending coaches as non-impersonatable in admin user lists', function () {
+    $admin = User::factory()->admin()->create();
+    $coach = User::factory()->coach()->create();
+
+    CoachProfile::query()->updateOrCreate(
+        ['user_id' => $coach->id],
+        ['is_approved' => false],
+    );
+
+    $this
+        ->actingAs($admin)
+        ->get('/admin/users')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/users/index')
+            ->where('users', fn ($users): bool => collect($users)->contains(
+                fn (array $listedUser): bool => (int) $listedUser['id'] === $coach->id
+                    && (string) $listedUser['status'] === 'pending'
+                    && $listedUser['can_impersonate'] === false,
+            )));
 });

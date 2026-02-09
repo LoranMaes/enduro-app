@@ -1,22 +1,20 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    Eye,
-    Search,
-    Shield,
-    UserRound,
-    UsersRound,
-} from 'lucide-react';
+import { Eye, Search, Shield, UserRound, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import { start as startImpersonation } from '@/routes/admin/impersonate';
-import { index as adminUsersIndex } from '@/routes/admin/users';
+import {
+    index as adminUsersIndex,
+    show as adminUsersShow,
+} from '@/routes/admin/users';
 import type { BreadcrumbItem } from '@/types';
 
 type AdminMetrics = {
     total_users: number;
     active_athletes: number;
     active_coaches: number;
+    pending_coach_applications: number;
     estimated_mrr: number | null;
 };
 
@@ -34,6 +32,12 @@ type AdminUserPreview = {
 type AdminIndexProps = {
     metrics: AdminMetrics;
     recentUsers: AdminUserPreview[];
+    coachApplicationsPreview: Array<{
+        id: number;
+        name: string;
+        email: string | null;
+        submitted_at: string | null;
+    }>;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -43,7 +47,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
+export default function AdminIndex({
+    metrics,
+    recentUsers,
+    coachApplicationsPreview,
+}: AdminIndexProps) {
     const [processingUserId, setProcessingUserId] = useState<number | null>(
         null,
     );
@@ -81,14 +89,14 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                             type="text"
                             placeholder="Search users or logs..."
                             disabled
-                            className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-4 text-sm text-zinc-300 placeholder:text-zinc-600"
+                            className="w-full rounded-lg border border-border bg-surface py-2 pr-4 pl-9 text-sm text-zinc-300 placeholder:text-zinc-600"
                         />
                     </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto px-6 py-6">
                     <div className="space-y-8">
-                        <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                        <section className="grid grid-cols-2 gap-4 xl:grid-cols-5">
                             <MetricTile
                                 label="Total Users"
                                 value={metrics.total_users.toString()}
@@ -102,6 +110,11 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                 value={metrics.active_coaches.toString()}
                             />
                             <MetricTile
+                                label="Coach Applications"
+                                value={metrics.pending_coach_applications.toString()}
+                                caption="Pending"
+                            />
+                            <MetricTile
                                 label="Est. MRR"
                                 value={
                                     metrics.estimated_mrr !== null
@@ -113,7 +126,7 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                             />
                         </section>
 
-                        <section className="grid gap-4 lg:grid-cols-2">
+                        <section className="grid gap-4 lg:grid-cols-3">
                             <Link
                                 href={adminUsersIndex().url}
                                 className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
@@ -126,6 +139,24 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                         <p className="mt-1 text-xs text-zinc-500">
                                             Directory + read-only impersonation
                                             entrypoint.
+                                        </p>
+                                    </div>
+                                    <UsersRound className="h-4 w-4 text-zinc-500" />
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/admin/coach-applications"
+                                className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-zinc-100">
+                                            Coach Applications
+                                        </p>
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Review submissions and approve coach
+                                            access.
                                         </p>
                                     </div>
                                     <UsersRound className="h-4 w-4 text-zinc-500" />
@@ -150,6 +181,55 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
 
                         <section className="overflow-hidden rounded-xl border border-border bg-surface">
                             <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                                <h2 className="text-base font-medium text-zinc-200">
+                                    Pending Coach Applications
+                                </h2>
+                                <Link
+                                    href="/admin/coach-applications"
+                                    className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
+                                >
+                                    Open queue
+                                </Link>
+                            </div>
+
+                            {coachApplicationsPreview.length === 0 ? (
+                                <p className="px-4 py-6 text-sm text-zinc-500">
+                                    No pending coach applications.
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-border">
+                                    {coachApplicationsPreview.map(
+                                        (application) => (
+                                            <li
+                                                key={application.id}
+                                                className="flex items-center justify-between gap-4 px-4 py-3"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-medium text-zinc-200">
+                                                        {application.name}
+                                                    </p>
+                                                    <p className="truncate text-xs text-zinc-500">
+                                                        {application.email ??
+                                                            '—'}
+                                                    </p>
+                                                </div>
+                                                <span className="shrink-0 text-[11px] text-zinc-500">
+                                                    {application.submitted_at ===
+                                                    null
+                                                        ? '—'
+                                                        : new Date(
+                                                              application.submitted_at,
+                                                          ).toLocaleDateString()}
+                                                </span>
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            )}
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-border bg-surface">
+                            <div className="flex items-center justify-between border-b border-border px-4 py-3">
                                 <h2 className="text-xl font-medium text-zinc-200">
                                     Recent Signups
                                 </h2>
@@ -169,7 +249,7 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_132px] border-b border-border bg-zinc-900/40 px-4 py-2">
+                            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_90px_132px] border-b border-border bg-zinc-900/40 px-4 py-2">
                                 <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
                                     User
                                 </p>
@@ -181,6 +261,9 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                 </p>
                                 <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
                                     Plan
+                                </p>
+                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                    Detail
                                 </p>
                                 <p className="text-right text-[10px] tracking-wider text-zinc-500 uppercase">
                                     Access
@@ -196,7 +279,7 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                     recentUsers.map((user) => (
                                         <div
                                             key={user.id}
-                                            className="grid grid-cols-[2fr_1fr_1fr_1fr_132px] items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-800/30"
+                                            className="grid grid-cols-[2fr_1fr_1fr_1fr_90px_132px] items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-800/30"
                                         >
                                             <div>
                                                 <p className="text-sm font-medium text-zinc-200">
@@ -210,9 +293,17 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                                 {user.role ?? '\u2014'}
                                             </p>
                                             <StatusPill status={user.status} />
-                                            <p className="text-xs font-mono text-zinc-500">
+                                            <p className="font-mono text-xs text-zinc-500">
                                                 {user.plan_label}
                                             </p>
+                                            <Link
+                                                href={
+                                                    adminUsersShow(user.id).url
+                                                }
+                                                className="w-fit text-xs text-zinc-300 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline"
+                                            >
+                                                Open
+                                            </Link>
                                             <div className="flex justify-end">
                                                 {user.can_impersonate ? (
                                                     <button
@@ -233,7 +324,7 @@ export default function AdminIndex({ metrics, recentUsers }: AdminIndexProps) {
                                                             : 'Impersonate'}
                                                     </button>
                                                 ) : (
-                                                    <span className="text-[10px] italic text-zinc-600">
+                                                    <span className="text-[10px] text-zinc-600 italic">
                                                         {user.is_current
                                                             ? 'Current'
                                                             : '-'}
@@ -285,7 +376,9 @@ function MetricTile({
 }
 
 function StatusPill({ status }: { status: string }) {
-    const isActive = status === 'active';
+    const value = status.toLowerCase();
+    const isActive = value === 'active';
+    const isRejected = value === 'rejected';
 
     return (
         <div>
@@ -293,13 +386,15 @@ function StatusPill({ status }: { status: string }) {
                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
                     isActive
                         ? 'bg-emerald-950/30 text-emerald-500'
-                        : 'bg-zinc-800 text-zinc-500'
+                        : isRejected
+                          ? 'bg-red-950/35 text-red-300'
+                          : 'bg-amber-950/35 text-amber-300'
                 }`}
             >
                 {isActive ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 ) : null}
-                {status}
+                {value}
             </span>
         </div>
     );

@@ -25,7 +25,6 @@ class ExternalActivityPersister
             'distance_meters' => $activity->distance_meters,
             'elevation_gain_meters' => $activity->elevation_gain_meters,
             'raw_payload' => $activity->raw_payload,
-            'training_session_id' => null,
         ];
 
         /** @var Activity|null $existingActivity */
@@ -49,6 +48,7 @@ class ExternalActivityPersister
         return Activity::query()->create([
             ...$attributes,
             ...$values,
+            'training_session_id' => null,
         ]);
     }
 

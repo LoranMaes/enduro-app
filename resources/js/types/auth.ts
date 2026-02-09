@@ -1,6 +1,8 @@
 export type User = {
     id: number;
     name: string;
+    first_name?: string | null;
+    last_name?: string | null;
     email: string;
     role?: 'athlete' | 'coach' | 'admin' | null;
     avatar?: string;

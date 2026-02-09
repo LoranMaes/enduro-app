@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Dashboard\IndexRequest;
 use App\Http\Resources\TrainingPlanResource;
 use App\Http\Resources\TrainingSessionResource;
+use App\Models\Activity;
 use App\Models\ActivityProviderConnection;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
@@ -66,10 +67,44 @@ class DashboardController extends Controller
                 ->orderBy('id')
                 ->get(),
         );
+        $activities = $this->queryActivitiesForUser($request->user())
+            ->whereDate('started_at', '>=', $calendarWindow['starts_at'])
+            ->whereDate('started_at', '<=', $calendarWindow['ends_at'])
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'training_session_id',
+                'athlete_id',
+                'provider',
+                'external_id',
+                'sport',
+                'started_at',
+                'duration_seconds',
+                'distance_meters',
+                'elevation_gain_meters',
+            ]);
 
         return Inertia::render('dashboard', [
             'trainingPlans' => $trainingPlanResource->response()->getData(true),
             'trainingSessions' => $trainingSessionResource->response()->getData(true),
+            'activities' => [
+                'data' => $activities->map(
+                    fn (Activity $activity): array => [
+                        'id' => $activity->id,
+                        'training_session_id' => $activity->training_session_id,
+                        'linked_session_id' => $activity->training_session_id,
+                        'athlete_id' => $activity->athlete_id,
+                        'provider' => $activity->provider,
+                        'external_id' => $activity->external_id,
+                        'sport' => $activity->sport,
+                        'started_at' => $activity->started_at?->toISOString(),
+                        'duration_seconds' => $activity->duration_seconds,
+                        'distance_meters' => $activity->distance_meters,
+                        'elevation_gain_meters' => $activity->elevation_gain_meters,
+                    ],
+                )->values(),
+            ],
             'calendarWindow' => $calendarWindow,
             'providerStatus' => $this->resolveProviderStatus($request->user()),
             'athleteTrainingTargets' => $this->resolveAthleteTrainingTargets($request->user()),
@@ -132,6 +167,26 @@ class DashboardController extends Controller
         return TrainingSession::query()->whereRaw('1 = 0');
     }
 
+    private function queryActivitiesForUser(User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return Activity::query();
+        }
+
+        if ($user->isAthlete()) {
+            return Activity::query()->where('athlete_id', $user->id);
+        }
+
+        if ($user->isCoach()) {
+            return Activity::query()->whereIn(
+                'athlete_id',
+                $user->coachedAthletes()->select('users.id'),
+            );
+        }
+
+        return Activity::query()->whereRaw('1 = 0');
+    }
+
     /**
      * @return array<string, array{
      *     connected: bool,
@@ -185,7 +240,7 @@ class DashboardController extends Controller
      *     ftp_watts: int|null,
      *     max_heart_rate_bpm: int|null,
      *     threshold_heart_rate_bpm: int|null,
-     *     threshold_pace_seconds_per_km: int|null,
+     *     threshold_pace_minutes_per_km: int|null,
      *     power_zones: array<int, array{label: string, min: int, max: int}>,
      *     heart_rate_zones: array<int, array{label: string, min: int, max: int}>
      * }|null
@@ -202,7 +257,7 @@ class DashboardController extends Controller
             'ftp_watts' => $user->athleteProfile?->ftp_watts,
             'max_heart_rate_bpm' => $user->athleteProfile?->max_heart_rate_bpm,
             'threshold_heart_rate_bpm' => $user->athleteProfile?->threshold_heart_rate_bpm,
-            'threshold_pace_seconds_per_km' => $user->athleteProfile?->threshold_pace_seconds_per_km,
+            'threshold_pace_minutes_per_km' => $user->athleteProfile?->threshold_pace_minutes_per_km,
             'power_zones' => $this->defaultPowerZones($user->athleteProfile?->power_zones),
             'heart_rate_zones' => $this->defaultHeartRateZones($user->athleteProfile?->heart_rate_zones),
         ];

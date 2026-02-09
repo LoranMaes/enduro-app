@@ -1,10 +1,13 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Eye, Search, Shield, UserRound, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import { start as startImpersonation } from '@/routes/admin/impersonate';
-import { index as adminUsersIndex } from '@/routes/admin/users';
+import {
+    index as adminUsersIndex,
+    show as adminUsersShow,
+} from '@/routes/admin/users';
 import type { BreadcrumbItem } from '@/types';
 
 type AdminUserListItem = {
@@ -71,7 +74,7 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                             type="text"
                             placeholder="Search users..."
                             disabled
-                            className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-4 text-sm text-zinc-300 placeholder:text-zinc-600"
+                            className="w-full rounded-lg border border-border bg-surface py-2 pr-4 pl-9 text-sm text-zinc-300 placeholder:text-zinc-600"
                         />
                     </div>
                 </header>
@@ -98,7 +101,7 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_132px] border-b border-border bg-zinc-900/40 px-6 py-2">
+                        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_92px_132px] border-b border-border bg-zinc-900/40 px-6 py-2">
                             <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
                                 User
                             </p>
@@ -110,6 +113,9 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                             </p>
                             <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
                                 Plan
+                            </p>
+                            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                Detail
                             </p>
                             <p className="text-right text-[10px] tracking-wider text-zinc-500 uppercase">
                                 Access
@@ -125,7 +131,7 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                                 users.map((user) => (
                                     <div
                                         key={user.id}
-                                        className="grid grid-cols-[2fr_1fr_1fr_1fr_132px] items-center gap-3 px-6 py-3 transition-colors hover:bg-zinc-800/30"
+                                        className="grid grid-cols-[2fr_1fr_1fr_1fr_92px_132px] items-center gap-3 px-6 py-3 transition-colors hover:bg-zinc-800/30"
                                     >
                                         <div>
                                             <p className="text-sm font-medium text-zinc-200">
@@ -142,9 +148,15 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                                             </p>
                                         </div>
                                         <StatusPill status={user.status} />
-                                        <p className="text-xs font-mono text-zinc-500">
+                                        <p className="font-mono text-xs text-zinc-500">
                                             {user.plan_label}
                                         </p>
+                                        <Link
+                                            href={adminUsersShow(user.id).url}
+                                            className="w-fit text-xs text-zinc-300 underline-offset-2 transition-colors hover:text-zinc-100 hover:underline"
+                                        >
+                                            Open
+                                        </Link>
                                         <div className="flex justify-end">
                                             {user.can_impersonate ? (
                                                 <button
@@ -165,7 +177,7 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
                                                         : 'Impersonate'}
                                                 </button>
                                             ) : (
-                                                <span className="text-xs italic text-zinc-500">
+                                                <span className="text-xs text-zinc-500 italic">
                                                     {user.is_current
                                                         ? 'Current'
                                                         : '\u2014'}
@@ -184,7 +196,9 @@ export default function AdminUsersIndex({ users }: AdminUsersPageProps) {
 }
 
 function StatusPill({ status }: { status: string }) {
-    const isActive = status === 'active';
+    const value = status.toLowerCase();
+    const isActive = value === 'active';
+    const isRejected = value === 'rejected';
 
     return (
         <div>
@@ -192,13 +206,15 @@ function StatusPill({ status }: { status: string }) {
                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
                     isActive
                         ? 'bg-emerald-950/30 text-emerald-500'
-                        : 'bg-zinc-800 text-zinc-500'
+                        : isRejected
+                          ? 'bg-red-950/35 text-red-300'
+                          : 'bg-amber-950/35 text-amber-300'
                 }`}
             >
                 {isActive ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 ) : null}
-                {status}
+                {value}
             </span>
         </div>
     );

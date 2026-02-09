@@ -13,7 +13,7 @@ it('allows athletes to update training preferences with performance anchors and 
         'ftp_watts' => 320,
         'max_heart_rate_bpm' => 192,
         'threshold_heart_rate_bpm' => 176,
-        'threshold_pace_seconds_per_km' => 238,
+        'threshold_pace_minutes_per_km' => 238,
         'power_zones' => [
             ['label' => 'Z1', 'min' => 55, 'max' => 75],
             ['label' => 'Z2', 'min' => 76, 'max' => 90],
@@ -44,7 +44,7 @@ it('allows athletes to update training preferences with performance anchors and 
     expect($athlete->athleteProfile->ftp_watts)->toBe(320);
     expect($athlete->athleteProfile->max_heart_rate_bpm)->toBe(192);
     expect($athlete->athleteProfile->threshold_heart_rate_bpm)->toBe(176);
-    expect($athlete->athleteProfile->threshold_pace_seconds_per_km)->toBe(238);
+    expect($athlete->athleteProfile->threshold_pace_minutes_per_km)->toBe(238);
     expect($athlete->athleteProfile->power_zones)->toMatchArray($payload['power_zones']);
     expect($athlete->athleteProfile->heart_rate_zones)->toMatchArray($payload['heart_rate_zones']);
 });

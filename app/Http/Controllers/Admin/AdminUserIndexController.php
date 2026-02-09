@@ -4,12 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Admin\AdminUserPresenter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminUserIndexController extends Controller
 {
+    public function __construct(
+        private readonly AdminUserPresenter $adminUserPresenter,
+    ) {}
+
     /**
      * Handle the incoming request.
      */
@@ -21,25 +26,13 @@ class AdminUserIndexController extends Controller
         $users = User::query()
             ->select('id', 'name', 'email', 'role', 'email_verified_at')
             ->withCount('trainingPlans')
+            ->with([
+                'coachProfile:id,user_id,is_approved',
+                'coachApplication:id,user_id,status',
+            ])
             ->orderBy('name')
             ->get()
-            ->map(function (User $user) use ($admin): array {
-                $role = $user->role?->value ?? 'athlete';
-                $planLabel = $user->training_plans_count > 0
-                    ? "{$user->training_plans_count} plan".($user->training_plans_count === 1 ? '' : 's')
-                    : '-';
-
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $role,
-                    'status' => $user->email_verified_at !== null ? 'active' : 'pending',
-                    'plan_label' => $planLabel,
-                    'can_impersonate' => ! $user->isAdmin(),
-                    'is_current' => $user->is($admin),
-                ];
-            })
+            ->map(fn (User $user): array => $this->adminUserPresenter->toListItem($user, $admin))
             ->values();
 
         return Inertia::render('admin/users/index', [

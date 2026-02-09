@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
+    ClipboardCheck,
     Eye,
     FileText,
     LogOut,
@@ -52,6 +53,13 @@ export function AppSidebar() {
                   icon: UsersRound,
                   isActive: (path: string) => path.startsWith('/admin/users'),
               },
+              {
+                  title: 'Coach Applications',
+                  href: '/admin/coach-applications',
+                  icon: ClipboardCheck,
+                  isActive: (path: string) =>
+                      path.startsWith('/admin/coach-applications'),
+              },
           ]
         : [
               {
@@ -75,7 +83,8 @@ export function AppSidebar() {
                             title: 'Training Plans',
                             href: '/plans',
                             icon: FileText,
-                            isActive: (path: string) => path.startsWith('/plans'),
+                            isActive: (path: string) =>
+                                path.startsWith('/plans'),
                         } satisfies SidebarItem,
                     ]
                   : []),
@@ -159,8 +168,8 @@ export function AppSidebar() {
                         visualImpersonating
                             ? 'border-amber-700 bg-amber-900/80 text-amber-100'
                             : role === 'admin'
-                            ? 'border-amber-800 bg-amber-900/50 text-amber-500'
-                            : 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                              ? 'border-amber-800 bg-amber-900/50 text-amber-500'
+                              : 'border-zinc-700 bg-zinc-800 text-zinc-400'
                     }`}
                     title={`Current Role: ${role}`}
                 >

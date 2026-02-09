@@ -13,14 +13,14 @@ use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'log_activity'])->group(function () {
     Route::redirect('settings', '/settings/overview');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'approved_coach', 'log_activity'])->group(function () {
     Route::get('settings/overview', AthleteSettingsOverviewController::class)
         ->name('settings.overview');
     Route::patch('settings/overview/profile', AthleteProfileSettingsController::class)

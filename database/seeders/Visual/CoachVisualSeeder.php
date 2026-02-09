@@ -16,10 +16,14 @@ class CoachVisualSeeder extends Seeder
      */
     public function run(): void
     {
+        [$firstName, $lastName] = $this->splitName('Coach Visual');
+
         $coach = User::query()->updateOrCreate(
             ['email' => 'coach.visual@endure.test'],
             [
                 'name' => 'Coach Visual',
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'role' => UserRole::Coach,
@@ -53,5 +57,17 @@ class CoachVisualSeeder extends Seeder
                 [],
             );
         }
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function splitName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $firstName = $parts[0] ?? $name;
+        $lastName = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
+
+        return [$firstName, $lastName];
     }
 }

@@ -14,7 +14,9 @@ import {
     Polyline,
     TileLayer,
     useMap,
+    useMapEvents,
 } from 'react-leaflet';
+import { Textarea } from '@/components/ui/textarea';
 import { mapTrainingSession } from '@/lib/training-plans';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -47,6 +49,7 @@ type SessionDetailPageProps = {
             provider_athlete_id: string | null;
         }
     > | null;
+    isActivityOnly?: boolean;
 };
 
 type StreamSeriesPoint = {
@@ -113,6 +116,7 @@ const maxChartRenderPoints = 1400;
 export default function SessionDetailPage({
     session,
     providerStatus,
+    isActivityOnly = false,
 }: SessionDetailPageProps) {
     const { auth } = usePage<SharedData>().props;
     const sessionView = mapTrainingSession(session);
@@ -143,7 +147,9 @@ export default function SessionDetailPage({
 
     const linkedActivityId = sessionView.linkedActivityId;
     const canEditNotes =
-        auth.user.role === 'athlete' && auth.impersonating !== true;
+        !isActivityOnly &&
+        auth.user.role === 'athlete' &&
+        auth.impersonating !== true;
 
     useEffect(() => {
         setInternalNotes(sessionView.notes ?? '');
@@ -613,6 +619,102 @@ export default function SessionDetailPage({
     const canUseDistanceAxis = availableStreams.has('distance');
     const hasNotesChanged = internalNotes.trim() !== savedNotes.trim();
     const isZoomed = zoomStartPercent > 0 || zoomEndPercent < 100;
+    const resetZoomSelection = (): void => {
+        setZoomStartPercent(0);
+        setZoomEndPercent(100);
+        setHoverSampleIndex(null);
+    };
+
+    const selectedRangeSummary = useMemo(() => {
+        if (!isZoomed || visibleSampleRange === null) {
+            return null;
+        }
+
+        const startIndex = Math.max(0, visibleSampleRange.start);
+        const endIndex = Math.max(startIndex, visibleSampleRange.end);
+        const selectedHeartRate = averageNumeric(
+            sliceNumericRange(
+                normalizedStreams.heart_rate ?? [],
+                startIndex,
+                endIndex,
+            ),
+        );
+        const selectedPower = averageNumeric(
+            sliceNumericRange(
+                normalizedStreams.power ?? [],
+                startIndex,
+                endIndex,
+            ),
+        );
+        const selectedCadence = averageNumeric(
+            sliceNumericRange(
+                normalizedStreams.cadence ?? [],
+                startIndex,
+                endIndex,
+            ),
+        );
+        const selectedSpeed = averageNumeric(
+            sliceNumericRange(
+                normalizedStreams.speed ?? [],
+                startIndex,
+                endIndex,
+            ),
+        );
+        const selectedElevationGain = calculateElevationGain(
+            sliceNumericRange(
+                normalizedStreams.elevation ?? [],
+                startIndex,
+                endIndex,
+            ),
+        );
+        const timeSeries = normalizedStreams.time ?? [];
+        const distanceSeries = normalizedStreams.distance ?? [];
+        const startTime = timeSeries[startIndex];
+        const endTime = timeSeries[endIndex];
+        const startDistance = distanceSeries[startIndex];
+        const endDistance = distanceSeries[endIndex];
+        const elapsedSeconds =
+            startTime === undefined || endTime === undefined
+                ? null
+                : Math.max(0, endTime - startTime);
+        const distanceKilometers =
+            startDistance === undefined || endDistance === undefined
+                ? null
+                : Math.max(0, (endDistance - startDistance) / 1000);
+
+        return {
+            startIndex,
+            endIndex,
+            startXValue:
+                rawXAxisSamples[startIndex] ??
+                fallbackXAxisBySample.get(startIndex) ??
+                null,
+            endXValue:
+                rawXAxisSamples[endIndex] ??
+                fallbackXAxisBySample.get(endIndex) ??
+                null,
+            elapsedSeconds,
+            distanceKilometers,
+            avgHeartRate: selectedHeartRate,
+            avgPower: selectedPower,
+            avgCadence: selectedCadence,
+            avgSpeedMetersPerSecond: selectedSpeed,
+            elevationGainMeters: selectedElevationGain,
+        };
+    }, [
+        fallbackXAxisBySample,
+        isZoomed,
+        normalizedStreams.cadence,
+        normalizedStreams.distance,
+        normalizedStreams.elevation,
+        normalizedStreams.heart_rate,
+        normalizedStreams.power,
+        normalizedStreams.speed,
+        normalizedStreams.time,
+        rawXAxisSamples,
+        visibleSampleRange,
+    ]);
+    const showSelectionPanel = selectedRangeSummary !== null;
 
     const applyZoomSelection = (
         selectionMin: number,
@@ -730,11 +832,7 @@ export default function SessionDetailPage({
                     {isZoomed ? (
                         <button
                             type="button"
-                            onClick={() => {
-                                setZoomStartPercent(0);
-                                setZoomEndPercent(100);
-                                setHoverSampleIndex(null);
-                            }}
+                            onClick={resetZoomSelection}
                             className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900/60 px-2 py-1 text-[10px] text-zinc-300 hover:text-zinc-100"
                         >
                             <RotateCcw className="h-3.5 w-3.5" />
@@ -784,76 +882,195 @@ export default function SessionDetailPage({
             </p>
 
             <div className="mt-4 w-full overflow-hidden rounded-lg border border-border/60 bg-background/70 p-3">
-                <div className="aspect-[16/6] min-h-[220px] w-full">
-                    {isLoadingStreams ? (
-                        <p className="text-xs text-zinc-500">
-                            Loading activity streams...
-                        </p>
-                    ) : streamError !== null ? (
-                        <p className="text-xs text-red-300">{streamError}</p>
-                    ) : zoomedSeries.length > 0 &&
-                      visibleReferencePoints.length > 1 ? (
-                        <InteractiveStreamChart
-                            mode={xAxisMode}
-                            series={zoomedSeries}
-                            referencePoints={visibleReferencePoints}
-                            hoverSampleIndex={hoverSampleIndex}
-                            onHoverSampleIndexChange={setHoverSampleIndex}
-                            onZoomSelection={applyZoomSelection}
-                        />
-                    ) : (
-                        <p className="text-xs text-zinc-500">
-                            Link and sync activity data to overlay actual
-                            traces.
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            <div className="mt-3 rounded-md border border-border/70 bg-zinc-900/30 px-3 py-2">
-                {hoverSummary !== null ? (
-                    <>
-                        <p className="text-[11px] text-zinc-400">
-                            {xAxisMode === 'distance'
-                                ? 'Distance'
-                                : 'Elapsed Time'}{' '}
-                            <span className="font-mono text-zinc-200">
-                                {formatXAxisValue(
-                                    hoverSummary.xValue,
-                                    xAxisMode,
-                                )}
-                            </span>
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                            {hoverSummary.values.map((item) => (
-                                <p
-                                    key={item.key}
-                                    className="text-[11px] text-zinc-500"
-                                >
-                                    {streamLabels[item.key] ?? item.key}:{' '}
-                                    <span
-                                        className="font-mono"
-                                        style={{
-                                            color:
-                                                streamColors[item.key] ??
-                                                '#a1a1aa',
-                                        }}
-                                    >
-                                        {formatStreamValue(
-                                            item.key,
-                                            item.value,
-                                        )}
-                                    </span>
+                <div className="flex flex-col gap-3 xl:flex-row">
+                    <div
+                        className={cn(
+                            'min-w-0 transition-[width] duration-300 ease-out',
+                            showSelectionPanel
+                                ? 'xl:w-[calc(100%-17rem)]'
+                                : 'xl:w-full',
+                        )}
+                    >
+                        <div className="aspect-[16/6] min-h-[220px] w-full">
+                            {isLoadingStreams ? (
+                                <p className="text-xs text-zinc-500">
+                                    Loading activity streams...
                                 </p>
-                            ))}
+                            ) : streamError !== null ? (
+                                <p className="text-xs text-red-300">
+                                    {streamError}
+                                </p>
+                            ) : zoomedSeries.length > 0 &&
+                              visibleReferencePoints.length > 1 ? (
+                                <InteractiveStreamChart
+                                    mode={xAxisMode}
+                                    series={zoomedSeries}
+                                    referencePoints={visibleReferencePoints}
+                                    hoverSampleIndex={hoverSampleIndex}
+                                    onHoverSampleIndexChange={
+                                        setHoverSampleIndex
+                                    }
+                                    onZoomSelection={applyZoomSelection}
+                                />
+                            ) : (
+                                <p className="text-xs text-zinc-500">
+                                    Link and sync activity data to overlay
+                                    actual traces.
+                                </p>
+                            )}
                         </div>
-                    </>
-                ) : (
-                    <p className="text-[11px] text-zinc-500">
-                        Hover the chart to inspect values and highlight route
-                        position.
-                    </p>
-                )}
+
+                        <div className="mt-3 rounded-md border border-border/70 bg-zinc-900/30 px-3 py-2">
+                            {hoverSummary !== null ? (
+                                <>
+                                    <p className="text-[11px] text-zinc-400">
+                                        {xAxisMode === 'distance'
+                                            ? 'Distance'
+                                            : 'Elapsed Time'}{' '}
+                                        <span className="font-mono text-zinc-200">
+                                            {formatXAxisValue(
+                                                hoverSummary.xValue,
+                                                xAxisMode,
+                                            )}
+                                        </span>
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                                        {hoverSummary.values.map((item) => (
+                                            <p
+                                                key={item.key}
+                                                className="text-[11px] text-zinc-500"
+                                            >
+                                                {streamLabels[item.key] ??
+                                                    item.key}
+                                                :{' '}
+                                                <span
+                                                    className="font-mono"
+                                                    style={{
+                                                        color:
+                                                            streamColors[
+                                                                item.key
+                                                            ] ?? '#a1a1aa',
+                                                    }}
+                                                >
+                                                    {formatStreamValue(
+                                                        item.key,
+                                                        item.value,
+                                                    )}
+                                                </span>
+                                            </p>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-[11px] text-zinc-500">
+                                    Hover the chart to inspect values and
+                                    highlight route position.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <aside
+                        className={cn(
+                            'overflow-hidden rounded-md border text-[11px] transition-all duration-300 ease-out xl:shrink-0',
+                            showSelectionPanel
+                                ? 'max-h-[420px] border-border/70 bg-zinc-900/35 px-3 py-2 opacity-100 xl:max-h-none xl:w-[17rem]'
+                                : 'max-h-0 border-transparent p-0 opacity-0 xl:w-0',
+                        )}
+                    >
+                        {selectedRangeSummary !== null ? (
+                            <>
+                                <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                    Selected Range
+                                </p>
+                                <div className="mt-1 grid gap-1">
+                                    <SelectionStatLine
+                                        label="From"
+                                        value={formatXAxisValue(
+                                            selectedRangeSummary.startXValue,
+                                            xAxisMode,
+                                        )}
+                                    />
+                                    <SelectionStatLine
+                                        label="To"
+                                        value={formatXAxisValue(
+                                            selectedRangeSummary.endXValue,
+                                            xAxisMode,
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="mt-2 border-t border-border/70 pt-2">
+                                    <div className="grid gap-1.5">
+                                        <SelectionStatLine
+                                            label="Duration"
+                                            value={
+                                                selectedRangeSummary.elapsedSeconds ===
+                                                null
+                                                    ? '—'
+                                                    : formatDurationSeconds(
+                                                          selectedRangeSummary.elapsedSeconds,
+                                                      )
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Distance"
+                                            value={
+                                                selectedRangeSummary.distanceKilometers ===
+                                                null
+                                                    ? '—'
+                                                    : `${selectedRangeSummary.distanceKilometers.toFixed(2)} km`
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Elevation Gain"
+                                            value={
+                                                selectedRangeSummary.elevationGainMeters ===
+                                                null
+                                                    ? '—'
+                                                    : `${Math.round(selectedRangeSummary.elevationGainMeters)} m`
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Avg HR"
+                                            value={
+                                                selectedRangeSummary.avgHeartRate ===
+                                                null
+                                                    ? '—'
+                                                    : `${Math.round(selectedRangeSummary.avgHeartRate)} bpm`
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Avg Power"
+                                            value={
+                                                selectedRangeSummary.avgPower ===
+                                                null
+                                                    ? '—'
+                                                    : `${Math.round(selectedRangeSummary.avgPower)} W`
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Avg Cadence"
+                                            value={
+                                                selectedRangeSummary.avgCadence ===
+                                                null
+                                                    ? '—'
+                                                    : `${Math.round(selectedRangeSummary.avgCadence)} rpm`
+                                            }
+                                        />
+                                        <SelectionStatLine
+                                            label="Avg Speed"
+                                            value={formatAverageSpeedForSport(
+                                                sessionView.sport,
+                                                selectedRangeSummary.avgSpeedMetersPerSecond,
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        ) : null}
+                    </aside>
+                </div>
             </div>
         </div>
     );
@@ -969,7 +1186,7 @@ export default function SessionDetailPage({
                 </>
             ) : (
                 <div className="mt-3">
-                    <textarea
+                    <Textarea
                         value={internalNotes}
                         rows={8}
                         disabled={!canEditNotes || isSavingNotes}
@@ -1132,6 +1349,7 @@ export default function SessionDetailPage({
                             points={latLngPoints}
                             focusPoints={focusedRoutePoints}
                             hoverPoint={hoverPoint}
+                            onResetZoom={resetZoomSelection}
                         />
 
                         {hoverSummary !== null ? (
@@ -1189,7 +1407,9 @@ export default function SessionDetailPage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Session Detail" />
+            <Head
+                title={isActivityOnly ? 'Activity Detail' : 'Session Detail'}
+            />
 
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
                 <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-6 py-4 backdrop-blur-sm">
@@ -1204,10 +1424,13 @@ export default function SessionDetailPage({
 
                             <div>
                                 <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
-                                    Training Detail
+                                    {isActivityOnly
+                                        ? 'Activity Detail'
+                                        : 'Training Detail'}
                                 </p>
                                 <h1 className="mt-0.5 text-lg font-medium text-zinc-100">
-                                    {sessionView.sport.toUpperCase()} Session •{' '}
+                                    {sessionView.sport.toUpperCase()}{' '}
+                                    {isActivityOnly ? 'Activity' : 'Session'} •{' '}
                                     {formatDate(sessionView.scheduledDate)}
                                 </h1>
                             </div>
@@ -1284,6 +1507,15 @@ function ComparisonBadge({
             </p>
             <p className="font-mono text-xs text-zinc-100">{value}</p>
             <p className="text-[10px] text-zinc-400">{meta}</p>
+        </div>
+    );
+}
+
+function SelectionStatLine({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-center justify-between gap-2 rounded border border-zinc-800/80 bg-black/20 px-2 py-1.5">
+            <span className="text-[10px] text-zinc-500">{label}</span>
+            <span className="font-mono text-[11px] text-zinc-200">{value}</span>
         </div>
     );
 }
@@ -1665,10 +1897,12 @@ function ActivityMap({
     points,
     focusPoints,
     hoverPoint,
+    onResetZoom,
 }: {
     points: MapPoint[];
     focusPoints: MapPoint[];
     hoverPoint: MapPoint | null;
+    onResetZoom: () => void;
 }) {
     const effectiveFocusPoints = focusPoints.length > 1 ? focusPoints : points;
 
@@ -1680,6 +1914,7 @@ function ActivityMap({
         <MapContainer
             center={points[0]}
             zoom={13}
+            doubleClickZoom={false}
             className="h-full w-full rounded-md"
         >
             <TileLayer
@@ -1718,9 +1953,20 @@ function ActivityMap({
                 />
             ) : null}
 
+            <MapResetOnDoubleClick onResetZoom={onResetZoom} />
             <FitMapBounds bounds={bounds} />
         </MapContainer>
     );
+}
+
+function MapResetOnDoubleClick({ onResetZoom }: { onResetZoom: () => void }) {
+    useMapEvents({
+        dblclick: () => {
+            onResetZoom();
+        },
+    });
+
+    return null;
 }
 
 function FitMapBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
@@ -1951,6 +2197,23 @@ function extractErrorMessage(payload: unknown): string | null {
     }
 
     return null;
+}
+
+function sliceNumericRange(
+    values: number[],
+    startIndex: number,
+    endIndex: number,
+): number[] {
+    if (values.length === 0) {
+        return [];
+    }
+
+    const start = Math.max(0, Math.min(startIndex, endIndex));
+    const end = Math.max(start, Math.max(startIndex, endIndex));
+
+    return values
+        .slice(start, end + 1)
+        .filter((value) => Number.isFinite(value));
 }
 
 function averageNumeric(values: number[]): number | null {

@@ -30,8 +30,8 @@ return new class extends Migration
                     ->after('max_heart_rate_bpm');
             }
 
-            if (! Schema::hasColumn('athlete_profiles', 'threshold_pace_seconds_per_km')) {
-                $table->unsignedSmallInteger('threshold_pace_seconds_per_km')
+            if (! Schema::hasColumn('athlete_profiles', 'threshold_pace_minutes_per_km')) {
+                $table->unsignedSmallInteger('threshold_pace_minutes_per_km')
                     ->nullable()
                     ->after('threshold_heart_rate_bpm');
             }
@@ -39,7 +39,7 @@ return new class extends Migration
             if (! Schema::hasColumn('athlete_profiles', 'power_zones')) {
                 $table->json('power_zones')
                     ->nullable()
-                    ->after('threshold_pace_seconds_per_km');
+                    ->after('threshold_pace_minutes_per_km');
             }
 
             if (! Schema::hasColumn('athlete_profiles', 'heart_rate_zones')) {
@@ -64,8 +64,8 @@ return new class extends Migration
                 $table->dropColumn('power_zones');
             }
 
-            if (Schema::hasColumn('athlete_profiles', 'threshold_pace_seconds_per_km')) {
-                $table->dropColumn('threshold_pace_seconds_per_km');
+            if (Schema::hasColumn('athlete_profiles', 'threshold_pace_minutes_per_km')) {
+                $table->dropColumn('threshold_pace_minutes_per_km');
             }
 
             if (Schema::hasColumn('athlete_profiles', 'threshold_heart_rate_bpm')) {

@@ -23,6 +23,8 @@ Route::middleware([
     AddQueuedCookiesToResponse::class,
     StartSession::class,
     'auth',
+    'approved_coach',
+    'log_activity',
 ])->group(function (): void {
     Route::apiResource('training-plans', TrainingPlanController::class);
     Route::apiResource('training-weeks', TrainingWeekController::class);

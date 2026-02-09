@@ -66,7 +66,7 @@ type SettingsOverviewProps = {
         ftp_watts: number | null;
         max_heart_rate_bpm: number | null;
         threshold_heart_rate_bpm: number | null;
-        threshold_pace_seconds_per_km: number | null;
+        threshold_pace_minutes_per_km: number | null;
         power_zones: ZoneRange[];
         heart_rate_zones: ZoneRange[];
     };
@@ -134,8 +134,8 @@ export default function SettingsOverview({
         ftp_watts: trainingPreferences.ftp_watts,
         max_heart_rate_bpm: trainingPreferences.max_heart_rate_bpm,
         threshold_heart_rate_bpm: trainingPreferences.threshold_heart_rate_bpm,
-        threshold_pace_seconds_per_km:
-            trainingPreferences.threshold_pace_seconds_per_km,
+        threshold_pace_minutes_per_km:
+            trainingPreferences.threshold_pace_minutes_per_km,
         power_zones: trainingPreferences.power_zones,
         heart_rate_zones: trainingPreferences.heart_rate_zones,
     });
@@ -143,50 +143,6 @@ export default function SettingsOverview({
     useEffect(() => {
         setSelectedTab(activeTab);
     }, [activeTab]);
-
-    useEffect(() => {
-        profileForm.setData({
-            name: profile.name,
-            email: profile.email,
-            timezone: profile.timezone,
-            unit_system: profile.unit_system,
-        });
-    }, [
-        profile.email,
-        profile.name,
-        profile.timezone,
-        profile.unit_system,
-        profileForm,
-    ]);
-
-    useEffect(() => {
-        trainingForm.setData({
-            primary_sport: trainingPreferences.primary_sport,
-            weekly_training_days: trainingPreferences.weekly_training_days,
-            preferred_rest_day: trainingPreferences.preferred_rest_day,
-            intensity_distribution: trainingPreferences.intensity_distribution,
-            ftp_watts: trainingPreferences.ftp_watts,
-            max_heart_rate_bpm: trainingPreferences.max_heart_rate_bpm,
-            threshold_heart_rate_bpm:
-                trainingPreferences.threshold_heart_rate_bpm,
-            threshold_pace_seconds_per_km:
-                trainingPreferences.threshold_pace_seconds_per_km,
-            power_zones: trainingPreferences.power_zones,
-            heart_rate_zones: trainingPreferences.heart_rate_zones,
-        });
-    }, [
-        trainingPreferences.intensity_distribution,
-        trainingPreferences.ftp_watts,
-        trainingPreferences.heart_rate_zones,
-        trainingPreferences.max_heart_rate_bpm,
-        trainingPreferences.power_zones,
-        trainingPreferences.preferred_rest_day,
-        trainingPreferences.primary_sport,
-        trainingPreferences.threshold_heart_rate_bpm,
-        trainingPreferences.threshold_pace_seconds_per_km,
-        trainingPreferences.weekly_training_days,
-        trainingForm,
-    ]);
 
     useEffect(() => {
         if (!canManageConnections || auth.user?.id === undefined) {
@@ -203,15 +159,68 @@ export default function SettingsOverview({
         const eventName = '.activity-provider.sync-status-updated';
         const channel = echo.private(channelName);
 
-        channel.listen(eventName, (event: { provider?: string }) => {
-            if (typeof event.provider !== 'string' || event.provider === '') {
-                return;
-            }
+        channel.listen(
+            eventName,
+            (event: {
+                provider?: string;
+                status?: string;
+                reason?: string | null;
+            }) => {
+                if (
+                    typeof event.provider !== 'string' ||
+                    event.provider === ''
+                ) {
+                    return;
+                }
 
-            router.reload({
-                only: ['providers'],
-            });
-        });
+                const provider = event.provider;
+                const status =
+                    typeof event.status === 'string'
+                        ? event.status.toLowerCase()
+                        : null;
+
+                setSyncingProvider((current) =>
+                    current === provider ? null : current,
+                );
+
+                if (status !== null) {
+                    setSyncMessageByProvider((current) => ({
+                        ...current,
+                        [provider]:
+                            status === 'success'
+                                ? 'Sync completed.'
+                                : status === 'running'
+                                  ? 'Syncing...'
+                                  : status === 'queued'
+                                    ? 'Sync queued.'
+                                    : status === 'rate_limited'
+                                      ? 'Sync rate limited.'
+                                      : status === 'failed'
+                                        ? 'Sync failed.'
+                                        : `Sync status: ${status}.`,
+                    }));
+
+                    if (status === 'failed' || status === 'rate_limited') {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]:
+                                typeof event.reason === 'string'
+                                    ? event.reason
+                                    : '',
+                        }));
+                    } else {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]: '',
+                        }));
+                    }
+                }
+
+                router.reload({
+                    only: ['providers'],
+                });
+            },
+        );
 
         return () => {
             channel.stopListening(eventName);
@@ -227,7 +236,10 @@ export default function SettingsOverview({
         return ['profile', 'integrations', 'billing'];
     }, [role]);
 
-    const trainingErrors = trainingForm.errors as Record<string, string | undefined>;
+    const trainingErrors = trainingForm.errors as Record<
+        string,
+        string | undefined
+    >;
 
     const updateZoneValue = (
         field: 'power_zones' | 'heart_rate_zones',
@@ -238,20 +250,25 @@ export default function SettingsOverview({
         const numericValue = Number.parseInt(value, 10);
         const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
 
-        trainingForm.setData(field, trainingForm.data[field].map((zone, zoneIndex) => {
-            if (zoneIndex !== index) {
-                return zone;
-            }
+        trainingForm.setData(
+            field,
+            trainingForm.data[field].map((zone, zoneIndex) => {
+                if (zoneIndex !== index) {
+                    return zone;
+                }
 
-            return {
-                ...zone,
-                [key]: safeValue,
-            };
-        }));
+                return {
+                    ...zone,
+                    [key]: safeValue,
+                };
+            }),
+        );
         trainingForm.clearErrors(field);
     };
 
-    const resolveZoneError = (field: 'power_zones' | 'heart_rate_zones'): string | undefined => {
+    const resolveZoneError = (
+        field: 'power_zones' | 'heart_rate_zones',
+    ): string | undefined => {
         if (trainingErrors[field] !== undefined) {
             return trainingErrors[field];
         }
@@ -329,7 +346,9 @@ export default function SettingsOverview({
 
             <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
                 <aside className="hidden w-64 shrink-0 border-r border-border bg-background px-6 py-8 md:block">
-                    <h1 className="text-xl font-medium text-zinc-100">Settings</h1>
+                    <h1 className="text-xl font-medium text-zinc-100">
+                        Settings
+                    </h1>
                     <div className="mt-2 inline-flex items-center rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-medium tracking-wider text-zinc-400 uppercase">
                         {role.toUpperCase()} ACCOUNT
                     </div>
@@ -395,7 +414,8 @@ export default function SettingsOverview({
                                         Profile
                                     </h2>
                                     <p className="mt-1 text-sm text-zinc-500">
-                                        Manage personal details and account defaults.
+                                        Manage personal details and account
+                                        defaults.
                                     </p>
                                 </header>
 
@@ -403,9 +423,12 @@ export default function SettingsOverview({
                                     onSubmit={(event) => {
                                         event.preventDefault();
 
-                                        profileForm.patch('/settings/overview/profile', {
-                                            preserveScroll: true,
-                                        });
+                                        profileForm.patch(
+                                            '/settings/overview/profile',
+                                            {
+                                                preserveScroll: true,
+                                            },
+                                        );
                                     }}
                                     className="grid grid-cols-1 gap-5 md:grid-cols-2"
                                 >
@@ -428,7 +451,9 @@ export default function SettingsOverview({
                                             }}
                                             className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                         />
-                                        <InputError message={profileForm.errors.name} />
+                                        <InputError
+                                            message={profileForm.errors.name}
+                                        />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -447,11 +472,15 @@ export default function SettingsOverview({
                                                     'email',
                                                     event.target.value,
                                                 );
-                                                profileForm.clearErrors('email');
+                                                profileForm.clearErrors(
+                                                    'email',
+                                                );
                                             }}
                                             className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                         />
-                                        <InputError message={profileForm.errors.email} />
+                                        <InputError
+                                            message={profileForm.errors.email}
+                                        />
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -469,12 +498,16 @@ export default function SettingsOverview({
                                                     'timezone',
                                                     event.target.value,
                                                 );
-                                                profileForm.clearErrors('timezone');
+                                                profileForm.clearErrors(
+                                                    'timezone',
+                                                );
                                             }}
                                             className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                         />
                                         <InputError
-                                            message={profileForm.errors.timezone}
+                                            message={
+                                                profileForm.errors.timezone
+                                            }
                                         />
                                     </div>
 
@@ -493,21 +526,27 @@ export default function SettingsOverview({
                                                     'unit_system',
                                                     event.target.value,
                                                 );
-                                                profileForm.clearErrors('unit_system');
+                                                profileForm.clearErrors(
+                                                    'unit_system',
+                                                );
                                             }}
                                             className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                         >
-                                            <option value="metric">Metric (km, kg)</option>
+                                            <option value="metric">
+                                                Metric (km, kg)
+                                            </option>
                                             <option value="imperial">
                                                 Imperial (mi, lbs)
                                             </option>
                                         </select>
                                         <InputError
-                                            message={profileForm.errors.unit_system}
+                                            message={
+                                                profileForm.errors.unit_system
+                                            }
                                         />
                                     </div>
 
-                                    <div className="md:col-span-2 flex justify-end">
+                                    <div className="flex justify-end md:col-span-2">
                                         <Button
                                             type="submit"
                                             disabled={profileForm.processing}
@@ -528,7 +567,8 @@ export default function SettingsOverview({
                                         Training Preferences
                                     </h2>
                                     <p className="mt-1 text-sm text-zinc-500">
-                                        Configure baseline planning defaults for athlete workflows.
+                                        Configure baseline planning defaults for
+                                        athlete workflows.
                                     </p>
                                 </header>
 
@@ -555,7 +595,10 @@ export default function SettingsOverview({
                                             </label>
                                             <select
                                                 id="training-primary-sport"
-                                                value={trainingForm.data.primary_sport}
+                                                value={
+                                                    trainingForm.data
+                                                        .primary_sport
+                                                }
                                                 onChange={(event) => {
                                                     trainingForm.setData(
                                                         'primary_sport',
@@ -570,10 +613,16 @@ export default function SettingsOverview({
                                                 <option value="triathlon">
                                                     Triathlon
                                                 </option>
-                                                <option value="bike">Bike</option>
+                                                <option value="bike">
+                                                    Bike
+                                                </option>
                                                 <option value="run">Run</option>
-                                                <option value="swim">Swim</option>
-                                                <option value="other">Other</option>
+                                                <option value="swim">
+                                                    Swim
+                                                </option>
+                                                <option value="other">
+                                                    Other
+                                                </option>
                                             </select>
                                             <InputError
                                                 message={
@@ -758,7 +807,7 @@ export default function SettingsOverview({
                                                             'ftp_watts',
                                                         );
                                                     }}
-                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                 />
                                                 <InputError
                                                     message={
@@ -797,7 +846,7 @@ export default function SettingsOverview({
                                                             'max_heart_rate_bpm',
                                                         );
                                                     }}
-                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                 />
                                                 <InputError
                                                     message={
@@ -836,7 +885,7 @@ export default function SettingsOverview({
                                                             'threshold_heart_rate_bpm',
                                                         );
                                                     }}
-                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                 />
                                                 <InputError
                                                     message={
@@ -851,7 +900,7 @@ export default function SettingsOverview({
                                                     htmlFor="training-threshold-pace"
                                                     className="text-xs text-zinc-500"
                                                 >
-                                                    Threshold Pace (sec/km)
+                                                    Threshold Pace (min/km)
                                                 </label>
                                                 <input
                                                     id="training-threshold-pace"
@@ -860,22 +909,22 @@ export default function SettingsOverview({
                                                     max={1200}
                                                     value={
                                                         trainingForm.data
-                                                            .threshold_pace_seconds_per_km ??
+                                                            .threshold_pace_minutes_per_km ??
                                                         ''
                                                     }
                                                     onChange={(event) => {
                                                         trainingForm.setData(
-                                                            'threshold_pace_seconds_per_km',
+                                                            'threshold_pace_minutes_per_km',
                                                             parseNullableInteger(
                                                                 event.target
                                                                     .value,
                                                             ),
                                                         );
                                                         trainingForm.clearErrors(
-                                                            'threshold_pace_seconds_per_km',
+                                                            'threshold_pace_minutes_per_km',
                                                         );
                                                     }}
-                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                 />
                                                 <p className="text-[11px] text-zinc-500">
                                                     Example: 240 = 4:00 / km
@@ -884,7 +933,7 @@ export default function SettingsOverview({
                                                 <InputError
                                                     message={
                                                         trainingForm.errors
-                                                            .threshold_pace_seconds_per_km
+                                                            .threshold_pace_minutes_per_km
                                                     }
                                                 />
                                             </div>
@@ -927,7 +976,7 @@ export default function SettingsOverview({
                                                                             .value,
                                                                     );
                                                                 }}
-                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 text-xs font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                             />
                                                             <span className="text-xs text-zinc-500">
                                                                 -
@@ -949,7 +998,7 @@ export default function SettingsOverview({
                                                                             .value,
                                                                     );
                                                                 }}
-                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 text-xs font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                             />
                                                         </div>
                                                     ),
@@ -967,8 +1016,8 @@ export default function SettingsOverview({
                                                 Heart Rate Zones (% max HR)
                                             </h3>
                                             <p className="mt-1 text-xs text-zinc-500">
-                                                Editable defaults used by run and
-                                                general HR-based workouts.
+                                                Editable defaults used by run
+                                                and general HR-based workouts.
                                             </p>
                                             <div className="mt-3 space-y-2">
                                                 {trainingForm.data.heart_rate_zones.map(
@@ -997,7 +1046,7 @@ export default function SettingsOverview({
                                                                             .value,
                                                                     );
                                                                 }}
-                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 text-xs font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                             />
                                                             <span className="text-xs text-zinc-500">
                                                                 -
@@ -1019,7 +1068,7 @@ export default function SettingsOverview({
                                                                             .value,
                                                                     );
                                                                 }}
-                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 text-xs font-mono text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                                                                className="w-full rounded-md border border-border bg-zinc-900/50 px-2 py-1.5 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                                                             />
                                                         </div>
                                                     ),
@@ -1054,17 +1103,21 @@ export default function SettingsOverview({
                                         Integrations
                                     </h2>
                                     <p className="mt-1 text-sm text-zinc-500">
-                                        Connect activity providers and run syncs from one place.
+                                        Connect activity providers and run syncs
+                                        from one place.
                                     </p>
                                 </header>
 
                                 <div className="space-y-4">
                                     {providers.map((provider) => {
                                         const isSyncing =
-                                            syncingProvider === provider.provider;
+                                            syncingProvider ===
+                                            provider.provider;
                                         const hasSyncInProgress =
-                                            provider.last_sync_status === 'queued' ||
-                                            provider.last_sync_status === 'running';
+                                            provider.last_sync_status ===
+                                                'queued' ||
+                                            provider.last_sync_status ===
+                                                'running';
 
                                         return (
                                             <div
@@ -1096,7 +1149,8 @@ export default function SettingsOverview({
                                                                 provider.last_synced_at,
                                                             )}
                                                         </p>
-                                                        {provider.last_sync_status !== null ? (
+                                                        {provider.last_sync_status !==
+                                                        null ? (
                                                             <p className="text-xs text-zinc-500">
                                                                 Sync status:{' '}
                                                                 {formatSyncStatus(
@@ -1104,14 +1158,17 @@ export default function SettingsOverview({
                                                                 )}
                                                             </p>
                                                         ) : null}
-                                                        {provider.last_sync_reason !== null &&
+                                                        {provider.last_sync_reason !==
+                                                            null &&
                                                         (provider.last_sync_status ===
                                                             'failed' ||
                                                             provider.last_sync_status ===
                                                                 'rate_limited') ? (
                                                             <p className="text-xs text-amber-300">
                                                                 Sync detail:{' '}
-                                                                {provider.last_sync_reason}
+                                                                {
+                                                                    provider.last_sync_reason
+                                                                }
                                                             </p>
                                                         ) : null}
                                                         {syncMessageByProvider[
@@ -1171,9 +1228,12 @@ export default function SettingsOverview({
                                                                               : 'Sync now'}
                                                                     </Button>
                                                                     <Link
-                                                                        href={disconnect(
-                                                                            provider.provider,
-                                                                        ).url}
+                                                                        href={
+                                                                            disconnect(
+                                                                                provider.provider,
+                                                                            )
+                                                                                .url
+                                                                        }
                                                                         method="delete"
                                                                         as="button"
                                                                         className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70"
@@ -1184,9 +1244,11 @@ export default function SettingsOverview({
                                                                 </>
                                                             ) : (
                                                                 <Link
-                                                                    href={connect(
-                                                                        provider.provider,
-                                                                    ).url}
+                                                                    href={
+                                                                        connect(
+                                                                            provider.provider,
+                                                                        ).url
+                                                                    }
                                                                     className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs text-zinc-200 transition-colors hover:bg-zinc-700"
                                                                 >
                                                                     <Link2 className="h-3.5 w-3.5" />
@@ -1196,7 +1258,8 @@ export default function SettingsOverview({
                                                         </div>
                                                     ) : (
                                                         <p className="text-xs text-zinc-500">
-                                                            This role cannot manage provider
+                                                            This role cannot
+                                                            manage provider
                                                             connections.
                                                         </p>
                                                     )}
@@ -1215,7 +1278,8 @@ export default function SettingsOverview({
                                         Billing &amp; Plans
                                     </h2>
                                     <p className="mt-1 text-sm text-zinc-500">
-                                        Cashier/Stripe wiring comes in a dedicated billing phase.
+                                        Cashier/Stripe wiring comes in a
+                                        dedicated billing phase.
                                     </p>
                                 </header>
 
@@ -1227,7 +1291,9 @@ export default function SettingsOverview({
                                                     Advanced Athlete
                                                 </h3>
                                                 <p className="mt-1 text-sm text-zinc-400">
-                                                    Billing shell only. Subscription wiring is not enabled yet.
+                                                    Billing shell only.
+                                                    Subscription wiring is not
+                                                    enabled yet.
                                                 </p>
                                             </div>
                                             <span className="font-mono text-xl text-zinc-200">
@@ -1266,9 +1332,10 @@ export default function SettingsOverview({
                                     </div>
 
                                     <p className="text-xs text-zinc-500">
-                                        Billing fields are editable as a UI shell in this phase. Payment
-                                        processing and invoicing will be added in the dedicated Cashier
-                                        integration step.
+                                        Billing fields are editable as a UI
+                                        shell in this phase. Payment processing
+                                        and invoicing will be added in the
+                                        dedicated Cashier integration step.
                                     </p>
                                 </div>
                             </section>

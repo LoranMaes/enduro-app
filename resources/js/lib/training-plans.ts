@@ -1,4 +1,6 @@
 import type {
+    ActivityApi,
+    ActivityView,
     ApiCollectionResponse,
     TrainingPlanApi,
     TrainingSessionApi,
@@ -78,6 +80,28 @@ export const mapTrainingSession = (
     };
 };
 
+export const mapActivity = (activity: ActivityApi): ActivityView => {
+    const startedAt = activity.started_at ?? null;
+
+    return {
+        id: activity.id,
+        linkedSessionId:
+            activity.linked_session_id ?? activity.training_session_id ?? null,
+        athleteId: activity.athlete_id,
+        provider: activity.provider,
+        externalId: activity.external_id,
+        sport: activity.sport,
+        startedAt,
+        startedDate:
+            startedAt !== null && startedAt.length >= 10
+                ? startedAt.slice(0, 10)
+                : null,
+        durationSeconds: activity.duration_seconds ?? null,
+        distanceMeters: activity.distance_meters ?? null,
+        elevationGainMeters: activity.elevation_gain_meters ?? null,
+    };
+};
+
 const mapWeek = (
     week: TrainingPlanApi['training_weeks'][number],
 ): TrainingWeekView => {
@@ -110,4 +134,10 @@ export const mapTrainingSessionCollection = (
     response: ApiCollectionResponse<TrainingSessionApi>,
 ): TrainingSessionView[] => {
     return response.data.map(mapTrainingSession);
+};
+
+export const mapActivityCollection = (
+    response: ApiCollectionResponse<ActivityApi>,
+): ActivityView[] => {
+    return response.data.map(mapActivity);
 };

@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { TrainingSessionView } from '@/types/training-plans';
+import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
+import { ActivityRow } from './activity-row';
 import { SessionRow } from './session-row';
 
 type DayColumnProps = {
@@ -9,10 +10,13 @@ type DayColumnProps = {
     isToday: boolean;
     isPast: boolean;
     sessions: TrainingSessionView[];
+    activities: ActivityView[];
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
+    canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
+    onOpenActivity: (activity: ActivityView) => void;
 };
 
 export function DayColumn({
@@ -21,14 +25,26 @@ export function DayColumn({
     isToday,
     isPast,
     sessions,
+    activities,
     canManageSessions,
     canManageSessionLinks,
+    canOpenActivityDetails,
     onCreateSession,
     onEditSession,
+    onOpenActivity,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
     const canOpenEditModal = canManageSessions || canManageSessionLinks;
     const isReadOnly = !canManageSessions && !canManageSessionLinks;
+    const hasEntries = sessions.length > 0 || activities.length > 0;
+
+    const sortedActivities = activities.slice().sort((left, right) => {
+        if (left.startedAt === right.startedAt) {
+            return left.id - right.id;
+        }
+
+        return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
+    });
 
     const openCreateSession = (): void => {
         if (!canOpenCreateModal) {
@@ -120,7 +136,20 @@ export function DayColumn({
                     />
                 ))}
 
-                {sessions.length === 0 ? (
+                {sortedActivities.map((activity) => (
+                    <ActivityRow
+                        key={activity.id}
+                        activity={activity}
+                        isInteractive={canOpenActivityDetails}
+                        onClick={() => {
+                            if (canOpenActivityDetails) {
+                                onOpenActivity(activity);
+                            }
+                        }}
+                    />
+                ))}
+
+                {!hasEntries ? (
                     <div className="flex min-h-[40px] w-full flex-1 items-start px-1 pt-0.5">
                         <p className="text-[10px] text-zinc-700">
                             No training planned

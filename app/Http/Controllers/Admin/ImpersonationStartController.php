@@ -26,6 +26,16 @@ class ImpersonationStartController extends Controller
 
         abort_if($user->isAdmin(), 422, 'Impersonating another admin is not supported.');
 
+        if ($user->isCoach()) {
+            $user->loadMissing('coachProfile');
+
+            abort_if(
+                $user->coachProfile?->is_approved !== true,
+                422,
+                'Pending or rejected coach accounts cannot be impersonated.',
+            );
+        }
+
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $request->session()->put('impersonation.original_user_id', $admin->id);

@@ -27,7 +27,7 @@ class AthleteTrainingPreferencesController extends Controller
                 'ftp_watts' => $validated['ftp_watts'] ?? null,
                 'max_heart_rate_bpm' => $validated['max_heart_rate_bpm'] ?? null,
                 'threshold_heart_rate_bpm' => $validated['threshold_heart_rate_bpm'] ?? null,
-                'threshold_pace_seconds_per_km' => $validated['threshold_pace_seconds_per_km'] ?? null,
+                'threshold_pace_minutes_per_km' => $validated['threshold_pace_minutes_per_km'] ?? null,
                 'power_zones' => $validated['power_zones'] ?? null,
                 'heart_rate_zones' => $validated['heart_rate_zones'] ?? null,
             ],

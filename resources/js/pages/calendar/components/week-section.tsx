@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type {
+    ActivityView,
     TrainingSessionView,
     TrainingWeekView,
 } from '@/types/training-plans';
@@ -8,10 +9,15 @@ import { WeekSummary } from './week-summary';
 
 type WeekSectionProps = {
     week: TrainingWeekView;
+    activities: ActivityView[];
+    visibleDayDates: string[] | null;
+    summaryRailWidth: number;
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
+    canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
+    onOpenActivity: (activity: ActivityView) => void;
 };
 
 const dateKey = (date: Date): string => {
@@ -36,17 +42,33 @@ const dayToken = (date: Date): string => {
 
 export function WeekSection({
     week,
+    activities,
+    visibleDayDates,
+    summaryRailWidth,
     canManageSessions,
     canManageSessionLinks,
+    canOpenActivityDetails,
     onCreateSession,
     onEditSession,
+    onOpenActivity,
 }: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
     const todayKey = dateKey(new Date());
-    const hasSessions = week.sessions.length > 0;
+    const weekDayDates = Array.from({ length: 7 }, (_, index) => {
+        return dateKey(addDays(weekStart, index));
+    });
+
+    const resolvedDayDates =
+        visibleDayDates !== null && visibleDayDates.length > 0
+            ? weekDayDates.filter((dayDate) =>
+                  visibleDayDates.includes(dayDate),
+              )
+            : weekDayDates;
+    const dayDates =
+        resolvedDayDates.length > 0 ? resolvedDayDates : weekDayDates;
 
     const sessionsByDay = week.sessions.reduce<
-        Record<string, typeof week.sessions>
+        Record<string, TrainingSessionView[]>
     >((carry, session) => {
         const key = session.scheduledDate;
 
@@ -58,6 +80,23 @@ export function WeekSection({
 
         return carry;
     }, {});
+
+    const activitiesByDay = activities.reduce<Record<string, ActivityView[]>>(
+        (carry, activity) => {
+            if (activity.startedDate === null) {
+                return carry;
+            }
+
+            if (!carry[activity.startedDate]) {
+                carry[activity.startedDate] = [];
+            }
+
+            carry[activity.startedDate].push(activity);
+
+            return carry;
+        },
+        {},
+    );
 
     const durationMinutes = week.sessions.reduce(
         (total, session) => total + session.durationMinutes,
@@ -77,7 +116,9 @@ export function WeekSection({
     const completedSessions = week.sessions.filter(
         (session) => session.status === 'completed',
     ).length;
+    const hasPlannedSessions = week.sessions.length > 0;
     const isCurrentWeek = isDateInWeek(weekStart, new Date());
+    const gridTemplateColumns = `repeat(${Math.max(1, dayDates.length)}, minmax(0, 1fr)) ${summaryRailWidth}px`;
 
     return (
         <section className="flex flex-col border-b border-border bg-background">
@@ -95,7 +136,7 @@ export function WeekSection({
                     Week of {formatWeekRange(weekStart)}
                 </p>
                 <div className="flex items-center gap-2">
-                    {!hasSessions ? (
+                    {!hasPlannedSessions ? (
                         <p className="text-[10px] text-zinc-600">
                             No training planned
                         </p>
@@ -106,11 +147,14 @@ export function WeekSection({
                 </div>
             </header>
 
-            <div className="flex flex-col md:grid md:grid-cols-[repeat(7,minmax(0,1fr))_156px] md:divide-x md:divide-border">
-                {Array.from({ length: 7 }, (_, index) => {
-                    const currentDay = addDays(weekStart, index);
-                    const currentDayKey = dateKey(currentDay);
-                    const sessions = sessionsByDay[currentDayKey] ?? [];
+            <div
+                className="flex flex-col md:grid md:divide-x md:divide-border"
+                style={{ gridTemplateColumns }}
+            >
+                {dayDates.map((currentDayKey) => {
+                    const currentDay = new Date(`${currentDayKey}T00:00:00`);
+                    const daySessions = sessionsByDay[currentDayKey] ?? [];
+                    const dayActivities = activitiesByDay[currentDayKey] ?? [];
 
                     return (
                         <div
@@ -125,11 +169,14 @@ export function WeekSection({
                                     currentDay < new Date() &&
                                     todayKey !== currentDayKey
                                 }
-                                sessions={sessions}
+                                sessions={daySessions}
+                                activities={dayActivities}
                                 canManageSessions={canManageSessions}
                                 canManageSessionLinks={canManageSessionLinks}
+                                canOpenActivityDetails={canOpenActivityDetails}
                                 onCreateSession={onCreateSession}
                                 onEditSession={onEditSession}
+                                onOpenActivity={onOpenActivity}
                             />
                         </div>
                     );

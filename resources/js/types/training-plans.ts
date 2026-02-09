@@ -71,6 +71,20 @@ export type TrainingPlanApi = {
     training_weeks: TrainingWeekApi[];
 };
 
+export type ActivityApi = {
+    id: number;
+    training_session_id: number | null;
+    linked_session_id?: number | null;
+    athlete_id: number;
+    provider: string;
+    external_id: string;
+    sport: string;
+    started_at: string | null;
+    duration_seconds: number | null;
+    distance_meters: number | null;
+    elevation_gain_meters: number | null;
+};
+
 export type ApiCollectionResponse<TData> = {
     data: TData[];
 };
@@ -157,4 +171,18 @@ export type TrainingPlanView = {
     startsAt: string;
     endsAt: string;
     weeks: TrainingWeekView[];
+};
+
+export type ActivityView = {
+    id: number;
+    linkedSessionId: number | null;
+    athleteId: number;
+    provider: string;
+    externalId: string;
+    sport: string;
+    startedAt: string | null;
+    startedDate: string | null;
+    durationSeconds: number | null;
+    distanceMeters: number | null;
+    elevationGainMeters: number | null;
 };

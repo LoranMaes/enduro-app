@@ -64,7 +64,7 @@ class UpdateAthleteTrainingPreferencesRequest extends FormRequest
             'ftp_watts' => ['nullable', 'integer', 'between:50,1000'],
             'max_heart_rate_bpm' => ['nullable', 'integer', 'between:120,240'],
             'threshold_heart_rate_bpm' => ['nullable', 'integer', 'between:100,230'],
-            'threshold_pace_seconds_per_km' => ['nullable', 'integer', 'between:120,1200'],
+            'threshold_pace_minutes_per_km' => ['nullable', 'integer', 'between:120,1200'],
             'power_zones' => ['nullable', 'array', 'size:5'],
             'power_zones.*.label' => ['required_with:power_zones', Rule::in(['Z1', 'Z2', 'Z3', 'Z4', 'Z5'])],
             'power_zones.*.min' => ['required_with:power_zones', 'integer', 'between:0,200'],

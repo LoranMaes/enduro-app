@@ -11,11 +11,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory;
+
+    use LogsActivity;
+    use Notifiable;
+    use TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +30,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
         'role',
@@ -60,6 +68,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
+            'first_name' => 'string',
+            'last_name' => 'string',
             'timezone' => 'string',
             'unit_system' => 'string',
             'strava_token_expires_at' => 'datetime',
@@ -74,6 +84,11 @@ class User extends Authenticatable
     public function coachProfile(): HasOne
     {
         return $this->hasOne(CoachProfile::class);
+    }
+
+    public function coachApplication(): HasOne
+    {
+        return $this->hasOne(CoachApplication::class);
     }
 
     public function coachedAthletes(): BelongsToMany
@@ -134,5 +149,37 @@ class User extends Authenticatable
     public function canManageActivityProviderConnections(): bool
     {
         return $this->isAthlete() || $this->isAdmin();
+    }
+
+    public function fullName(): string
+    {
+        $parts = array_filter([
+            $this->first_name,
+            $this->last_name,
+        ], static fn (?string $value): bool => $value !== null && trim($value) !== '');
+
+        if ($parts === []) {
+            return $this->name;
+        }
+
+        return implode(' ', $parts);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('user')
+            ->logOnly([
+                'name',
+                'first_name',
+                'last_name',
+                'email',
+                'email_verified_at',
+                'role',
+                'timezone',
+                'unit_system',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

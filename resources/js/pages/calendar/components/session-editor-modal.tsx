@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
     complete as completeTrainingSession,
@@ -171,12 +172,10 @@ export function SessionEditorModal({
     const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('60');
     const [plannedTss, setPlannedTss] = useState('');
     const [notes, setNotes] = useState('');
-    const [plannedStructure, setPlannedStructure] = useState<WorkoutStructure | null>(
-        null,
-    );
-    const [sessionDetails, setSessionDetails] = useState<TrainingSessionView | null>(
-        null,
-    );
+    const [plannedStructure, setPlannedStructure] =
+        useState<WorkoutStructure | null>(null);
+    const [sessionDetails, setSessionDetails] =
+        useState<TrainingSessionView | null>(null);
     const [isLoadingSessionDetails, setIsLoadingSessionDetails] =
         useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,9 +188,9 @@ export function SessionEditorModal({
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
-    const [activeEditorTab, setActiveEditorTab] = useState<'details' | 'structure'>(
-        'details',
-    );
+    const [activeEditorTab, setActiveEditorTab] = useState<
+        'details' | 'structure'
+    >('details');
 
     const isEditMode = context?.mode === 'edit';
     const isBusy =
@@ -215,7 +214,8 @@ export function SessionEditorModal({
         selectedSession !== null && isSessionCompleted(selectedSession);
     const sessionIsAdjusted =
         selectedSession !== null && isSessionAdjusted(selectedSession);
-    const linkedActivitySummary = selectedSession?.linkedActivitySummary ?? null;
+    const linkedActivitySummary =
+        selectedSession?.linkedActivitySummary ?? null;
     const suggestedActivities =
         selectedSession?.suggestedActivities.filter(
             (activity) => activity.id !== selectedSession.linkedActivityId,
@@ -226,7 +226,9 @@ export function SessionEditorModal({
             : '—';
     const actualDurationLabel = sessionIsCompleted
         ? formatDurationMinutes(selectedSession?.actualDurationMinutes ?? null)
-        : formatDurationSecondsValue(linkedActivitySummary?.durationSeconds ?? null);
+        : formatDurationSecondsValue(
+              linkedActivitySummary?.durationSeconds ?? null,
+          );
     const plannedTssLabel = formatTssValue(selectedSession?.plannedTss ?? null);
     const actualTssLabel = sessionIsCompleted
         ? formatTssValue(selectedSession?.actualTss ?? null)
@@ -313,7 +315,9 @@ export function SessionEditorModal({
 
         if (context.mode === 'edit') {
             setSport(toSport(context.session.sport));
-            setPlannedDurationMinutes(context.session.durationMinutes.toString());
+            setPlannedDurationMinutes(
+                context.session.durationMinutes.toString(),
+            );
             setPlannedTss(
                 context.session.plannedTss !== null
                     ? context.session.plannedTss.toString()
@@ -321,7 +325,9 @@ export function SessionEditorModal({
             );
             setNotes(context.session.notes ?? '');
             setPlannedStructure(
-                normalizeEditorWorkoutStructure(context.session.plannedStructure),
+                normalizeEditorWorkoutStructure(
+                    context.session.plannedStructure,
+                ),
             );
             setSessionDetails(context.session);
 
@@ -718,7 +724,9 @@ export function SessionEditorModal({
                             <div className="inline-flex items-center gap-1 rounded-md bg-background/60 p-1">
                                 <button
                                     type="button"
-                                    onClick={() => setActiveEditorTab('details')}
+                                    onClick={() =>
+                                        setActiveEditorTab('details')
+                                    }
                                     className={cn(
                                         'rounded px-3 py-1.5 text-xs font-medium',
                                         activeEditorTab === 'details'
@@ -730,7 +738,9 @@ export function SessionEditorModal({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setActiveEditorTab('structure')}
+                                    onClick={() =>
+                                        setActiveEditorTab('structure')
+                                    }
                                     className={cn(
                                         'rounded px-3 py-1.5 text-xs font-medium',
                                         activeEditorTab === 'structure'
@@ -764,16 +774,18 @@ export function SessionEditorModal({
                                     <WorkoutStructureBuilder
                                         value={plannedStructure}
                                         sport={sport}
-                                        trainingTargets={
-                                            athleteTrainingTargets
-                                        }
+                                        trainingTargets={athleteTrainingTargets}
                                         disabled={!canManageSessionWrites}
                                         onChange={(nextStructure) => {
                                             setPlannedStructure(nextStructure);
-                                            clearFieldError('planned_structure');
+                                            clearFieldError(
+                                                'planned_structure',
+                                            );
                                         }}
                                     />
-                                    <InputError message={errors.planned_structure} />
+                                    <InputError
+                                        message={errors.planned_structure}
+                                    />
                                 </div>
                             ) : (
                                 <div className="space-y-5">
@@ -810,18 +822,27 @@ export function SessionEditorModal({
                                                     <button
                                                         key={option.value}
                                                         type="button"
-                                                        disabled={!canManageSessionWrites}
+                                                        disabled={
+                                                            !canManageSessionWrites
+                                                        }
                                                         onClick={() => {
-                                                            if (!canManageSessionWrites) {
+                                                            if (
+                                                                !canManageSessionWrites
+                                                            ) {
                                                                 return;
                                                             }
 
-                                                            setSport(option.value);
-                                                            clearFieldError('sport');
+                                                            setSport(
+                                                                option.value,
+                                                            );
+                                                            clearFieldError(
+                                                                'sport',
+                                                            );
                                                         }}
                                                         className={cn(
                                                             'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
-                                                            sport === option.value
+                                                            sport ===
+                                                                option.value
                                                                 ? 'border border-zinc-700 bg-zinc-800 text-white'
                                                                 : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
                                                             !canManageSessionWrites &&
@@ -829,7 +850,9 @@ export function SessionEditorModal({
                                                         )}
                                                     >
                                                         <Icon className="h-3.5 w-3.5" />
-                                                        <span>{option.label}</span>
+                                                        <span>
+                                                            {option.label}
+                                                        </span>
                                                     </button>
                                                 );
                                             })}
@@ -865,8 +888,9 @@ export function SessionEditorModal({
                                                 </div>
                                             </div>
                                             <p className="text-[11px] text-zinc-300">
-                                                Planned duration and planned TSS are derived
-                                                from the current workout structure.
+                                                Planned duration and planned TSS
+                                                are derived from the current
+                                                workout structure.
                                             </p>
                                         </div>
                                     ) : (
@@ -880,11 +904,17 @@ export function SessionEditorModal({
                                                 </Label>
                                                 <Input
                                                     id="planned-duration-minutes"
-                                                    ref={plannedDurationInputRef}
+                                                    ref={
+                                                        plannedDurationInputRef
+                                                    }
                                                     type="number"
                                                     min={1}
-                                                    disabled={!canManageSessionWrites}
-                                                    value={plannedDurationMinutes}
+                                                    disabled={
+                                                        !canManageSessionWrites
+                                                    }
+                                                    value={
+                                                        plannedDurationMinutes
+                                                    }
                                                     onChange={(event) => {
                                                         setPlannedDurationMinutes(
                                                             event.target.value,
@@ -896,7 +926,9 @@ export function SessionEditorModal({
                                                     className="border-border bg-background font-mono text-sm text-zinc-200"
                                                 />
                                                 <InputError
-                                                    message={errors.planned_duration_minutes}
+                                                    message={
+                                                        errors.planned_duration_minutes
+                                                    }
                                                 />
                                             </div>
 
@@ -911,7 +943,9 @@ export function SessionEditorModal({
                                                     id="planned-tss"
                                                     type="number"
                                                     min={0}
-                                                    disabled={!canManageSessionWrites}
+                                                    disabled={
+                                                        !canManageSessionWrites
+                                                    }
                                                     value={plannedTss}
                                                     onChange={(event) => {
                                                         setPlannedTss(
@@ -937,7 +971,7 @@ export function SessionEditorModal({
                                         >
                                             Notes
                                         </Label>
-                                        <textarea
+                                        <Textarea
                                             id="session-notes"
                                             rows={4}
                                             disabled={!canManageSessionWrites}
@@ -993,7 +1027,9 @@ export function SessionEditorModal({
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="outline"
-                                                                disabled={!canPerformLinking}
+                                                                disabled={
+                                                                    !canPerformLinking
+                                                                }
                                                                 onClick={() => {
                                                                     void unlinkActivity();
                                                                 }}
@@ -1007,11 +1043,13 @@ export function SessionEditorModal({
                                                         ) : null}
                                                     </div>
 
-                                                    {selectedSession !== null ? (
+                                                    {selectedSession !==
+                                                    null ? (
                                                         <>
                                                             <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
                                                                 <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-                                                                    Planned vs Actual
+                                                                    Planned vs
+                                                                    Actual
                                                                 </p>
                                                                 <div className="grid grid-cols-2 gap-2">
                                                                     <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
@@ -1021,13 +1059,17 @@ export function SessionEditorModal({
                                                                         <p className="mt-1 text-[11px] text-zinc-300">
                                                                             Planned:{' '}
                                                                             <span className="font-mono text-zinc-100">
-                                                                                {plannedDurationLabel}
+                                                                                {
+                                                                                    plannedDurationLabel
+                                                                                }
                                                                             </span>
                                                                         </p>
                                                                         <p className="mt-0.5 text-[11px] text-zinc-300">
                                                                             Actual:{' '}
                                                                             <span className="font-mono text-zinc-100">
-                                                                                {actualDurationLabel}
+                                                                                {
+                                                                                    actualDurationLabel
+                                                                                }
                                                                             </span>
                                                                         </p>
                                                                     </div>
@@ -1038,13 +1080,17 @@ export function SessionEditorModal({
                                                                         <p className="mt-1 text-[11px] text-zinc-300">
                                                                             Planned:{' '}
                                                                             <span className="font-mono text-zinc-100">
-                                                                                {plannedTssLabel}
+                                                                                {
+                                                                                    plannedTssLabel
+                                                                                }
                                                                             </span>
                                                                         </p>
                                                                         <p className="mt-0.5 text-[11px] text-zinc-300">
                                                                             Actual:{' '}
                                                                             <span className="font-mono text-zinc-100">
-                                                                                {actualTssLabel}
+                                                                                {
+                                                                                    actualTssLabel
+                                                                                }
                                                                             </span>
                                                                         </p>
                                                                     </div>
@@ -1073,12 +1119,17 @@ export function SessionEditorModal({
                                                                             </p>
                                                                         ) : (
                                                                             <p className="text-xs text-zinc-300">
-                                                                                Ready to mark as completed.
+                                                                                Ready
+                                                                                to
+                                                                                mark
+                                                                                as
+                                                                                completed.
                                                                             </p>
                                                                         )}
                                                                         <p className="mt-0.5 text-[11px] text-zinc-500">
                                                                             {sessionIsCompleted
-                                                                                ? selectedSession.completedAt !== null
+                                                                                ? selectedSession.completedAt !==
+                                                                                  null
                                                                                     ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
                                                                                     : 'Completed'
                                                                                 : 'Uses linked activity values only.'}
@@ -1125,10 +1176,19 @@ export function SessionEditorModal({
 
                                                                 {sessionIsCompleted ? (
                                                                     <p className="text-[11px] text-zinc-500">
-                                                                        Reverting completion clears
-                                                                        actual duration and actual
-                                                                        TSS, while keeping this
-                                                                        activity linked.
+                                                                        Reverting
+                                                                        completion
+                                                                        clears
+                                                                        actual
+                                                                        duration
+                                                                        and
+                                                                        actual
+                                                                        TSS,
+                                                                        while
+                                                                        keeping
+                                                                        this
+                                                                        activity
+                                                                        linked.
                                                                     </p>
                                                                 ) : null}
                                                             </div>
@@ -1143,57 +1203,67 @@ export function SessionEditorModal({
 
                                             {suggestedActivities.length > 0 ? (
                                                 <div className="space-y-2">
-                                                    {suggestedActivities.map((activity) => (
-                                                        <div
-                                                            key={activity.id}
-                                                            className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <p className="text-xs text-zinc-300">
-                                                                    {formatStartedAt(
-                                                                        activity.startedAt,
-                                                                    )}
-                                                                </p>
-                                                                <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                                    {activity.sport ?? 'other'}
-                                                                    {' • '}
-                                                                    {formatDurationSeconds(
-                                                                        activity.durationSeconds,
-                                                                    )}
-                                                                </p>
-                                                            </div>
+                                                    {suggestedActivities.map(
+                                                        (activity) => (
+                                                            <div
+                                                                key={
+                                                                    activity.id
+                                                                }
+                                                                className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-zinc-300">
+                                                                        {formatStartedAt(
+                                                                            activity.startedAt,
+                                                                        )}
+                                                                    </p>
+                                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                                        {activity.sport ??
+                                                                            'other'}
+                                                                        {' • '}
+                                                                        {formatDurationSeconds(
+                                                                            activity.durationSeconds,
+                                                                        )}
+                                                                    </p>
+                                                                </div>
 
-                                                            {canManageSessionLinks ? (
-                                                                <Button
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    disabled={
-                                                                        !canPerformLinking
-                                                                    }
-                                                                    onClick={() => {
-                                                                        void linkActivity(
-                                                                            activity.id,
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    <Link2 className="h-3.5 w-3.5" />
-                                                                    {isLinkingActivity
-                                                                        ? 'Linking...'
-                                                                        : 'Link'}
-                                                                </Button>
-                                                            ) : null}
-                                                        </div>
-                                                    ))}
+                                                                {canManageSessionLinks ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        disabled={
+                                                                            !canPerformLinking
+                                                                        }
+                                                                        onClick={() => {
+                                                                            void linkActivity(
+                                                                                activity.id,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <Link2 className="h-3.5 w-3.5" />
+                                                                        {isLinkingActivity
+                                                                            ? 'Linking...'
+                                                                            : 'Link'}
+                                                                    </Button>
+                                                                ) : null}
+                                                            </div>
+                                                        ),
+                                                    )}
                                                 </div>
                                             ) : !isLoadingSessionDetails ? (
                                                 <p className="text-xs text-zinc-500">
-                                                    No suggested activities found.
+                                                    No suggested activities
+                                                    found.
                                                 </p>
                                             ) : null}
 
-                                            <InputError message={errors.activity_id} />
-                                            <InputError message={errors.session} />
+                                            <InputError
+                                                message={errors.activity_id}
+                                            />
+                                            <InputError
+                                                message={errors.session}
+                                            />
                                         </div>
                                     ) : null}
                                 </div>
@@ -1273,7 +1343,8 @@ export function SessionEditorModal({
 
                             {!canManageSessionWrites ? (
                                 <p className="mt-2 text-right text-[11px] text-zinc-500">
-                                    Session fields are read-only in this context.
+                                    Session fields are read-only in this
+                                    context.
                                 </p>
                             ) : (
                                 <p className="mt-2 text-right text-[11px] text-zinc-500">
@@ -1296,7 +1367,7 @@ export function SessionEditorModal({
                                               ? 'Completing session...'
                                               : isRevertingCompletion
                                                 ? 'Reverting completion...'
-                                            : 'Saving session...'}
+                                                : 'Saving session...'}
                                 </p>
                             ) : null}
                         </div>
@@ -1347,9 +1418,8 @@ function normalizeEditorWorkoutStructure(
     )
         ? (structure.unit as WorkoutStructureUnit)
         : 'rpe';
-    const mode: WorkoutStructureMode = structure.mode === 'target'
-        ? 'target'
-        : 'range';
+    const mode: WorkoutStructureMode =
+        structure.mode === 'target' ? 'target' : 'range';
 
     return {
         unit,
@@ -1501,7 +1571,8 @@ function normalizePlannedStructureForRequest(
                                 Math.round(item.durationMinutes),
                             ),
                             target:
-                                item.target === null || Number.isNaN(item.target)
+                                item.target === null ||
+                                Number.isNaN(item.target)
                                     ? null
                                     : item.target,
                             range_min:
@@ -1547,14 +1618,16 @@ function extractValidationErrors(payload: unknown): ValidationErrors | null {
         }
     });
 
-    const plannedStructureError = Object.entries(errors).find(([key, value]) => {
-        return (
-            key.startsWith('planned_structure')
-            && Array.isArray(value)
-            && value.length > 0
-            && typeof value[0] === 'string'
-        );
-    });
+    const plannedStructureError = Object.entries(errors).find(
+        ([key, value]) => {
+            return (
+                key.startsWith('planned_structure') &&
+                Array.isArray(value) &&
+                value.length > 0 &&
+                typeof value[0] === 'string'
+            );
+        },
+    );
 
     if (plannedStructureError !== undefined) {
         extracted.planned_structure = (
@@ -1596,31 +1669,33 @@ function mapSessionFromApi(session: TrainingSessionApi): TrainingSessionView {
             session.planned_structure !== undefined &&
             session.planned_structure !== null
                 ? {
-                      unit: session.planned_structure.unit as WorkoutStructureUnit,
-                      mode: session.planned_structure.mode as WorkoutStructureMode,
+                      unit: session.planned_structure
+                          .unit as WorkoutStructureUnit,
+                      mode: session.planned_structure
+                          .mode as WorkoutStructureMode,
                       steps: session.planned_structure.steps.map((step) => ({
                           id: step.id ?? `step-${session.id}-${step.type}`,
                           type: step.type as WorkoutStructureStep['type'],
                           durationMinutes: step.duration_minutes,
                           target: step.target ?? null,
                           rangeMin: step.range_min ?? null,
-                      rangeMax: step.range_max ?? null,
-                      repeatCount: step.repeat_count ?? 1,
-                      note: step.note ?? '',
-                      items:
-                          step.items?.map((item, itemIndex) => ({
-                              id:
-                                  item.id ??
-                                  `item-${session.id}-${step.type}-${itemIndex}`,
-                              label: item.label ?? `Step ${itemIndex + 1}`,
-                              durationMinutes: item.duration_minutes,
-                              target: item.target ?? null,
-                              rangeMin: item.range_min ?? null,
-                              rangeMax: item.range_max ?? null,
-                          })) ?? null,
-                  })),
-              }
-            : null,
+                          rangeMax: step.range_max ?? null,
+                          repeatCount: step.repeat_count ?? 1,
+                          note: step.note ?? '',
+                          items:
+                              step.items?.map((item, itemIndex) => ({
+                                  id:
+                                      item.id ??
+                                      `item-${session.id}-${step.type}-${itemIndex}`,
+                                  label: item.label ?? `Step ${itemIndex + 1}`,
+                                  durationMinutes: item.duration_minutes,
+                                  target: item.target ?? null,
+                                  rangeMin: item.range_min ?? null,
+                                  rangeMax: item.range_max ?? null,
+                              })) ?? null,
+                      })),
+                  }
+                : null,
         linkedActivityId: session.linked_activity_id ?? null,
         linkedActivitySummary:
             session.linked_activity_summary !== undefined &&

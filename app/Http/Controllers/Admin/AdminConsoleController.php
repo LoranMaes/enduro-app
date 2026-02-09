@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CoachApplication;
 use App\Models\User;
+use App\Support\Admin\AdminUserPresenter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminConsoleController extends Controller
 {
+    public function __construct(
+        private readonly AdminUserPresenter $adminUserPresenter,
+    ) {}
+
     /**
      * Handle the incoming request.
      */
@@ -25,55 +31,44 @@ class AdminConsoleController extends Controller
         $activeCoaches = User::query()
             ->where('role', 'coach')
             ->count();
+        $pendingCoachApplications = CoachApplication::query()
+            ->where('status', 'pending')
+            ->count();
 
         $recentUsers = User::query()
             ->select('id', 'name', 'email', 'role', 'email_verified_at')
             ->withCount('trainingPlans')
+            ->with([
+                'coachProfile:id,user_id,is_approved',
+                'coachApplication:id,user_id,status',
+            ])
             ->latest('created_at')
             ->limit(5)
-            ->get()
-            ->map(fn (User $listedUser): array => $this->toUserListItem($listedUser, $admin))
-            ->values();
+            ->get();
 
         return Inertia::render('admin/index', [
             'metrics' => [
                 'total_users' => $totalUsers,
                 'active_athletes' => $activeAthletes,
                 'active_coaches' => $activeCoaches,
+                'pending_coach_applications' => $pendingCoachApplications,
                 'estimated_mrr' => null,
             ],
-            'recentUsers' => $recentUsers,
+            'recentUsers' => $recentUsers
+                ->map(fn (User $listedUser): array => $this->adminUserPresenter->toListItem($listedUser, $admin))
+                ->values(),
+            'coachApplicationsPreview' => CoachApplication::query()
+                ->where('status', 'pending')
+                ->with('user:id,name,first_name,last_name,email')
+                ->orderByDesc('submitted_at')
+                ->limit(3)
+                ->get()
+                ->map(fn (CoachApplication $application): array => [
+                    'id' => $application->id,
+                    'name' => $application->user?->fullName() ?? 'Unknown coach',
+                    'email' => $application->user?->email,
+                    'submitted_at' => $application->submitted_at?->toIso8601String(),
+                ])->values(),
         ]);
-    }
-
-    /**
-     * @return array{
-     *     id: int,
-     *     name: string,
-     *     email: string,
-     *     role: string|null,
-     *     status: string,
-     *     plan_label: string,
-     *     can_impersonate: bool,
-     *     is_current: bool
-     * }
-     */
-    private function toUserListItem(User $user, User $admin): array
-    {
-        $role = $user->role?->value ?? 'athlete';
-        $planLabel = $user->training_plans_count > 0
-            ? "{$user->training_plans_count} plan".($user->training_plans_count === 1 ? '' : 's')
-            : '-';
-
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role' => $role,
-            'status' => $user->email_verified_at !== null ? 'active' : 'pending',
-            'plan_label' => $planLabel,
-            'can_impersonate' => ! $user->isAdmin(),
-            'is_current' => $user->is($admin),
-        ];
     }
 }

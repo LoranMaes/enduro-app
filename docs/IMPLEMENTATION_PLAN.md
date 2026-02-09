@@ -50,6 +50,14 @@ This follows the **design-first → Codex → backend** approach.
   - initial load centers current week in owned calendar scroll container
   - infinite vertical week loading (past + future) via session-window reads
   - no pagination UI and no write-path changes
+- Calendar operational hardening (COMPLETE):
+  - calendar now includes synced external activity rows in day columns (linked/unlinked state)
+  - provider status pill + manual sync action are available in calendar header
+  - provider status now has websocket + polling fallback refresh behavior
+  - athlete calendar modes implemented: `Infinite` / `Day` / `Week` / `Month`
+  - jump control added for returning to current week context
+  - prepend-loading scroll anchoring stabilized to prevent random jump behavior while extending past weeks
+  - unlinked activity rows now route to a read-only detail analysis surface
 
 ---
 
@@ -125,6 +133,9 @@ Status update:
   - `POST /api/activity-providers/{provider}/sync`
   - now queue-backed (`202 queued`)
   - sync run tracking table/model in place
+- Sync post-processing hardening (COMPLETE):
+  - auto-link pass now runs after persisted provider sync batches/single-activity sync
+  - existing manual links are preserved during provider upserts
 - Settings → Connections page (COMPLETE):
   - real connection status
   - connect/disconnect actions
@@ -139,6 +150,7 @@ Status update:
   - broadcasting + Reverb scaffold installed
   - private user-channel sync-status event broadcasting
   - settings connections view now updates live when sync status transitions
+  - athlete calendar header now updates sync state live and triggers session-window refresh on sync success
 - Strava webhook ingestion (COMPLETE, Strava-first):
   - verification endpoint (challenge response)
   - event ingestion endpoint
@@ -159,7 +171,7 @@ Status update:
 
 - Athlete / Coach / Admin
 - Impersonation support (COMPLETE for session-based read-only admin supervision)
-- Approval workflows
+- Approval workflows (COMPLETE for coach onboarding V1)
 
 Status update:
 - Coach-athlete assignment backbone is implemented (model, migration, policies, query scoping, read-only coach views, tests).
@@ -171,6 +183,25 @@ Status update:
   - impersonated sessions use role-correct navigation context
   - training-data writes are blocked while impersonating
 - Next in this phase is explicit role-management/admin account actions (separate scope), without expanding into training-data write access.
+- Role-aware auth/onboarding is now implemented:
+  - login/register screens redesigned in Endure style
+  - registration supports `first_name` + `last_name`
+  - athlete and coach registration branches are split
+  - coach registrations now create pending approval applications with document uploads
+  - unapproved coaches are redirected to a dedicated pending-review screen
+  - admin has a dedicated coach-application review tab (`/admin/coach-applications`) with approve/reject actions and file previews
+- Coach review/admin control hardening is now implemented:
+  - coach application queue supports explicit status filtering tabs:
+    - pending
+    - accepted
+    - rejected
+  - pending/rejected coach accounts are blocked from impersonation in policy/controller/UI paths
+  - admin users + recent-signups tables include direct navigation to per-user detail view
+- Admin observability V1 is now implemented:
+  - user detail page (`/admin/users/{user}`) includes tabbed overview/log inspection
+  - log table supports pagination + scope/event filtering + per-entry old/new value popup
+  - mutating HTTP requests are logged with redacted payloads
+  - model-level activity logging is enabled for core mutable domains
 
 ---
 

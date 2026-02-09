@@ -9,6 +9,8 @@ it('requires authentication for navigation shell pages', function () {
     $this->get('/plans')->assertRedirect(route('login'));
     $this->get('/admin')->assertRedirect(route('login'));
     $this->get('/admin/users')->assertRedirect(route('login'));
+    $this->get('/admin/coach-applications')->assertRedirect(route('login'));
+    $this->get('/coach/pending-approval')->assertRedirect(route('login'));
     $this->get('/settings/overview')->assertRedirect(route('login'));
 });
 
@@ -24,7 +26,9 @@ it('applies role-aware navigation shell access for athlete and admin users', fun
     $this->actingAs($athlete)->get('/settings/overview')->assertOk();
     $this->actingAs($athlete)->get('/admin')->assertForbidden();
     $this->actingAs($athlete)->get('/admin/users')->assertForbidden();
+    $this->actingAs($athlete)->get('/admin/coach-applications')->assertForbidden();
 
     $this->actingAs($admin)->get('/admin')->assertOk();
     $this->actingAs($admin)->get('/admin/users')->assertOk();
+    $this->actingAs($admin)->get('/admin/coach-applications')->assertOk();
 });

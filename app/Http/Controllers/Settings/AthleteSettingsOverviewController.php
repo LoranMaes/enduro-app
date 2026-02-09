@@ -33,7 +33,7 @@ class AthleteSettingsOverviewController extends Controller
             'activeTab' => $activeTab,
             'role' => $user->role?->value ?? 'athlete',
             'profile' => [
-                'name' => $user->name,
+                'name' => $user->fullName(),
                 'email' => $user->email,
                 'timezone' => $user->timezone ?? config('app.timezone', 'UTC'),
                 'unit_system' => $user->unit_system ?? 'metric',
@@ -46,7 +46,7 @@ class AthleteSettingsOverviewController extends Controller
                 'ftp_watts' => $user->athleteProfile?->ftp_watts,
                 'max_heart_rate_bpm' => $user->athleteProfile?->max_heart_rate_bpm,
                 'threshold_heart_rate_bpm' => $user->athleteProfile?->threshold_heart_rate_bpm,
-                'threshold_pace_seconds_per_km' => $user->athleteProfile?->threshold_pace_seconds_per_km,
+                'threshold_pace_minutes_per_km' => $user->athleteProfile?->threshold_pace_minutes_per_km,
                 'power_zones' => $this->normalizeZones(
                     $user->athleteProfile?->power_zones,
                     $this->defaultPowerZones(),

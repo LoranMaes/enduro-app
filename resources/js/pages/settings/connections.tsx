@@ -7,7 +7,10 @@ import AppLayout from '@/layouts/app-layout';
 import { initializeEcho } from '@/lib/echo';
 import SettingsLayout from '@/layouts/settings/layout';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
-import { connections as settingsConnections, overview } from '@/routes/settings';
+import {
+    connections as settingsConnections,
+    overview,
+} from '@/routes/settings';
 import { connect, disconnect } from '@/routes/settings/connections';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
@@ -70,15 +73,68 @@ export default function Connections({
         const eventName = '.activity-provider.sync-status-updated';
         const channel = echo.private(channelName);
 
-        channel.listen(eventName, (event: { provider?: string }) => {
-            if (typeof event.provider !== 'string' || event.provider === '') {
-                return;
-            }
+        channel.listen(
+            eventName,
+            (event: {
+                provider?: string;
+                status?: string;
+                reason?: string | null;
+            }) => {
+                if (
+                    typeof event.provider !== 'string' ||
+                    event.provider === ''
+                ) {
+                    return;
+                }
 
-            router.reload({
-                only: ['providers'],
-            });
-        });
+                const provider = event.provider;
+                const status =
+                    typeof event.status === 'string'
+                        ? event.status.toLowerCase()
+                        : null;
+
+                setSyncingProvider((current) =>
+                    current === provider ? null : current,
+                );
+
+                if (status !== null) {
+                    setSyncMessageByProvider((current) => ({
+                        ...current,
+                        [provider]:
+                            status === 'success'
+                                ? 'Sync completed.'
+                                : status === 'running'
+                                  ? 'Syncing...'
+                                  : status === 'queued'
+                                    ? 'Sync queued.'
+                                    : status === 'rate_limited'
+                                      ? 'Sync rate limited.'
+                                      : status === 'failed'
+                                        ? 'Sync failed.'
+                                        : `Sync status: ${status}.`,
+                    }));
+
+                    if (status === 'failed' || status === 'rate_limited') {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]:
+                                typeof event.reason === 'string'
+                                    ? event.reason
+                                    : '',
+                        }));
+                    } else {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]: '',
+                        }));
+                    }
+                }
+
+                router.reload({
+                    only: ['providers'],
+                });
+            },
+        );
 
         return () => {
             channel.stopListening(eventName);
@@ -128,9 +184,7 @@ export default function Connections({
             }
 
             const status =
-                typeof payload?.status === 'string'
-                    ? payload.status
-                    : 'queued';
+                typeof payload?.status === 'string' ? payload.status : 'queued';
 
             setSyncMessageByProvider((current) => ({
                 ...current,
@@ -193,7 +247,9 @@ export default function Connections({
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-sm font-medium text-zinc-100">
-                                                        {providerConnection.label}
+                                                        {
+                                                            providerConnection.label
+                                                        }
                                                     </p>
                                                     <span
                                                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${connectionStatusClass}`}
@@ -281,12 +337,14 @@ export default function Connections({
                                                                     ? 'Syncing...'
                                                                     : hasSyncInProgress
                                                                       ? 'Sync queued'
-                                                                    : 'Sync now'}
+                                                                      : 'Sync now'}
                                                             </Button>
                                                             <Link
-                                                                href={disconnect(
-                                                                    providerConnection.provider,
-                                                                ).url}
+                                                                href={
+                                                                    disconnect(
+                                                                        providerConnection.provider,
+                                                                    ).url
+                                                                }
                                                                 method="delete"
                                                                 as="button"
                                                                 className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70"
@@ -297,9 +355,11 @@ export default function Connections({
                                                         </>
                                                     ) : (
                                                         <Link
-                                                            href={connect(
-                                                                providerConnection.provider,
-                                                            ).url}
+                                                            href={
+                                                                connect(
+                                                                    providerConnection.provider,
+                                                                ).url
+                                                            }
                                                             className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs text-zinc-200 transition-colors hover:bg-zinc-700"
                                                         >
                                                             <Link2 className="h-3.5 w-3.5" />

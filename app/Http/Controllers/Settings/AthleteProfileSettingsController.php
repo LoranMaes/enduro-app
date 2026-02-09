@@ -23,6 +23,11 @@ class AthleteProfileSettingsController extends Controller
             'timezone' => $validated['timezone'],
             'unit_system' => $validated['unit_system'],
         ]);
+        $nameParts = preg_split('/\s+/', trim((string) $validated['name'])) ?: [];
+        $user->first_name = $nameParts[0] ?? null;
+        $user->last_name = count($nameParts) > 1
+            ? implode(' ', array_slice($nameParts, 1))
+            : null;
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

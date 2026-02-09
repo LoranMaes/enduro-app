@@ -1,5 +1,6 @@
 import CalendarPage from '@/pages/calendar';
 import type {
+    ActivityApi,
     ApiCollectionResponse,
     ApiPaginatedCollectionResponse,
     TrainingPlanApi,
@@ -9,6 +10,7 @@ import type {
 type DashboardProps = {
     trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
     trainingSessions: ApiCollectionResponse<TrainingSessionApi>;
+    activities: ApiCollectionResponse<ActivityApi>;
     calendarWindow: {
         starts_at: string;
         ends_at: string;
@@ -26,7 +28,7 @@ type DashboardProps = {
         ftp_watts: number | null;
         max_heart_rate_bpm: number | null;
         threshold_heart_rate_bpm: number | null;
-        threshold_pace_seconds_per_km: number | null;
+        threshold_pace_minutes_per_km: number | null;
         power_zones: Array<{
             label: string;
             min: number;
@@ -47,6 +49,7 @@ type DashboardProps = {
 export default function Dashboard({
     trainingPlans,
     trainingSessions,
+    activities,
     calendarWindow,
     providerStatus,
     athleteTrainingTargets,
@@ -56,6 +59,7 @@ export default function Dashboard({
         <CalendarPage
             trainingPlans={trainingPlans}
             trainingSessions={trainingSessions}
+            activities={activities}
             calendarWindow={calendarWindow}
             providerStatus={providerStatus}
             athleteTrainingTargets={athleteTrainingTargets}

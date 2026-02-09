@@ -17,6 +17,7 @@ class ActivitySyncService
         private readonly ActivityProviderConnectionStore $connectionStore,
         private readonly ActivityProviderTokenManager $tokenManager,
         private readonly ExternalActivityPersister $persister,
+        private readonly ActivityAutoLinkService $activityAutoLinkService,
     ) {}
 
     /**
@@ -43,7 +44,11 @@ class ActivitySyncService
 
         if ($externalActivityId !== null) {
             $activity = $providerClient->fetchActivity($user, $externalActivityId);
-            $this->persister->persist($user, $activity);
+            $persistedActivity = $this->persister->persist($user, $activity);
+            $this->activityAutoLinkService->autoLinkSingleActivity(
+                athlete: $user,
+                activity: $persistedActivity,
+            );
 
             $syncedAt = CarbonImmutable::now();
 
@@ -73,6 +78,12 @@ class ActivitySyncService
             $batchCount = $activities->count();
             $page++;
         } while ($batchCount === $perPage);
+
+        $this->activityAutoLinkService->autoLinkRecentActivities(
+            athlete: $user,
+            provider: $normalizedProvider,
+            afterTimestamp: $afterTimestamp,
+        );
 
         $syncedAt = CarbonImmutable::now();
 

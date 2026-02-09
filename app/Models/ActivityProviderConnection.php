@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ActivityProviderConnection extends Model
 {
     use HasFactory;
+    use LogsActivity;
 
     /**
      * @var list<string>
@@ -49,5 +52,22 @@ class ActivityProviderConnection extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('activity_provider_connection')
+            ->logOnly([
+                'user_id',
+                'provider',
+                'provider_athlete_id',
+                'token_expires_at',
+                'last_synced_at',
+                'last_sync_status',
+                'last_sync_reason',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

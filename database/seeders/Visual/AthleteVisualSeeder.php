@@ -66,10 +66,14 @@ class AthleteVisualSeeder extends Seeder
         CarbonImmutable $currentWeekStart,
         int $athleteIndex,
     ): void {
+        [$firstName, $lastName] = $this->splitName($config['name']);
+
         $athlete = User::query()->updateOrCreate(
             ['email' => $config['email']],
             [
                 'name' => $config['name'],
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'role' => UserRole::Athlete,
@@ -219,5 +223,17 @@ class AthleteVisualSeeder extends Seeder
                 'notes' => $session['notes'],
             ]);
         }
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function splitName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $firstName = $parts[0] ?? $name;
+        $lastName = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
+
+        return [$firstName, $lastName];
     }
 }

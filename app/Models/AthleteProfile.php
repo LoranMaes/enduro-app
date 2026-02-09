@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AthleteProfile extends Model
 {
     use HasFactory;
+    use LogsModelActivity;
 
     /**
      * @var list<string>
@@ -25,7 +27,7 @@ class AthleteProfile extends Model
         'ftp_watts',
         'max_heart_rate_bpm',
         'threshold_heart_rate_bpm',
-        'threshold_pace_seconds_per_km',
+        'threshold_pace_minutes_per_km',
         'power_zones',
         'heart_rate_zones',
     ];
@@ -43,7 +45,7 @@ class AthleteProfile extends Model
             'ftp_watts' => 'int',
             'max_heart_rate_bpm' => 'int',
             'threshold_heart_rate_bpm' => 'int',
-            'threshold_pace_seconds_per_km' => 'int',
+            'threshold_pace_minutes_per_km' => 'int',
             'power_zones' => 'array',
             'heart_rate_zones' => 'array',
         ];

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Dashboard\IndexRequest;
 use App\Http\Resources\TrainingPlanResource;
 use App\Http\Resources\TrainingSessionResource;
+use App\Models\Activity;
 use App\Models\ActivityProviderConnection;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
@@ -69,10 +70,45 @@ class AthleteCalendarController extends Controller
                 ->orderBy('id')
                 ->get(),
         );
+        $activities = Activity::query()
+            ->where('athlete_id', $athlete->id)
+            ->whereDate('started_at', '>=', $calendarWindow['starts_at'])
+            ->whereDate('started_at', '<=', $calendarWindow['ends_at'])
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'training_session_id',
+                'athlete_id',
+                'provider',
+                'external_id',
+                'sport',
+                'started_at',
+                'duration_seconds',
+                'distance_meters',
+                'elevation_gain_meters',
+            ]);
 
         return Inertia::render('dashboard', [
             'trainingPlans' => $trainingPlanResource->response()->getData(true),
             'trainingSessions' => $trainingSessionResource->response()->getData(true),
+            'activities' => [
+                'data' => $activities->map(
+                    fn (Activity $activity): array => [
+                        'id' => $activity->id,
+                        'training_session_id' => $activity->training_session_id,
+                        'linked_session_id' => $activity->training_session_id,
+                        'athlete_id' => $activity->athlete_id,
+                        'provider' => $activity->provider,
+                        'external_id' => $activity->external_id,
+                        'sport' => $activity->sport,
+                        'started_at' => $activity->started_at?->toISOString(),
+                        'duration_seconds' => $activity->duration_seconds,
+                        'distance_meters' => $activity->distance_meters,
+                        'elevation_gain_meters' => $activity->elevation_gain_meters,
+                    ],
+                )->values(),
+            ],
             'calendarWindow' => $calendarWindow,
             'providerStatus' => $this->resolveProviderStatus($athlete),
             'athleteTrainingTargets' => $this->resolveAthleteTrainingTargets($athlete),
@@ -165,7 +201,7 @@ class AthleteCalendarController extends Controller
      *     ftp_watts: int|null,
      *     max_heart_rate_bpm: int|null,
      *     threshold_heart_rate_bpm: int|null,
-     *     threshold_pace_seconds_per_km: int|null,
+     *     threshold_pace_minutes_per_km: int|null,
      *     power_zones: array<int, array{label: string, min: int, max: int}>,
      *     heart_rate_zones: array<int, array{label: string, min: int, max: int}>
      * }|null
@@ -182,7 +218,7 @@ class AthleteCalendarController extends Controller
             'ftp_watts' => $athlete->athleteProfile?->ftp_watts,
             'max_heart_rate_bpm' => $athlete->athleteProfile?->max_heart_rate_bpm,
             'threshold_heart_rate_bpm' => $athlete->athleteProfile?->threshold_heart_rate_bpm,
-            'threshold_pace_seconds_per_km' => $athlete->athleteProfile?->threshold_pace_seconds_per_km,
+            'threshold_pace_minutes_per_km' => $athlete->athleteProfile?->threshold_pace_minutes_per_km,
             'power_zones' => $this->defaultPowerZones($athlete->athleteProfile?->power_zones),
             'heart_rate_zones' => $this->defaultHeartRateZones($athlete->athleteProfile?->heart_rate_zones),
         ];
