@@ -38,6 +38,13 @@ type CoachFileDraft = {
     renameFlash: 'saved' | 'cancelled' | null;
 };
 
+type UploadLimits = {
+    maxFiles: number;
+    maxFileSizeMb: number;
+    maxTotalSizeMb: number;
+    acceptedExtensions: string[];
+};
+
 type RegistrationFormData = {
     role: 'athlete' | 'coach';
     first_name: string;
@@ -138,10 +145,15 @@ const defaultHeartRateZones: Zone[] = [
     { label: 'Z5', min: 96, max: 100 },
 ];
 
-export default function Register() {
+export default function Register({
+    uploadLimits,
+}: {
+    uploadLimits?: UploadLimits;
+}) {
     const [stepIndex, setStepIndex] = useState(0);
     const [coachFiles, setCoachFiles] = useState<CoachFileDraft[]>([]);
     const [localError, setLocalError] = useState<string | null>(null);
+    const [coachFilesError, setCoachFilesError] = useState<string | null>(null);
 
     const form = useForm<RegistrationFormData>({
         role: 'athlete',
@@ -172,6 +184,40 @@ export default function Register() {
         coach_certification_files: [],
         coach_certification_labels: [],
     });
+
+    const normalizedUploadLimits = useMemo<UploadLimits>(() => {
+        const rawMaxFiles = uploadLimits?.maxFiles ?? 10;
+        const rawMaxFileSizeMb = uploadLimits?.maxFileSizeMb ?? 10;
+        const rawMaxTotalSizeMb = uploadLimits?.maxTotalSizeMb ?? 25;
+        const rawAcceptedExtensions = uploadLimits?.acceptedExtensions ?? [
+            'pdf',
+            'png',
+            'jpg',
+            'jpeg',
+            'webp',
+        ];
+
+        const acceptedExtensions = rawAcceptedExtensions
+            .map((extension) => extension.trim().toLowerCase())
+            .filter((extension) => extension !== '');
+
+        return {
+            maxFiles: Math.max(1, rawMaxFiles),
+            maxFileSizeMb: Math.max(1, rawMaxFileSizeMb),
+            maxTotalSizeMb: Math.max(1, rawMaxTotalSizeMb),
+            acceptedExtensions:
+                acceptedExtensions.length > 0
+                    ? acceptedExtensions
+                    : ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+        };
+    }, [uploadLimits]);
+
+    const coachFileFieldErrors = useMemo(() => {
+        return Object.entries(form.errors)
+            .filter(([key]) => key.startsWith('coach_certification_files.'))
+            .map(([, value]) => value)
+            .filter((value): value is string => typeof value === 'string');
+    }, [form.errors]);
 
     const steps = useMemo(
         () => (form.data.role === 'coach' ? coachSteps : athleteSteps),
@@ -359,7 +405,50 @@ export default function Register() {
             return;
         }
 
-        const nextEntries = Array.from(files).map((file) => {
+        const selectedFiles = Array.from(files);
+        const maxFiles = normalizedUploadLimits.maxFiles;
+        const maxFileSizeBytes = megabytesToBytes(
+            normalizedUploadLimits.maxFileSizeMb,
+        );
+        const maxTotalSizeBytes = megabytesToBytes(
+            normalizedUploadLimits.maxTotalSizeMb,
+        );
+        const availableSlots = maxFiles - coachFiles.length;
+
+        if (availableSlots <= 0) {
+            setCoachFilesError(`You can upload up to ${maxFiles} files.`);
+            form.clearErrors('coach_certification_files');
+
+            return;
+        }
+
+        const filesWithinSizeLimit = selectedFiles.filter(
+            (file) => file.size <= maxFileSizeBytes,
+        );
+        const oversizedFilesCount = selectedFiles.length - filesWithinSizeLimit.length;
+        const filesWithinSlotLimit = filesWithinSizeLimit.slice(0, availableSlots);
+        const skippedBecauseOfSlotLimit =
+            filesWithinSizeLimit.length - filesWithinSlotLimit.length;
+
+        const currentTotalBytes = coachFiles.reduce(
+            (sum, item) => sum + item.file.size,
+            0,
+        );
+        let nextTotalBytes = currentTotalBytes;
+        const acceptedFiles: File[] = [];
+        let skippedBecauseOfTotalLimit = 0;
+
+        for (const file of filesWithinSlotLimit) {
+            if (nextTotalBytes + file.size > maxTotalSizeBytes) {
+                skippedBecauseOfTotalLimit++;
+                continue;
+            }
+
+            acceptedFiles.push(file);
+            nextTotalBytes += file.size;
+        }
+
+        const nextEntries = acceptedFiles.map((file) => {
             const { label, extension } = splitFileName(file.name);
 
             return {
@@ -373,13 +462,40 @@ export default function Register() {
             } satisfies CoachFileDraft;
         });
 
-        setCoachFiles((current) => [...current, ...nextEntries]);
+        if (nextEntries.length > 0) {
+            setCoachFiles((current) => [...current, ...nextEntries]);
+        }
+
+        const errors: string[] = [];
+
+        if (oversizedFilesCount > 0) {
+            errors.push(
+                `${oversizedFilesCount} file${oversizedFilesCount === 1 ? '' : 's'} exceeded ${normalizedUploadLimits.maxFileSizeMb} MB.`,
+            );
+        }
+
+        if (skippedBecauseOfSlotLimit > 0) {
+            errors.push(
+                `${skippedBecauseOfSlotLimit} file${skippedBecauseOfSlotLimit === 1 ? '' : 's'} exceeded the ${maxFiles}-file limit.`,
+            );
+        }
+
+        if (skippedBecauseOfTotalLimit > 0) {
+            errors.push(
+                `${skippedBecauseOfTotalLimit} file${skippedBecauseOfTotalLimit === 1 ? '' : 's'} exceeded the ${normalizedUploadLimits.maxTotalSizeMb} MB total limit.`,
+            );
+        }
+
+        setCoachFilesError(errors.length > 0 ? errors.join(' ') : null);
+        form.clearErrors('coach_certification_files');
     };
 
     const deleteCoachFile = (fileId: string): void => {
         setCoachFiles((current) =>
             current.filter((item) => item.id !== fileId),
         );
+        setCoachFilesError(null);
+        form.clearErrors('coach_certification_files');
     };
 
     const startRenamingCoachFile = (fileId: string): void => {
@@ -490,6 +606,9 @@ export default function Register() {
                     <CoachApplicationStep
                         form={form}
                         coachFiles={coachFiles}
+                        coachFilesError={coachFilesError}
+                        coachFileFieldErrors={coachFileFieldErrors}
+                        uploadLimits={normalizedUploadLimits}
                         onFilesAdded={addCoachFiles}
                         onDeleteFile={deleteCoachFile}
                         onStartRenaming={startRenamingCoachFile}
@@ -1167,6 +1286,9 @@ function CoachProfileStep({
 function CoachApplicationStep({
     form,
     coachFiles,
+    coachFilesError,
+    coachFileFieldErrors,
+    uploadLimits,
     onFilesAdded,
     onDeleteFile,
     onStartRenaming,
@@ -1176,6 +1298,9 @@ function CoachApplicationStep({
 }: {
     form: ReturnType<typeof useForm<RegistrationFormData>>;
     coachFiles: CoachFileDraft[];
+    coachFilesError: string | null;
+    coachFileFieldErrors: string[];
+    uploadLimits: UploadLimits;
     onFilesAdded: (files: FileList | null) => void;
     onDeleteFile: (fileId: string) => void;
     onStartRenaming: (fileId: string) => void;
@@ -1183,6 +1308,14 @@ function CoachApplicationStep({
     onConfirmRename: (fileId: string) => void;
     onCancelRename: (fileId: string) => void;
 }) {
+    const acceptAttribute = uploadLimits.acceptedExtensions
+        .map((extension) => `.${extension}`)
+        .join(',');
+    const totalUploadedBytes = coachFiles.reduce(
+        (sum, entry) => sum + entry.file.size,
+        0,
+    );
+
     return (
         <section className="space-y-4 rounded-xl border border-border bg-background/50 p-4">
             <div className="space-y-2">
@@ -1206,7 +1339,18 @@ function CoachApplicationStep({
                             Certification files
                         </p>
                         <p className="text-xs text-zinc-500">
-                            Upload PDFs or image documents for approval.
+                            Upload documents for approval. Max{' '}
+                            {uploadLimits.maxFiles} files,{' '}
+                            {uploadLimits.maxFileSizeMb} MB each,{' '}
+                            {uploadLimits.maxTotalSizeMb} MB total.
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                            Accepted formats: {acceptAttribute}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-400">
+                            Uploaded: {coachFiles.length} / {uploadLimits.maxFiles}{' '}
+                            files ({formatBytesToMegabytes(totalUploadedBytes)} /{' '}
+                            {uploadLimits.maxTotalSizeMb} MB)
                         </p>
                     </div>
 
@@ -1217,7 +1361,7 @@ function CoachApplicationStep({
                             type="file"
                             className="hidden"
                             multiple
-                            accept=".pdf,.png,.jpg,.jpeg,.webp"
+                            accept={acceptAttribute}
                             onChange={(event) => {
                                 onFilesAdded(event.target.files);
                                 event.currentTarget.value = '';
@@ -1226,7 +1370,19 @@ function CoachApplicationStep({
                     </label>
                 </div>
 
-                <InputError message={form.errors.coach_certification_files} />
+                <InputError
+                    message={
+                        coachFilesError ?? form.errors.coach_certification_files
+                    }
+                />
+                {coachFileFieldErrors.map((error, index) => (
+                    <p
+                        key={`${error}-${index}`}
+                        className="mt-1 text-xs text-red-300"
+                    >
+                        {error}
+                    </p>
+                ))}
 
                 {coachFiles.length === 0 ? (
                     <div className="mt-3 rounded border border-dashed border-zinc-700/70 px-3 py-4 text-center text-xs text-zinc-500">
@@ -1296,10 +1452,10 @@ function CoachApplicationStep({
                                         )}
 
                                         <p className="mt-1 text-xs text-zinc-500">
-                                            {(entry.file.size / 1024).toFixed(
-                                                1,
+                                            {formatBytesToMegabytes(
+                                                entry.file.size,
                                             )}{' '}
-                                            KB
+                                            MB
                                         </p>
                                     </div>
 
@@ -1449,6 +1605,14 @@ function toNullableInteger(value: number | ''): number | null {
     }
 
     return Number.isFinite(value) ? value : null;
+}
+
+function megabytesToBytes(value: number): number {
+    return Math.max(0, Math.round(value * 1024 * 1024));
+}
+
+function formatBytesToMegabytes(value: number): string {
+    return (value / (1024 * 1024)).toFixed(1);
 }
 
 function splitFileName(filename: string): { label: string; extension: string } {

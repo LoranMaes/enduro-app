@@ -1,5 +1,28 @@
 # Endure — Progress Log
 
+## 2026-02-10 (Coach Registration Upload Guardrails + S3-Ready Storage)
+
+- Hardened coach certification upload UX on register flow:
+    - frontend now shows explicit limits (file count, per-file size, total size, accepted formats)
+    - client-side guardrails reject oversized/excess files before submit
+    - inline validation messages now appear in the same error region as other form fields
+- Hardened backend validation messaging for coach uploads:
+    - explicit max-files, max-file-size, and total-size validation messaging
+    - clearer mimes validation copy for certification file types
+- Coach application file persistence is now disk-configurable:
+    - upload disk now resolves from `filesystems.coach_applications.disk`
+    - supports local or S3 without code changes
+- Added env config knobs for coach-upload limits/storage:
+    - `COACH_APPLICATION_FILESYSTEM_DISK`
+    - `COACH_APPLICATION_MAX_FILES`
+    - `COACH_APPLICATION_MAX_FILE_SIZE_KB`
+    - `COACH_APPLICATION_MAX_TOTAL_SIZE_MB`
+- Added/updated tests for upload guardrails and configurable storage disk.
+- Improved coach pending-approval UX:
+    - uploaded certification files now open in an in-app preview modal
+    - preview uses existing dialog primitives and keeps styling consistent
+    - includes fallback "Open in new tab" action for unsupported browser preview types
+
 ## 2026-02-09 (Admin Analytics Chart Correctness Follow-up)
 
 - Fixed admin user-growth role counting bug:

@@ -1,6 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
-import { Clock3, FileText, LogOut } from 'lucide-react';
+import { Clock3, ExternalLink, FileText, LogOut } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import AuthSplitLayout from '@/layouts/auth/auth-split-layout';
 import { logout } from '@/routes';
 
@@ -33,6 +41,7 @@ export default function PendingApproval({
     submittedAt,
     application,
 }: PendingApprovalPageProps) {
+    const [selectedFile, setSelectedFile] = useState<PendingFile | null>(null);
     const status = application?.status ?? 'pending';
     const isRejected = status === 'rejected';
 
@@ -179,10 +188,12 @@ export default function PendingApproval({
                                 <ul className="mt-3 space-y-2">
                                     {application.files.map((file) => (
                                         <li key={file.id}>
-                                            <Link
-                                                href={file.preview_url}
-                                                target="_blank"
-                                                className="flex items-center justify-between rounded border border-border/70 bg-background/60 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setSelectedFile(file)
+                                                }
+                                                className="flex w-full items-center justify-between gap-2 rounded border border-border/70 bg-background/60 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
                                             >
                                                 <span className="truncate">
                                                     {file.display_name}
@@ -196,7 +207,7 @@ export default function PendingApproval({
                                                     ).toFixed(1)}{' '}
                                                     KB
                                                 </span>
-                                            </Link>
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
@@ -223,6 +234,56 @@ export default function PendingApproval({
                     </Link>
                 </Button>
             </div>
+
+            <Dialog
+                open={selectedFile !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSelectedFile(null);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[92vh] max-w-6xl overflow-hidden border-border bg-surface text-zinc-100">
+                    <DialogHeader className="space-y-2">
+                        <DialogTitle className="text-base">
+                            {selectedFile?.display_name}
+                            {selectedFile?.extension
+                                ? `.${selectedFile?.extension}`
+                                : null}
+                        </DialogTitle>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-zinc-500">
+                                Preview only. Use open in new tab if your
+                                browser cannot render this file type.
+                            </p>
+                            {selectedFile !== null ? (
+                                <a
+                                    href={selectedFile.preview_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded border border-border px-2.5 py-1.5 text-xs text-nowrap text-zinc-300 transition-colors hover:bg-zinc-800/70 hover:text-zinc-100"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    Open in new tab
+                                </a>
+                            ) : null}
+                        </div>
+                    </DialogHeader>
+
+                    <DialogDescription className="sr-only text-sm text-zinc-400">
+                        Preview of the selected file
+                    </DialogDescription>
+                    {selectedFile !== null ? (
+                        <div className="h-[68vh] overflow-hidden rounded border border-border/70 bg-background">
+                            <iframe
+                                src={selectedFile.preview_url}
+                                title={`${selectedFile.display_name} preview`}
+                                className="h-full w-full"
+                            />
+                        </div>
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </AuthSplitLayout>
     );
 }

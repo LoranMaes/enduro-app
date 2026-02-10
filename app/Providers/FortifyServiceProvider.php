@@ -66,11 +66,44 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/register'));
+        Fortify::registerView(fn () => Inertia::render('auth/register', [
+            'uploadLimits' => $this->coachFileUploadLimits(),
+        ]));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+    }
+
+    /**
+     * @return array{
+     *     maxFiles: int,
+     *     maxFileSizeMb: int,
+     *     maxTotalSizeMb: int,
+     *     acceptedExtensions: array<int, string>
+     * }
+     */
+    private function coachFileUploadLimits(): array
+    {
+        $maxFiles = max(1, (int) config('filesystems.coach_applications.max_files', 10));
+        $maxFileSizeKb = max(1, (int) config('filesystems.coach_applications.max_file_size_kb', 10240));
+        $maxTotalSizeMb = max(1, (int) config('filesystems.coach_applications.max_total_size_mb', 25));
+        $acceptedExtensions = collect((array) config('filesystems.coach_applications.allowed_extensions', []))
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->map(fn (string $value): string => strtolower(trim($value)))
+            ->values()
+            ->all();
+
+        if ($acceptedExtensions === []) {
+            $acceptedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
+        }
+
+        return [
+            'maxFiles' => $maxFiles,
+            'maxFileSizeMb' => (int) ceil($maxFileSizeKb / 1024),
+            'maxTotalSizeMb' => $maxTotalSizeMb,
+            'acceptedExtensions' => $acceptedExtensions,
+        ];
     }
 
     /**

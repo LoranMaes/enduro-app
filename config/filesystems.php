@@ -17,6 +17,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Coach Application Upload Limits
+    |--------------------------------------------------------------------------
+    |
+    | Coach certification uploads are used during onboarding review. These
+    | limits are enforced in both backend validation and frontend UX guardrails.
+    |
+    */
+
+    'coach_applications' => [
+        'disk' => env('COACH_APPLICATION_FILESYSTEM_DISK', 'local'),
+        'max_files' => (int) env('COACH_APPLICATION_MAX_FILES', 10),
+        'max_file_size_kb' => (int) env('COACH_APPLICATION_MAX_FILE_SIZE_KB', 10240),
+        'max_total_size_mb' => (int) env('COACH_APPLICATION_MAX_TOTAL_SIZE_MB', 25),
+        'allowed_extensions' => ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

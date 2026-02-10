@@ -2,6 +2,7 @@
 
 use App\Models\AthleteProfile;
 use App\Models\CoachApplication;
+use App\Models\CoachApplicationFile;
 use App\Models\CoachProfile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -80,4 +81,58 @@ test('coaches can register and are marked pending approval with uploaded files',
     expect(CoachApplication::query()->where('user_id', auth()->id())->exists())->toBeTrue();
     expect(CoachApplication::query()->where('user_id', auth()->id())->withCount('files')->first()?->files_count)->toBe(1);
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('coach registration rejects oversized certification files', function () {
+    Storage::fake('local');
+
+    $response = $this->from(route('register'))->post(route('register.store'), [
+        'role' => 'coach',
+        'first_name' => 'Casey',
+        'last_name' => 'Coach',
+        'email' => 'coach-large-file@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'coaching_experience' => '8 years coaching long-course triathletes.',
+        'specialties' => 'Triathlon periodization and bike power development.',
+        'motivation' => 'I want to coach athletes in a structured, transparent environment.',
+        'coach_certification_files' => [
+            UploadedFile::fake()->create('certification.pdf', 11000, 'application/pdf'),
+        ],
+    ]);
+
+    $this->assertGuest();
+    $response->assertRedirect(route('register', absolute: false));
+    $response->assertSessionHasErrors('coach_certification_files.0');
+});
+
+test('coach registration stores certification files on configured disk', function () {
+    Storage::fake('s3');
+    config()->set('filesystems.coach_applications.disk', 's3');
+
+    $response = $this->post(route('register.store'), [
+        'role' => 'coach',
+        'first_name' => 'Jordan',
+        'last_name' => 'Coach',
+        'email' => 'coach-s3@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'coaching_experience' => '8 years coaching long-course triathletes.',
+        'specialties' => 'Triathlon periodization and bike power development.',
+        'motivation' => 'I want to coach athletes in a structured, transparent environment.',
+        'coach_certification_files' => [
+            UploadedFile::fake()->create('certification.pdf', 220, 'application/pdf'),
+        ],
+        'coach_certification_labels' => ['USAT_Level_II'],
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('dashboard', absolute: false));
+
+    $storedFile = CoachApplicationFile::query()
+        ->whereHas('coachApplication', fn ($query) => $query->where('user_id', auth()->id()))
+        ->firstOrFail();
+
+    expect($storedFile->stored_disk)->toBe('s3');
+    Storage::disk('s3')->assertExists($storedFile->stored_path);
 });

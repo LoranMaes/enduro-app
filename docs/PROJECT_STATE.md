@@ -244,9 +244,13 @@ LOCKED for MVP
     - required profile/motivation answers
     - certification file uploads
     - persisted `coach_applications` + `coach_application_files`
+- Coach certification uploads now have explicit guardrails:
+    - frontend and backend enforce max file count, per-file size, and total upload size
+    - storage disk is configurable (`COACH_APPLICATION_FILESYSTEM_DISK`) for local/S3 deployments
 - Coaches are blocked from operational routes until approved:
     - middleware redirects unapproved coaches to `/coach/pending-approval`
 - Rejected coaches now see explicit rejection state + reason on the pending-approval page.
+- Pending-approval now supports in-app certification preview modal (inline view + open-in-new-tab fallback).
 - Admin review tooling is live:
     - `/admin/coach-applications` queue
     - queue supports status filters (`pending`, `accepted`, `rejected`)

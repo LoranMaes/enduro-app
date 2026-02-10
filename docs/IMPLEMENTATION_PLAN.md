@@ -219,6 +219,10 @@ Status update:
     - rejected
   - pending/rejected coach accounts are blocked from impersonation in policy/controller/UI paths
   - admin users + recent-signups tables include direct navigation to per-user detail view
+- Coach onboarding upload hardening is now implemented:
+  - frontend guardrails for certification file limits (count/per-file/total)
+  - backend validation uses explicit limit messaging
+  - coach certification storage disk is configurable for cloud object storage (`COACH_APPLICATION_FILESYSTEM_DISK`)
 - Admin observability V1 is now implemented:
   - user detail page (`/admin/users/{user}`) includes tabbed overview/log inspection
   - log table supports pagination + scope/event filtering + per-entry old/new value popup

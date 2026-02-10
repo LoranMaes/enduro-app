@@ -28,6 +28,9 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        $uploadConstraints = $this->coachFileUploadConstraints();
+        $allowedExtensions = implode(',', $uploadConstraints['allowed_extensions']);
+
         $validated = Validator::make($input, [
             'role' => ['required', Rule::in([
                 UserRole::Athlete->value,
@@ -79,10 +82,31 @@ class CreateNewUser implements CreatesNewUsers
             'certifications_summary' => ['nullable', 'string', 'max:5000'],
             'website_url' => ['nullable', 'url:http,https', 'max:2048'],
             'motivation' => ['required_if:role,'.UserRole::Coach->value, 'nullable', 'string', 'max:10000'],
-            'coach_certification_files' => ['nullable', 'array', 'max:10'],
-            'coach_certification_files.*' => ['file', 'mimes:pdf,png,jpg,jpeg,webp', 'max:10240'],
+            'coach_certification_files' => [
+                'nullable',
+                'array',
+                'max:'.$uploadConstraints['max_files'],
+                function (string $attribute, mixed $value, \Closure $fail) use ($uploadConstraints): void {
+                    if (! is_array($value)) {
+                        return;
+                    }
+
+                    $totalBytes = collect($value)
+                        ->filter(fn (mixed $file): bool => $file instanceof UploadedFile)
+                        ->sum(fn (UploadedFile $file): int => max(0, (int) $file->getSize()));
+
+                    if ($totalBytes > $uploadConstraints['max_total_size_bytes']) {
+                        $fail("Total certification upload size must not exceed {$uploadConstraints['max_total_size_mb']} MB.");
+                    }
+                },
+            ],
+            'coach_certification_files.*' => ['file', 'mimes:'.$allowedExtensions, 'max:'.$uploadConstraints['max_file_size_kb']],
             'coach_certification_labels' => ['nullable', 'array'],
             'coach_certification_labels.*' => ['nullable', 'string', 'max:120'],
+        ], [
+            'coach_certification_files.max' => "You can upload up to {$uploadConstraints['max_files']} certification files.",
+            'coach_certification_files.*.mimes' => 'Each certification file must be a PDF, PNG, JPG, JPEG, or WEBP file.',
+            'coach_certification_files.*.max' => "Each certification file must be {$uploadConstraints['max_file_size_mb']} MB or smaller.",
         ])
             ->after(function (ValidationValidator $validator): void {
                 $this->validateRoleSpecificFields($validator);
@@ -211,6 +235,8 @@ class CreateNewUser implements CreatesNewUsers
             return;
         }
 
+        $disk = (string) config('filesystems.coach_applications.disk', 'local');
+
         foreach ($requestFiles as $index => $file) {
             if (! $file instanceof UploadedFile) {
                 continue;
@@ -232,12 +258,12 @@ class CreateNewUser implements CreatesNewUsers
 
             $storedPath = $file->store(
                 "coach-applications/{$application->id}",
-                'local',
+                $disk,
             );
 
             CoachApplicationFile::query()->create([
                 'coach_application_id' => $application->id,
-                'stored_disk' => 'local',
+                'stored_disk' => $disk,
                 'stored_path' => $storedPath,
                 'original_name' => $originalName,
                 'display_name' => $displayName,
@@ -247,5 +273,40 @@ class CreateNewUser implements CreatesNewUsers
                 'sort_order' => $index,
             ]);
         }
+    }
+
+    /**
+     * @return array{
+     *     max_files: int,
+     *     max_file_size_kb: int,
+     *     max_file_size_mb: int,
+     *     max_total_size_mb: int,
+     *     max_total_size_bytes: int,
+     *     allowed_extensions: array<int, string>
+     * }
+     */
+    private function coachFileUploadConstraints(): array
+    {
+        $maxFiles = max(1, (int) config('filesystems.coach_applications.max_files', 10));
+        $maxFileSizeKb = max(1, (int) config('filesystems.coach_applications.max_file_size_kb', 10240));
+        $maxTotalSizeMb = max(1, (int) config('filesystems.coach_applications.max_total_size_mb', 25));
+        $allowedExtensions = collect((array) config('filesystems.coach_applications.allowed_extensions', []))
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->map(fn (string $value): string => strtolower(trim($value)))
+            ->values()
+            ->all();
+
+        if ($allowedExtensions === []) {
+            $allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
+        }
+
+        return [
+            'max_files' => $maxFiles,
+            'max_file_size_kb' => $maxFileSizeKb,
+            'max_file_size_mb' => (int) ceil($maxFileSizeKb / 1024),
+            'max_total_size_mb' => $maxTotalSizeMb,
+            'max_total_size_bytes' => $maxTotalSizeMb * 1024 * 1024,
+            'allowed_extensions' => $allowedExtensions,
+        ];
     }
 }
