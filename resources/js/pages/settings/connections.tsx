@@ -354,7 +354,7 @@ export default function Connections({
                                                             </Link>
                                                         </>
                                                     ) : (
-                                                        <Link
+                                                        <a
                                                             href={
                                                                 connect(
                                                                     providerConnection.provider,
@@ -364,7 +364,7 @@ export default function Connections({
                                                         >
                                                             <Link2 className="h-3.5 w-3.5" />
                                                             Connect
-                                                        </Link>
+                                                        </a>
                                                     )}
                                                 </div>
                                             ) : (
