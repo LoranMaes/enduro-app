@@ -4,53 +4,11 @@ import { mapActivityCollection, mapTrainingSessionCollection } from '@/lib/train
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type {
-    ActivityApi,
-    ApiCollectionResponse,
-    ApiPaginatedCollectionResponse,
-    TrainingPlanApi,
-    TrainingSessionApi,
+    ActivityView,
+    TrainingSessionView,
 } from '@/types/training-plans';
-import { PlanSection } from './components/plan-section';
-
-type CalendarPageProps = {
-    trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
-    trainingSessions: ApiCollectionResponse<TrainingSessionApi>;
-    activities: ApiCollectionResponse<ActivityApi>;
-    calendarWindow: {
-        starts_at: string;
-        ends_at: string;
-    };
-    providerStatus: Record<
-        string,
-        {
-            connected: boolean;
-            last_synced_at: string | null;
-            last_sync_status: string | null;
-            provider_athlete_id: string | null;
-        }
-    > | null;
-    athleteTrainingTargets: {
-        ftp_watts: number | null;
-        max_heart_rate_bpm: number | null;
-        threshold_heart_rate_bpm: number | null;
-        threshold_pace_minutes_per_km: number | null;
-        power_zones: Array<{
-            label: string;
-            min: number;
-            max: number;
-        }>;
-        heart_rate_zones: Array<{
-            label: string;
-            min: number;
-            max: number;
-        }>;
-    } | null;
-    viewingAthlete?: {
-        id: number;
-        name: string;
-    } | null;
-    headTitle?: string;
-};
+import CalendarPageContent from './CalendarPage';
+import type { CalendarPageProps } from './types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -59,7 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function CalendarPage({
+export default function CalendarIndex({
     trainingPlans: _trainingPlans,
     trainingSessions,
     activities,
@@ -70,8 +28,9 @@ export default function CalendarPage({
     headTitle = 'Calendar',
 }: CalendarPageProps) {
     void _trainingPlans;
-    const sessions = mapTrainingSessionCollection(trainingSessions);
-    const activityEntries = mapActivityCollection(activities);
+    const initialSessions: TrainingSessionView[] =
+        mapTrainingSessionCollection(trainingSessions);
+    const initialActivities: ActivityView[] = mapActivityCollection(activities);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -79,9 +38,9 @@ export default function CalendarPage({
 
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-                    <PlanSection
-                        initialSessions={sessions}
-                        initialActivities={activityEntries}
+                    <CalendarPageContent
+                        initialSessions={initialSessions}
+                        initialActivities={initialActivities}
                         initialWindow={calendarWindow}
                         providerStatus={providerStatus}
                         athleteTrainingTargets={athleteTrainingTargets}
