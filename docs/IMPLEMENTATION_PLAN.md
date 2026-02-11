@@ -474,12 +474,36 @@ Scope: full codebase quality pass with behavior stability and slicing parity pre
    - run targeted tests + Pint
    - update progress/state docs with Wave A completion summary
 
-### 9.3 Next Wave
+### 9.3 Wave B (COMPLETE)
 
-- Wave B is the next approved scope:
-    - calendar payload service extraction
-    - role-scope query centralization
-    - training session controller action-service split
-    - validation duplication consolidation
-    - user index additions
-    - admin analytics 60s caching
+1. Calendar payload service extraction
+   - added `AthleteCalendarPayloadService`
+   - `DashboardController` and `AthleteCalendarController` now delegate payload orchestration
+2. Role-scope query centralization
+   - added `TrainingScope` helper methods:
+     - `forVisiblePlans`
+     - `forVisibleWeeks`
+     - `forVisibleSessions`
+     - `forVisibleActivities`
+   - replaced duplicated inline role query conditionals in API/controllers
+3. Training session action-service split
+   - added:
+     - `LinkActivityAction`
+     - `UnlinkActivityAction`
+     - `CompleteSessionAction`
+     - `RevertCompletionAction`
+   - `TrainingSessionController` is now thin orchestration for these actions
+4. Session validation consolidation
+   - added `HasTrainingSessionRules` concern
+   - shared rules and post-validation now reused by both store/update requests
+5. Index additions
+   - added migration for `users(created_at)` and `users(role, created_at)`
+6. Admin analytics caching
+   - added 60-second range-keyed caching to admin analytics aggregates
+
+### 9.4 Next Wave
+
+- Wave C is the next approved scope:
+    - frontend decomposition of oversized components
+    - stronger shadcn primitive alignment
+    - dialog/layout responsiveness and semantic cleanup

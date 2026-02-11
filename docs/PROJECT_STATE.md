@@ -6,7 +6,7 @@ Backend spine + athlete operational flows are complete, including activity sync/
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
-Phase 9 cleanup Wave A is complete (mechanical refactor pass with no behavior changes). Wave B is the next approved scope.
+Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is the next approved scope.
 
 ## Confidence Level
 
@@ -57,6 +57,13 @@ High — UX validated, backend structure in place
 - Deliver API logic incrementally behind policy checks
 - Keep coach permissions read-only until assignment + impersonation workflows are fully stabilized
 - Keep admin writes tightly scoped to moderation-only flows (suspension/reactivation) until full governance policy phase
+- Wave B mitigations now applied:
+    - calendar payload orchestration extracted to dedicated service
+    - role visibility scoping centralized in shared query helper
+    - training session write-side business actions extracted from controller
+    - duplicated session request rules consolidated
+    - users list indexes added for created-at sort/filter scale paths
+    - admin analytics aggregates now cached for 60 seconds
 - Maintain a production readiness checklist before go-live:
     - supervised queue workers
     - supervised Reverb

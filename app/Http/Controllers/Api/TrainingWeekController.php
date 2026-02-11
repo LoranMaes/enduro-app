@@ -9,7 +9,7 @@ use App\Http\Requests\Api\UpdateTrainingWeekRequest;
 use App\Http\Resources\TrainingWeekResource;
 use App\Models\TrainingPlan;
 use App\Models\TrainingWeek;
-use App\Models\User;
+use App\Support\QueryScopes\TrainingScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -29,7 +29,7 @@ class TrainingWeekController extends Controller
         $validated = $request->validated();
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $weeks = $this->queryForUser($request->user())
+        $weeks = TrainingScope::forVisibleWeeks($request->user())
             ->when(
                 isset($validated['starts_from']),
                 fn (Builder $query) => $query->whereDate('starts_at', '>=', $validated['starts_from']),
@@ -129,29 +129,5 @@ class TrainingWeekController extends Controller
         $trainingWeek->delete();
 
         return $resource->response();
-    }
-
-    private function queryForUser(User $user): Builder
-    {
-        if ($user->isAdmin()) {
-            return TrainingWeek::query();
-        }
-
-        if ($user->isAthlete()) {
-            return TrainingWeek::query()->whereHas('trainingPlan', function (Builder $query) use ($user): void {
-                $query->where('user_id', $user->id);
-            });
-        }
-
-        if ($user->isCoach()) {
-            return TrainingWeek::query()->whereHas('trainingPlan', function (Builder $query) use ($user): void {
-                $query->whereIn(
-                    'user_id',
-                    $user->coachedAthletes()->select('users.id'),
-                );
-            });
-        }
-
-        return TrainingWeek::query()->whereRaw('1 = 0');
     }
 }

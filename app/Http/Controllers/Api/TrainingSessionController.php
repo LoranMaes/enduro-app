@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\TrainingSession\CompleteSessionAction;
+use App\Actions\TrainingSession\LinkActivityAction;
+use App\Actions\TrainingSession\RevertCompletionAction;
+use App\Actions\TrainingSession\UnlinkActivityAction;
 use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CompleteTrainingSessionRequest;
@@ -17,7 +21,7 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
-use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Support\QueryScopes\TrainingScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +32,10 @@ use Symfony\Component\HttpFoundation\Response;
 class TrainingSessionController extends Controller
 {
     public function __construct(
-        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly LinkActivityAction $linkActivityAction,
+        private readonly UnlinkActivityAction $unlinkActivityAction,
+        private readonly CompleteSessionAction $completeSessionAction,
+        private readonly RevertCompletionAction $revertCompletionAction,
     ) {}
 
     /**
@@ -42,7 +49,7 @@ class TrainingSessionController extends Controller
         $validated = $request->validated();
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $sessions = $this->queryForUser($request->user())
+        $sessions = TrainingScope::forVisibleSessions($request->user())
             ->with('activity')
             ->when(
                 isset($validated['from']),
@@ -197,41 +204,13 @@ class TrainingSessionController extends Controller
             ]);
         }
 
-        if ($activity->athlete_id !== $user->id) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'The selected activity is invalid.',
-            ]);
-        }
-
-        if (
-            $activity->training_session_id !== null &&
-            $activity->training_session_id !== $trainingSession->id
-        ) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'This activity is already linked to another session.',
-            ]);
-        }
-
-        $conflictingLinkExists = Activity::query()
-            ->where('training_session_id', $trainingSession->id)
-            ->where('id', '!=', $activity->id)
-            ->exists();
-
-        if ($conflictingLinkExists) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'This session already has a linked activity. Unlink it first.',
-            ]);
-        }
-
-        $activity->training_session_id = $trainingSession->id;
-        $activity->save();
-        $activity->loadMissing('trainingSession');
+        $linkedActivity = $this->linkActivityAction->execute($user, $trainingSession, $activity);
 
         return response()->json([
-            'activity' => (new ActivityResource($activity))->resolve(),
+            'activity' => (new ActivityResource($linkedActivity))->resolve(),
             'session' => [
                 'id' => $trainingSession->id,
-                'linked_activity_id' => $activity->id,
+                'linked_activity_id' => $linkedActivity->id,
             ],
         ]);
     }
@@ -242,28 +221,18 @@ class TrainingSessionController extends Controller
     ): JsonResponse {
         $this->authorize('unlinkActivity', $trainingSession);
 
-        $linkedActivity = Activity::query()
-            ->where('training_session_id', $trainingSession->id)
-            ->first();
         $user = $request->user();
 
-        if (! $linkedActivity instanceof Activity || ! $user instanceof User) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'No activity is currently linked to this session.',
-            ]);
-        }
-
-        if ($linkedActivity->athlete_id !== $user->id) {
+        if (! $user instanceof User) {
             throw ValidationException::withMessages([
                 'activity_id' => 'The linked activity is invalid.',
             ]);
         }
 
-        $linkedActivity->training_session_id = null;
-        $linkedActivity->save();
+        $unlinkedActivity = $this->unlinkActivityAction->execute($user, $trainingSession);
 
         return response()->json([
-            'activity' => (new ActivityResource($linkedActivity))->resolve(),
+            'activity' => (new ActivityResource($unlinkedActivity))->resolve(),
             'session' => [
                 'id' => $trainingSession->id,
                 'linked_activity_id' => null,
@@ -277,46 +246,18 @@ class TrainingSessionController extends Controller
     ): TrainingSessionResource {
         $this->authorize('complete', $trainingSession);
 
-        $trainingSession->loadMissing('activity');
-
-        if (
-            $trainingSession->status instanceof TrainingSessionStatus
-            && $trainingSession->status === TrainingSessionStatus::Completed
-        ) {
-            throw ValidationException::withMessages([
-                'session' => 'This session is already completed.',
-            ]);
-        }
-
-        $linkedActivity = $trainingSession->activity;
         $user = $request->user();
 
-        if (! $linkedActivity instanceof Activity) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'Link an activity before completing this session.',
-            ]);
-        }
-
-        if (! $user instanceof User || $linkedActivity->athlete_id !== $user->id) {
+        if (! $user instanceof User) {
             throw ValidationException::withMessages([
                 'activity_id' => 'The linked activity is invalid.',
             ]);
         }
 
-        $actualDurationMinutes = $this->actualMetricsResolver->resolveActivityDurationMinutes(
-            $linkedActivity,
-        );
-
-        $trainingSession->update([
-            'status' => TrainingSessionStatus::Completed->value,
-            'actual_duration_minutes' => $actualDurationMinutes,
-            'actual_tss' => $this->actualMetricsResolver->resolveActivityTss($linkedActivity, $user),
-            'completed_at' => now(),
-        ]);
-
-        return new TrainingSessionResource(
-            $trainingSession->refresh()->loadMissing('activity'),
-        );
+        return new TrainingSessionResource($this->completeSessionAction->execute(
+            $user,
+            $trainingSession,
+        ));
     }
 
     public function revertCompletion(
@@ -325,44 +266,8 @@ class TrainingSessionController extends Controller
     ): TrainingSessionResource {
         $this->authorize('revertCompletion', $trainingSession);
 
-        if (
-            ! ($trainingSession->status instanceof TrainingSessionStatus)
-            || $trainingSession->status !== TrainingSessionStatus::Completed
-        ) {
-            throw ValidationException::withMessages([
-                'session' => 'Only completed sessions can be reverted.',
-            ]);
-        }
-
-        $trainingSession->update([
-            'status' => TrainingSessionStatus::Planned->value,
-            'actual_duration_minutes' => null,
-            'actual_tss' => null,
-            'completed_at' => null,
-        ]);
-
         return new TrainingSessionResource(
-            $trainingSession->refresh()->loadMissing('activity'),
+            $this->revertCompletionAction->execute($trainingSession),
         );
-    }
-
-    private function queryForUser(User $user): Builder
-    {
-        if ($user->isAdmin()) {
-            return TrainingSession::query();
-        }
-
-        if ($user->isAthlete()) {
-            return TrainingSession::query()->where('user_id', $user->id);
-        }
-
-        if ($user->isCoach()) {
-            return TrainingSession::query()->whereIn(
-                'user_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
-        }
-
-        return TrainingSession::query()->whereRaw('1 = 0');
     }
 }

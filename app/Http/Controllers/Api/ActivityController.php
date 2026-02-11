@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\ListActivityRequest;
 use App\Http\Resources\ActivityResource;
 use App\Models\Activity;
-use App\Models\User;
+use App\Support\QueryScopes\TrainingScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -22,7 +22,7 @@ class ActivityController extends Controller
         $validated = $request->validated();
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $activities = $this->queryForUser($request->user())
+        $activities = TrainingScope::forVisibleActivities($request->user())
             ->when(
                 isset($validated['provider']),
                 fn (Builder $query) => $query->where('provider', $validated['provider']),
@@ -51,25 +51,5 @@ class ActivityController extends Controller
         $activity->loadMissing('trainingSession');
 
         return new ActivityResource($activity);
-    }
-
-    private function queryForUser(User $user): Builder
-    {
-        if ($user->isAdmin()) {
-            return Activity::query();
-        }
-
-        if ($user->isAthlete()) {
-            return Activity::query()->where('athlete_id', $user->id);
-        }
-
-        if ($user->isCoach()) {
-            return Activity::query()->whereIn(
-                'athlete_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
-        }
-
-        return Activity::query()->whereRaw('1 = 0');
     }
 }

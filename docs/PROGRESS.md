@@ -1,5 +1,48 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Phase 9 Wave B Complete: Backend Boundary Extraction)
+
+- Extracted shared calendar payload orchestration:
+    - added `AthleteCalendarPayloadService`
+    - moved duplicated dashboard/calendar aggregation out of controllers
+    - preserved `trainingPlans`, `trainingSessions`, `activities`, `calendarWindow`, `providerStatus`, and athlete target payload shapes
+- Centralized role-based visibility query scoping:
+    - added `TrainingScope` helper with scoped methods for plans, weeks, sessions, and activities
+    - replaced inline role conditionals and `whereRaw('1 = 0')` duplication in API/controllers
+- Split training session business actions from controller:
+    - added action classes:
+        - `LinkActivityAction`
+        - `UnlinkActivityAction`
+        - `CompleteSessionAction`
+        - `RevertCompletionAction`
+    - `TrainingSessionController` now validates/authorizes/delegates/returns resources
+- Consolidated duplicate training session request logic:
+    - added `HasTrainingSessionRules` concern
+    - `StoreTrainingSessionRequest` and `UpdateTrainingSessionRequest` now share the same rules + post-validation logic
+- Added users indexing migration for admin table scale paths:
+    - `users(created_at)`
+    - `users(role, created_at)`
+- Added 60-second cache layer to admin analytics aggregates with range-aware cache keys.
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/AdminUserManagementTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php`
+
+## 2026-02-11 (Phase 9 Wave B Start: Backend Boundary Extraction)
+
+- Wave B execution started with behavior-preserving constraints.
+- Scope locked to:
+    - calendar payload service extraction
+    - centralized role-based training/activity visibility scoping
+    - training session action extraction (link/unlink/complete/revert)
+    - shared training session request rule concern
+    - users index migration (`created_at`, potential role composite)
+    - admin analytics 60-second caching
+- Guardrails:
+    - no API contract/payload changes
+    - impersonation and policy behavior preserved
+    - slicing behavior preserved
+
 ## 2026-02-11 (Phase 9 Wave A Complete: Mechanical Cleanup)
 
 - Completed strict Wayfinder migration for remaining frontend API calls in Wave A scope:
