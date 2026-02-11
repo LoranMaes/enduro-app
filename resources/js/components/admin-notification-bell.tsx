@@ -131,11 +131,11 @@ export function AdminNotificationBell({ className }: { className?: string }) {
 
     const markSeen = async (notificationId: string): Promise<void> => {
         try {
-            const route = ticketNotificationsMarkSeen({
+            const route = ticketNotificationsMarkSeen.form.patch({
                 notification: notificationId,
             });
 
-            const response = await fetch(route.url, {
+            const response = await fetch(route.action, {
                 method: route.method,
                 headers: {
                     Accept: 'application/json',
@@ -174,9 +174,9 @@ export function AdminNotificationBell({ className }: { className?: string }) {
 
     const markAllSeen = async (): Promise<void> => {
         try {
-            const route = ticketNotificationsMarkAllSeen();
+            const route = ticketNotificationsMarkAllSeen.form.patch();
 
-            const response = await fetch(route.url, {
+            const response = await fetch(route.action, {
                 method: route.method,
                 headers: {
                     Accept: 'application/json',
