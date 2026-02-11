@@ -1,10 +1,9 @@
 import {
-    addDays,
-    parseDate,
-    startOfIsoWeek,
-    formatDateKey,
-} from './lib/calendar-weeks';
-import type { CalendarViewMode } from './types';
+    mapActivityCollection,
+    mapTrainingSessionCollection,
+} from '@/lib/training-plans';
+import { index as listActivities } from '@/routes/activities';
+import { index as listTrainingSessions } from '@/routes/training-sessions';
 import type {
     ActivityApi,
     ActivityView,
@@ -13,13 +12,14 @@ import type {
     TrainingSessionApi,
     TrainingSessionView,
 } from '@/types/training-plans';
-import {
-    mapActivityCollection,
-    mapTrainingSessionCollection,
-} from '@/lib/training-plans';
-import { index as listActivities } from '@/routes/activities';
-import { index as listTrainingSessions } from '@/routes/training-sessions';
 import { ACTIVITIES_PER_PAGE, SESSIONS_PER_PAGE } from './constants';
+import {
+    addDays,
+    parseDate,
+    startOfIsoWeek,
+    formatDateKey,
+} from './lib/calendar-weeks';
+import type { CalendarViewMode } from './types';
 
 export const resolveWeekStartKey = (dateKey: string): string => {
     return formatDateKey(startOfIsoWeek(parseDate(dateKey)));

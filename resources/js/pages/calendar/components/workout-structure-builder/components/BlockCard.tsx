@@ -7,6 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { blockDefinitions } from '../constants';
 import type {
     AthleteTrainingTargets,
     WorkoutStructureBlockType,
@@ -14,7 +15,6 @@ import type {
     WorkoutStructureStep,
     WorkoutStructureUnit,
 } from '../types';
-import { blockDefinitions } from '../constants';
 import { formatResolvedTarget, patternLabelForStep } from '../utils';
 
 export type BlockCardProps = {

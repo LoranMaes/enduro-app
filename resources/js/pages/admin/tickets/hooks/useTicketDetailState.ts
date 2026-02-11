@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+    DescriptionUserRef,
+    TicketDescriptionValue,
+} from '../components/ticket-description-editor';
 import {
     buildTicketUpdatePayload,
     descriptionHtmlFromPayload,
@@ -16,10 +20,6 @@ import type {
     TicketMutationResult,
     TicketUpdatePayload,
 } from './useTicketMutations';
-import type {
-    DescriptionUserRef,
-    TicketDescriptionValue,
-} from '../components/ticket-description-editor';
 
 type UseTicketDetailStateOptions = {
     open: boolean;
@@ -124,7 +124,6 @@ export function useTicketDetailState({
             return;
         }
 
-        console.log('Initializing ticket detail state for ticket:', ticket);
         const descriptionHtml = descriptionHtmlFromPayload(ticket.description);
         const mentionAdminIds = ticket.mentions.map(
             (mention) => mention.mentioned_admin_id,

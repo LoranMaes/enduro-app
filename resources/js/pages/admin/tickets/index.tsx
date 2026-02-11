@@ -1,24 +1,25 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
+import type {
+    FormEvent} from 'react';
 import {
-    FormEvent,
     useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react';
+import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import { show as adminSettingsShow } from '@/routes/admin/settings';
 import { index as adminTicketsIndex } from '@/routes/admin/tickets';
 import type { BreadcrumbItem, SharedData } from '@/types';
-import { Button } from '@/components/ui/button';
-import AppLayout from '@/layouts/app-layout';
+import type { DescriptionUserRef } from './components/ticket-description-editor';
 import { TicketBoard } from './components/TicketBoard';
 import { TicketCreateDialog } from './components/TicketCreateDialog';
 import { TicketDetailSheet } from './components/TicketDetailSheet';
 import { TicketFilters } from './components/TicketFilters';
-import type { DescriptionUserRef } from './components/ticket-description-editor';
 import { useTicketBoardData } from './hooks/useTicketBoardData';
 import { useTicketMutations } from './hooks/useTicketMutations';
 import { useTicketRealtime } from './hooks/useTicketRealtime';

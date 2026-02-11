@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
+import { isSessionAdjusted, isSessionCompleted } from '../../session-reconciliation';
 import {
     calculateWorkoutStructureDurationMinutes,
     estimateWorkoutStructureTss,
 } from '../../workout-structure-builder';
-import { isSessionAdjusted, isSessionCompleted } from '../../session-reconciliation';
 import type {
     SessionEditorContext,
     WorkoutStructure,

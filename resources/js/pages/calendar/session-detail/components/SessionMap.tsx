@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import { MapPinned } from 'lucide-react';
 import type { LatLngBoundsExpression } from 'leaflet';
+import { MapPinned } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import {
     CircleMarker,
     MapContainer,

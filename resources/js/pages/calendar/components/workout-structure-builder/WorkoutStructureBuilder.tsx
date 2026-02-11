@@ -6,17 +6,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { blockDefinitions, unitLabels } from './constants';
 import {
     BlockCard,
     type BlockCardProps,
 } from './components/BlockCard';
+import { RampBlockCard } from './components/RampBlockCard';
+import { RepeatBlockCard } from './components/RepeatBlockCard';
 import { DropSeparator } from './components/StructureDragOverlay';
 import { StructureOverviewTiles } from './components/StructureOverviewTiles';
 import { StructurePreview } from './components/StructurePreview';
-import { RampBlockCard } from './components/RampBlockCard';
-import { RepeatBlockCard } from './components/RepeatBlockCard';
 import { WarmupBlockCard } from './components/WarmupBlockCard';
+import { blockDefinitions, unitLabels } from './constants';
 import { useStructureDrag } from './hooks/useStructureDrag';
 import { useStructureState } from './hooks/useStructureState';
 import { createDefaultStructureForSport, createStep, resetStepForType } from './hooks/useStructureTemplates';

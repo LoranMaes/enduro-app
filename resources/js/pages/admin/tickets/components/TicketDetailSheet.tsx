@@ -16,6 +16,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { statusColumns } from '../constants';
+import { useTicketDetailState } from '../hooks/useTicketDetailState';
+import {
+    type TicketMutationResult,
+    type TicketUpdatePayload,
+} from '../hooks/useTicketMutations';
 import { formatDateTime } from '../lib/ticket-utils';
 import type {
     AdminOption,
@@ -24,11 +29,6 @@ import type {
     TicketStatusKey,
     UserSearchResult,
 } from '../types';
-import {
-    type TicketMutationResult,
-    type TicketUpdatePayload,
-} from '../hooks/useTicketMutations';
-import { useTicketDetailState } from '../hooks/useTicketDetailState';
 import { TicketDetailAuditTab } from './TicketDetailAuditTab';
 import { TicketDetailOverviewTab } from './TicketDetailOverviewTab';
 

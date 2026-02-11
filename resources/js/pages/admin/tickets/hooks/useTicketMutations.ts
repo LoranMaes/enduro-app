@@ -13,9 +13,10 @@ import {
 } from '@/routes/admin/api/tickets/attachments';
 import { upsert as adminTicketInternalNoteUpsert } from '@/routes/admin/api/tickets/internal-note';
 import type { DescriptionUserRef } from '../components/ticket-description-editor';
+import type {
+    buildTicketUpdatePayload} from '../lib/ticket-utils';
 import {
     buildDescriptionPayload,
-    buildTicketUpdatePayload,
     csrfToken,
     normalizeTicketPayload,
     parseRequestError,

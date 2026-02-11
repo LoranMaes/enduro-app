@@ -1,6 +1,6 @@
+import type { MutableRefObject } from 'react';
 import { cn } from '@/lib/utils';
 import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
-import type { MutableRefObject } from 'react';
 import { SUMMARY_RAIL_WIDTH } from '../constants';
 import { CalendarEmptyState } from './CalendarEmptyState';
 import { CalendarWeekRow } from './CalendarWeekRow';

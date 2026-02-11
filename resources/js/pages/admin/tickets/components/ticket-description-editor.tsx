@@ -1,6 +1,7 @@
-import StarterKit from '@tiptap/starter-kit';
-import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import { router } from '@inertiajs/react';
+import type { Editor} from '@tiptap/react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import {
     AtSign,
     Bold,
@@ -20,7 +21,6 @@ import {
     useRef,
     useState,
 } from 'react';
-import { show as adminUserShow } from '@/routes/admin/users';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     Command,
@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
+import { show as adminUserShow } from '@/routes/admin/users';
 import { AdminMentionNode, UserReferenceNode } from './editor/token-extensions';
 
 export type MentionableAdmin = {
@@ -267,9 +268,6 @@ export function TicketDescriptionEditor({
         setActiveSuggestionIndex(0);
     }, [suggestion?.mode, suggestion?.query]);
 
-    useEffect(() => {
-        console.log(isEmpty);
-    }, [isEmpty]);
     const adminResults = useMemo(() => {
         if (suggestion?.mode !== 'admin') {
             return [];

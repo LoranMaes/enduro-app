@@ -1,13 +1,8 @@
 import { Archive, Paperclip } from 'lucide-react';
 import { type ChangeEvent } from 'react';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { SelectField } from './ticket-ui';
-import {
-    TicketDescriptionEditor,
-    type TicketDescriptionValue,
-} from './ticket-description-editor';
 import { formatDuration } from '../lib/ticket-utils';
 import type {
     AdminOption,
@@ -17,6 +12,11 @@ import type {
     TicketType,
     UserSearchResult,
 } from '../types';
+import {
+    TicketDescriptionEditor,
+    type TicketDescriptionValue,
+} from './ticket-description-editor';
+import { SelectField } from './ticket-ui';
 
 type TicketDetailOverviewTabProps = {
     ticket: TicketRecord;

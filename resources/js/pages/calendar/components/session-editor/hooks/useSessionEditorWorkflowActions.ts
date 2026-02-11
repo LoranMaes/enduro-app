@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
+import type { TrainingSessionView } from '@/types/training-plans';
 import type {
     SessionEditorContext,
     ValidationErrors,
 } from '../types';
-import type { TrainingSessionView } from '@/types/training-plans';
 
 type MutationResult = {
     success: boolean;

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import type { TrainingSessionView } from '@/types/training-plans';
 import {
     DAY_HEADERS,
     SUMMARY_RAIL_WIDTH,
@@ -17,7 +18,6 @@ import {
 } from '../lib/calendar-weeks';
 import type { CalendarViewMode } from '../types';
 import { resolveFocusLabel, resolveWeekStartKey } from '../utils';
-import type { TrainingSessionView } from '@/types/training-plans';
 
 export function useCalendarWindow(
     initialWindow: CalendarWindow,

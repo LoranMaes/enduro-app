@@ -5,13 +5,13 @@ import { SessionDetailsTab } from './components/SessionDetailsTab';
 import { SessionFooter } from './components/SessionFooter';
 import { SessionHeader } from './components/SessionHeader';
 import { SessionStructureTab } from './components/SessionStructureTab';
-import { useSessionEditorActions } from './hooks/useSessionEditorActions';
 import { useSessionCompletion } from './hooks/useSessionCompletion';
+import { useSessionDerivedValues } from './hooks/useSessionDerivedValues';
+import { useSessionEditorActions } from './hooks/useSessionEditorActions';
 import { useSessionEditorMutations } from './hooks/useSessionEditorMutations';
 import { useSessionEditorRefresh } from './hooks/useSessionEditorRefresh';
 import { useSessionEditorState } from './hooks/useSessionEditorState';
 import { useSessionEditorWorkflowActions } from './hooks/useSessionEditorWorkflowActions';
-import { useSessionDerivedValues } from './hooks/useSessionDerivedValues';
 import { useSessionLinking } from './hooks/useSessionLinking';
 import type { SessionEditorModalProps } from './types';
 

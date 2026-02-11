@@ -5,21 +5,21 @@ import type {
     ActivityView,
     TrainingSessionView,
 } from '@/types/training-plans';
+import { CalendarHeader } from './components/CalendarHeader';
+import { CalendarWeekGrid } from './components/CalendarWeekGrid';
+import { SessionEditorModal } from './components/session-editor-modal';
 import { DAY_HEADERS, SYNC_PENDING_STATUSES, VIEW_MODES } from './constants';
+import { useCalendarInfiniteLoading } from './hooks/useCalendarInfiniteLoading';
+import { useCalendarScroll } from './hooks/useCalendarScroll';
+import { useCalendarSelection } from './hooks/useCalendarSelection';
+import { useCalendarSessions } from './hooks/useCalendarSessions';
+import { useCalendarWindow } from './hooks/useCalendarWindow';
 import {
     formatDateKey,
     parseDate,
     startOfIsoWeek,
     type CalendarWindow,
 } from './lib/calendar-weeks';
-import { SessionEditorModal } from './components/session-editor-modal';
-import { CalendarHeader } from './components/CalendarHeader';
-import { CalendarWeekGrid } from './components/CalendarWeekGrid';
-import { useCalendarInfiniteLoading } from './hooks/useCalendarInfiniteLoading';
-import { useCalendarScroll } from './hooks/useCalendarScroll';
-import { useCalendarSelection } from './hooks/useCalendarSelection';
-import { useCalendarSessions } from './hooks/useCalendarSessions';
-import { useCalendarWindow } from './hooks/useCalendarWindow';
 import type { AthleteTrainingTargets, ProviderStatus } from './types';
 import { resolveAvatarInitials } from './utils';
 

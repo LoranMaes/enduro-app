@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { initializeEcho } from '@/lib/echo';
 import SettingsLayout from '@/layouts/settings/layout';
+import { initializeEcho } from '@/lib/echo';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
 import {
     connections as settingsConnections,

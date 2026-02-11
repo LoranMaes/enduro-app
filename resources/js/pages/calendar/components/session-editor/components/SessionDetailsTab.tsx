@@ -1,15 +1,15 @@
-import { cn } from '@/lib/utils';
 import InputError from '@/components/input-error';
-import { SessionCompletionSection } from './SessionCompletionSection';
-import { SessionLinkingSection } from './SessionLinkingSection';
-import { SessionNotesSection } from './SessionNotesSection';
-import { SessionTotalsSection } from './SessionTotalsSection';
+import { cn } from '@/lib/utils';
 import { sportOptions } from '../constants';
 import type {
     SessionEditorContext,
     Sport,
     ValidationErrors,
 } from '../types';
+import { SessionCompletionSection } from './SessionCompletionSection';
+import { SessionLinkingSection } from './SessionLinkingSection';
+import { SessionNotesSection } from './SessionNotesSection';
+import { SessionTotalsSection } from './SessionTotalsSection';
 
 type SessionDetailsTabProps = {
     context: SessionEditorContext;

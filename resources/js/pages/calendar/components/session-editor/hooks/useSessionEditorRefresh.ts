@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import type { SessionEditorContext } from '../types';
 import type { TrainingSessionView } from '@/types/training-plans';
+import type { SessionEditorContext } from '../types';
 
 type UseSessionEditorRefreshParams = {
     open: boolean;

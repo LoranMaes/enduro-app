@@ -1,5 +1,5 @@
-import { FormEvent, KeyboardEvent, useCallback } from 'react';
-import { buildPayload } from '../utils';
+import type { FormEvent, KeyboardEvent} from 'react';
+import { useCallback } from 'react';
 import type {
     SessionEditorContext,
     SessionWritePayload,
@@ -7,6 +7,7 @@ import type {
     ValidationErrors,
     WorkoutStructure,
 } from '../types';
+import { buildPayload } from '../utils';
 
 type MutationResult = {
     success: boolean;

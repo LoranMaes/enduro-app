@@ -1,10 +1,10 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { progressBreadcrumbs } from './constants';
 import { ProgressHeader } from './components/ProgressHeader';
 import { ProgressLoadTrendChart } from './components/ProgressLoadTrendChart';
 import { ProgressSummaryCards } from './components/ProgressSummaryCards';
 import { ProgressWeeklyLogs } from './components/ProgressWeeklyLogs';
+import { progressBreadcrumbs } from './constants';
 import { useProgressChartData } from './hooks/useProgressChartData';
 import { useProgressMetrics } from './hooks/useProgressMetrics';
 import { useProgressState } from './hooks/useProgressState';

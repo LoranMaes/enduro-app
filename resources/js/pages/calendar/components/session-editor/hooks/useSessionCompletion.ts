@@ -3,8 +3,8 @@ import {
     complete as completeTrainingSession,
     revertCompletion as revertTrainingSessionCompletion,
 } from '@/routes/training-sessions';
-import { extractMessage, extractValidationErrors } from '../utils';
 import type { ValidationErrors } from '../types';
+import { extractMessage, extractValidationErrors } from '../utils';
 
 type CompletionResult = {
     success: boolean;

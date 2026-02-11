@@ -1,11 +1,11 @@
+import { usePage } from '@inertiajs/react';
+import { AdminNotificationBell } from '@/components/admin-notification-bell';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
-import { AdminNotificationBell } from '@/components/admin-notification-bell';
-import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { AppSidebar } from '@/components/app-sidebar';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { useImpersonationVisualState } from '@/hooks/use-impersonation-visual-state';
 import { cn } from '@/lib/utils';
-import { usePage } from '@inertiajs/react';
 import type { AppLayoutProps, SharedData } from '@/types';
 
 export default function AppSidebarLayout({

@@ -3,8 +3,8 @@ import {
     linkActivity as linkActivityToSession,
     unlinkActivity as unlinkActivityFromSession,
 } from '@/routes/training-sessions';
-import { extractMessage, extractValidationErrors } from '../utils';
 import type { ValidationErrors } from '../types';
+import { extractMessage, extractValidationErrors } from '../utils';
 
 type LinkingResult = {
     success: boolean;

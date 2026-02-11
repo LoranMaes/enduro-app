@@ -1,12 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { initializeEcho } from '@/lib/echo';
-import {
-    index as ticketNotificationsIndex,
-    markAllSeen as ticketNotificationsMarkAllSeen,
-    markSeen as ticketNotificationsMarkSeen,
-} from '@/routes/admin/api/ticket-notifications';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -15,7 +9,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { initializeEcho } from '@/lib/echo';
 import { cn } from '@/lib/utils';
+import {
+    index as ticketNotificationsIndex,
+    markAllSeen as ticketNotificationsMarkAllSeen,
+    markSeen as ticketNotificationsMarkSeen,
+} from '@/routes/admin/api/ticket-notifications';
 import type { SharedData } from '@/types';
 
 type AdminNotification = {

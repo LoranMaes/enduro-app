@@ -1,8 +1,8 @@
 import type { DragEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TicketCard } from './TicketCard';
 import type { TicketRecord, TicketStatusKey } from '../types';
+import { TicketCard } from './TicketCard';
 
 type TicketColumnProps = {
     columnKey: TicketStatusKey;

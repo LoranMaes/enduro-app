@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { SessionView } from '../types';
-import { SessionInternalNotes } from './SessionInternalNotes';
 import { formatDurationMinutes, formatNumber } from '../utils';
+import { SessionInternalNotes } from './SessionInternalNotes';
 
 type SessionStatisticsCardProps = {
     sessionView: SessionView;

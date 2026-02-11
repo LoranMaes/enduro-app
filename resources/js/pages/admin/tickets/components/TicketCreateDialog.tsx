@@ -11,12 +11,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { TicketAssigneeCombobox } from './ticket-assignee-combobox';
-import {
-    type DescriptionUserRef,
-    TicketDescriptionEditor,
-    type TicketDescriptionValue,
-} from './ticket-description-editor';
 import { ticketImportanceOptions, ticketTypeOptions } from '../constants';
 import { withoutFieldError } from '../lib/ticket-utils';
 import type {
@@ -26,6 +20,12 @@ import type {
     TicketType,
     UserSearchResult,
 } from '../types';
+import { TicketAssigneeCombobox } from './ticket-assignee-combobox';
+import {
+    type DescriptionUserRef,
+    TicketDescriptionEditor,
+    type TicketDescriptionValue,
+} from './ticket-description-editor';
 
 type TicketCreateDialogProps = {
     open: boolean;
