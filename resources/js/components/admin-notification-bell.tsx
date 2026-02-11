@@ -239,7 +239,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
                     >
                         <Bell className="h-4 w-4" />
                         {unreadCount > 0 ? (
-                            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-black">
+                            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.625rem] font-semibold text-black">
                                 {unreadCount > 99 ? '99+' : unreadCount}
                             </span>
                         ) : null}
@@ -247,7 +247,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                     align="end"
-                    className="w-[360px] border-border bg-surface p-0"
+                    className="w-[22.5rem] border-border bg-surface p-0"
                 >
                     <DropdownMenuLabel className="flex items-center justify-between px-3 py-2">
                         <span className="text-xs tracking-wider text-zinc-400 uppercase">
@@ -255,7 +255,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
                         </span>
                         <button
                             type="button"
-                            className="text-[11px] text-zinc-500 transition-colors hover:text-zinc-200"
+                            className="text-[0.6875rem] text-zinc-500 transition-colors hover:text-zinc-200"
                             onClick={() => void markAllSeen()}
                         >
                             Mark all as seen

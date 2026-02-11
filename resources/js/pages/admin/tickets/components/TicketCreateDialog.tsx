@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { TicketAssigneeCombobox } from './ticket-assignee-combobox';
 import {
     type DescriptionUserRef,
@@ -129,27 +130,34 @@ export function TicketCreateDialog({
                         <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
                             Type
                         </p>
-                        <div className="flex flex-wrap gap-2">
+                        <ToggleGroup
+                            type="single"
+                            value={newTicketType}
+                            onValueChange={(value) => {
+                                if (value === '') {
+                                    return;
+                                }
+
+                                setNewTicketType(value as TicketType);
+                                setNewTicketFieldErrors((current) =>
+                                    withoutFieldError(current, 'type'),
+                                );
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="flex flex-wrap gap-2 rounded-none bg-transparent"
+                            aria-label="Ticket type"
+                        >
                             {ticketTypeOptions.map((typeOption) => (
-                                <button
+                                <ToggleGroupItem
                                     key={typeOption.value}
-                                    type="button"
-                                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        newTicketType === typeOption.value
-                                            ? 'border-sky-600 bg-sky-950/25 text-sky-200'
-                                            : 'border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'
-                                    }`}
-                                    onClick={() => {
-                                        setNewTicketType(typeOption.value);
-                                        setNewTicketFieldErrors((current) =>
-                                            withoutFieldError(current, 'type'),
-                                        );
-                                    }}
+                                    value={typeOption.value}
+                                    className="h-auto rounded-full border-zinc-700 bg-zinc-900/60 px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors data-[state=on]:border-sky-600 data-[state=on]:bg-sky-950/25 data-[state=on]:text-sky-200 hover:border-zinc-600 hover:text-zinc-200"
                                 >
                                     {typeOption.label}
-                                </button>
+                                </ToggleGroupItem>
                             ))}
-                        </div>
+                        </ToggleGroup>
                     </div>
                     {newTicketFieldErrors.type !== undefined ? (
                         <p className="text-xs text-red-300">

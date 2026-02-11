@@ -10,6 +10,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type {
+    TicketStatusKey,
     TicketImportance,
     TicketType,
 } from '../types';
@@ -52,15 +53,49 @@ export function ImportanceDot({ importance }: { importance: TicketImportance }) 
     };
 
     return (
-        <span
-            className={`inline-block h-2 w-2 rounded-full ${classes[importance]}`}
-        />
+        <Badge
+            variant="outline"
+            className="h-2 w-2 rounded-full border-transparent p-0"
+            aria-label={`Importance: ${importance}`}
+        >
+            <span className={`h-2 w-2 rounded-full ${classes[importance]}`} />
+        </Badge>
     );
 }
 
 export function ImportanceLabel({ importance }: { importance: TicketImportance }) {
+    const classes: Record<TicketImportance, string> = {
+        low: 'border-zinc-700 bg-zinc-800/60 text-zinc-300',
+        normal: 'border-sky-900/60 bg-sky-950/30 text-sky-300',
+        high: 'border-amber-900/60 bg-amber-950/30 text-amber-300',
+        urgent: 'border-red-900/60 bg-red-950/30 text-red-300',
+    };
+
     return (
-        <span className="text-xs text-zinc-400 capitalize">{importance}</span>
+        <Badge
+            variant="outline"
+            className={`px-1.5 py-0 text-[0.625rem] capitalize ${classes[importance]}`}
+        >
+            {importance}
+        </Badge>
+    );
+}
+
+export function StatusBadge({ status }: { status: TicketStatusKey }) {
+    const classes: Record<TicketStatusKey, string> = {
+        todo: 'border-emerald-900/60 bg-emerald-950/30 text-emerald-300',
+        in_progress: 'border-sky-900/60 bg-sky-950/30 text-sky-300',
+        to_review: 'border-amber-900/60 bg-amber-950/30 text-amber-300',
+        done: 'border-zinc-700 bg-zinc-800/60 text-zinc-300',
+    };
+
+    return (
+        <Badge
+            variant="outline"
+            className={`px-1.5 py-0 text-[0.625rem] capitalize ${classes[status]}`}
+        >
+            {status.replace('_', ' ')}
+        </Badge>
     );
 }
 
@@ -172,16 +207,22 @@ export function AssigneeLabel({
 }) {
     if (name === null) {
         return (
-            <span className="text-[0.625rem] text-zinc-600 italic">
+            <Badge
+                variant="outline"
+                className="px-1.5 py-0 text-[0.625rem] text-zinc-500 italic"
+            >
                 Unassigned
-            </span>
+            </Badge>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1 text-[0.625rem] text-zinc-500">
+        <Badge
+            variant="outline"
+            className="inline-flex items-center gap-1 px-1.5 py-0 text-[0.625rem] text-zinc-300"
+        >
             <UserRound className="h-3 w-3" />
             {name}
-        </span>
+        </Badge>
     );
 }

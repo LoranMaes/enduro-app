@@ -6,7 +6,10 @@ import type { TicketRecord } from '../types';
 type TicketCardProps = {
     ticket: TicketRecord;
     onOpen: (ticketId: number) => void;
-    onDragStart: (ticketId: number, event: DragEvent<HTMLButtonElement>) => void;
+    onDragStart: (
+        ticketId: number,
+        event: DragEvent<HTMLButtonElement>,
+    ) => void;
     onDragEnd: () => void;
 };
 
@@ -18,15 +21,16 @@ export function TicketCard({
 }: TicketCardProps) {
     return (
         <button
-            key={ticket.id}
             type="button"
             draggable
+            aria-label={`Open ticket ${ticket.id}: ${ticket.title}`}
+            aria-grabbed="false"
             onDragStart={(event) => {
                 onDragStart(ticket.id, event);
             }}
             onDragEnd={onDragEnd}
             onClick={() => onOpen(ticket.id)}
-            className="cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-900/40"
+            className="w-full cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-900/40"
         >
             <div className="mb-2 flex items-start justify-between gap-2">
                 <p className="line-clamp-2 text-sm font-medium text-zinc-100">
@@ -43,7 +47,8 @@ export function TicketCard({
                 {ticket.status === 'done' &&
                 ticket.archiving_in_seconds !== null ? (
                     <span className="text-zinc-400">
-                        Archiving in {formatDuration(ticket.archiving_in_seconds)}
+                        Archiving in{' '}
+                        {formatDuration(ticket.archiving_in_seconds)}
                     </span>
                 ) : null}
             </div>

@@ -273,6 +273,19 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
   - extract ticket detail dialog/sheet into dedicated component
   - extract ticket mutation actions into `useTicketMutations`
   - keep payload and policy behavior unchanged
+
+### 9.4 Tickets Primitive + Semantics Alignment (COMPLETE)
+
+- Completed:
+  - ShadCN primitive adoption for toggle-like controls in ticket create/detail/editor flows
+  - badge/pill normalization through shared badge-based ticket UI helpers
+  - semantic board/list/table interaction cleanup for keyboard and SR clarity
+  - realtime ticket channel effect stabilization to avoid unnecessary subscription churn
+  - removal of remaining arbitrary `px` classes in ticket-related notification surface
+- Constraints respected:
+  - no backend or contract changes
+  - no policy/auth changes
+  - no visual redesign
 - integrations tab now reflects real provider state; static Garmin copy removed
 - added backend persistence endpoints/validation for profile + training preferences
 

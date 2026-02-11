@@ -42,6 +42,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import {
     AdminMentionNode,
@@ -96,7 +97,7 @@ type TicketDescriptionEditorProps = {
     searchUsers: (query: string) => Promise<MentionableUser[]>;
 };
 
-const SUGGESTION_MENU_WIDTH = 288;
+const SUGGESTION_MENU_WIDTH_REM = 18;
 
 export function TicketDescriptionEditor({
     label,
@@ -155,7 +156,9 @@ export function TicketDescriptionEditor({
         }
 
         const containerRect = containerRef.current.getBoundingClientRect();
-        const maxLeft = Math.max(8, containerRect.width - SUGGESTION_MENU_WIDTH - 8);
+        const rootFontSize = getRootFontSize();
+        const menuWidth = SUGGESTION_MENU_WIDTH_REM * rootFontSize;
+        const maxLeft = Math.max(8, containerRect.width - menuWidth - 8);
 
         setSuggestion({
             ...detected,
@@ -717,7 +720,7 @@ export function TicketDescriptionEditor({
                                 handleSuggestionKeyDown(event);
                             }}
                         >
-                            <CommandList>
+                            <CommandList role="listbox" aria-label="Suggestions">
                                 {suggestion?.mode === 'admin' ? (
                                     adminResults.length === 0 ? (
                                         <CommandEmpty>No admins found.</CommandEmpty>
@@ -739,6 +742,13 @@ export function TicketDescriptionEditor({
                                                         event.preventDefault();
                                                         insertAdminMention(admin);
                                                     }}
+                                                    onSelect={() => {
+                                                        insertAdminMention(admin);
+                                                    }}
+                                                    role="option"
+                                                    aria-selected={
+                                                        index === activeSuggestionIndex
+                                                    }
                                                 >
                                                     <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
                                                         <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
@@ -782,6 +792,13 @@ export function TicketDescriptionEditor({
                                                     event.preventDefault();
                                                     insertUserReference(user);
                                                 }}
+                                                onSelect={() => {
+                                                    insertUserReference(user);
+                                                }}
+                                                role="option"
+                                                aria-selected={
+                                                    index === activeSuggestionIndex
+                                                }
                                             >
                                                 <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
                                                     <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
@@ -812,6 +829,22 @@ export function TicketDescriptionEditor({
     );
 }
 
+function getRootFontSize(): number {
+    if (typeof window === 'undefined') {
+        return 16;
+    }
+
+    const size = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+    );
+
+    if (Number.isNaN(size) || size <= 0) {
+        return 16;
+    }
+
+    return size;
+}
+
 function ToolbarButton({
     label,
     icon,
@@ -824,12 +857,13 @@ function ToolbarButton({
     onClick: () => void;
 }) {
     return (
-        <button
-            type="button"
+        <Toggle
+            variant="outline"
+            size="sm"
             className={cn(
-                'inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+                'h-7 w-7 border-zinc-800 bg-zinc-900/60 p-0',
                 isActive
-                    ? 'bg-zinc-700/80 text-zinc-100'
+                    ? 'border-zinc-600 bg-zinc-700/80 text-zinc-100'
                     : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
             )}
             onMouseDown={(event) => {
@@ -838,9 +872,10 @@ function ToolbarButton({
             }}
             aria-label={label}
             aria-pressed={isActive}
+            pressed={isActive}
         >
             {icon}
-        </button>
+        </Toggle>
     );
 }
 

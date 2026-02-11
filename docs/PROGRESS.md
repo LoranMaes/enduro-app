@@ -1,5 +1,29 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Wave C3: Tickets ShadCN + Semantics Hardening)
+
+- Hardened ticket UI primitives without API/backend changes:
+    - ticket detail status control migrated to ShadCN `ToggleGroup`
+    - ticket create type selector migrated to ShadCN `ToggleGroup`
+    - editor toolbar toggles migrated to ShadCN `Toggle`
+- Standardized badge/pill rendering with ShadCN `Badge`:
+    - importance indicator badges
+    - assignee badges
+    - status badges in archived table
+- Semantic/a11y hardening in ticket board:
+    - ticket columns now expose region semantics
+    - column contents switched to list semantics (`ul/li`)
+    - archived ticket open action moved to explicit button in title cell (no clickable row anti-pattern)
+    - suggestion popover now has explicit listbox/option ARIA attributes
+- Ticket realtime hook optimized to reduce unnecessary channel re-subscriptions by using refs for mutable callbacks/state.
+- Removed remaining ticket-system arbitrary `px` utilities in notification bell:
+    - `w-[360px]` → `w-[22.5rem]`
+    - `text-[10px]/text-[11px]` → rem equivalents
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-11 (Ticket Editor Stabilization + Tickets Decomposition Increment)
 
 - Follow-up fixes applied:

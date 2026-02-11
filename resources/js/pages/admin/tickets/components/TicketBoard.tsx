@@ -14,7 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { statusColumns } from '../constants';
 import { formatDateTime } from '../lib/ticket-utils';
 import type { BoardData, Filters, Paginated, TicketRecord, TicketStatusKey } from '../types';
-import { HeaderButton, ImportanceLabel, TypeBadge, highlightSearchMatch } from './ticket-ui';
+import {
+    AssigneeLabel,
+    HeaderButton,
+    ImportanceLabel,
+    StatusBadge,
+    TypeBadge,
+    highlightSearchMatch,
+} from './ticket-ui';
 import { TicketColumn } from './TicketColumn';
 
 type TicketBoardProps = {
@@ -277,14 +284,23 @@ export function TicketBoard({
                                     archived.data.map((ticket) => (
                                         <TableRow
                                             key={ticket.id}
-                                            className="cursor-pointer"
-                                            onClick={() => void onOpenTicket(ticket.id)}
+                                            className="hover:bg-zinc-900/35"
                                         >
                                             <TableCell className="text-sm text-zinc-100">
-                                                {highlightSearchMatch(
-                                                    ticket.title,
-                                                    queryFilters.search,
-                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="w-full text-left underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
+                                                    onClick={() =>
+                                                        void onOpenTicket(
+                                                            ticket.id,
+                                                        )
+                                                    }
+                                                >
+                                                    {highlightSearchMatch(
+                                                        ticket.title,
+                                                        queryFilters.search,
+                                                    )}
+                                                </button>
                                             </TableCell>
                                             <TableCell>
                                                 <TypeBadge type={ticket.type} />
@@ -294,12 +310,18 @@ export function TicketBoard({
                                                     importance={ticket.importance}
                                                 />
                                             </TableCell>
-                                            <TableCell className="text-xs text-zinc-400">
-                                                {ticket.assignee_admin?.name ??
-                                                    'Unassigned'}
+                                            <TableCell>
+                                                <AssigneeLabel
+                                                    name={
+                                                        ticket.assignee_admin
+                                                            ?.name ?? null
+                                                    }
+                                                />
                                             </TableCell>
-                                            <TableCell className="text-xs text-zinc-400 capitalize">
-                                                {ticket.status.replace('_', ' ')}
+                                            <TableCell>
+                                                <StatusBadge
+                                                    status={ticket.status}
+                                                />
                                             </TableCell>
                                             <TableCell className="text-xs text-zinc-500">
                                                 {formatDateTime(ticket.updated_at)}

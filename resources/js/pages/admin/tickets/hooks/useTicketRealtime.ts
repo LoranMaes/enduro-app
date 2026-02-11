@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { initializeEcho } from '@/lib/echo';
 
 type UseTicketRealtimeOptions = {
@@ -18,6 +18,32 @@ export function useTicketRealtime({
     refreshArchived,
     openTicketDetail,
 }: UseTicketRealtimeOptions): void {
+    const activeTabRef = useRef(activeTab);
+    const selectedTicketIdRef = useRef(selectedTicketId);
+    const refreshBoardRef = useRef(refreshBoard);
+    const refreshArchivedRef = useRef(refreshArchived);
+    const openTicketDetailRef = useRef(openTicketDetail);
+
+    useEffect(() => {
+        activeTabRef.current = activeTab;
+    }, [activeTab]);
+
+    useEffect(() => {
+        selectedTicketIdRef.current = selectedTicketId;
+    }, [selectedTicketId]);
+
+    useEffect(() => {
+        refreshBoardRef.current = refreshBoard;
+    }, [refreshBoard]);
+
+    useEffect(() => {
+        refreshArchivedRef.current = refreshArchived;
+    }, [refreshArchived]);
+
+    useEffect(() => {
+        openTicketDetailRef.current = openTicketDetail;
+    }, [openTicketDetail]);
+
     useEffect(() => {
         const echo = initializeEcho();
 
@@ -28,14 +54,14 @@ export function useTicketRealtime({
         const channel = echo.private('admin.tickets');
 
         channel.listen('.ticket.updated', () => {
-            void refreshBoard();
+            void refreshBoardRef.current();
 
-            if (activeTab === 'archived') {
-                void refreshArchived();
+            if (activeTabRef.current === 'archived') {
+                void refreshArchivedRef.current();
             }
 
-            if (selectedTicketId !== null) {
-                void openTicketDetail(selectedTicketId);
+            if (selectedTicketIdRef.current !== null) {
+                void openTicketDetailRef.current(selectedTicketIdRef.current);
             }
         });
 
@@ -43,13 +69,7 @@ export function useTicketRealtime({
             channel.stopListening('.ticket.updated');
             echo.leave('admin.tickets');
         };
-    }, [
-        activeTab,
-        openTicketDetail,
-        refreshArchived,
-        refreshBoard,
-        selectedTicketId,
-    ]);
+    }, []);
 
     useEffect(() => {
         const pageQuery = pageUrl.split('?')[1] ?? '';
@@ -69,10 +89,10 @@ export function useTicketRealtime({
             return;
         }
 
-        if (selectedTicketId === ticketId) {
+        if (selectedTicketIdRef.current === ticketId) {
             return;
         }
 
-        void openTicketDetail(ticketId);
-    }, [openTicketDetail, pageUrl, selectedTicketId]);
+        void openTicketDetailRef.current(ticketId);
+    }, [pageUrl]);
 }

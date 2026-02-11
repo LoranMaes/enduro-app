@@ -41,6 +41,8 @@ export function TicketColumn({
             className={`flex min-w-[17.5rem] flex-1 flex-col rounded-xl border bg-surface transition-colors ${
                 isDropTarget ? 'border-emerald-500/60' : 'border-border'
             }`}
+            role="region"
+            aria-label={`${columnLabel} tickets`}
             onDragOver={(event) => {
                 if (!canDrop) {
                     return;
@@ -77,23 +79,24 @@ export function TicketColumn({
             </div>
 
             <ScrollArea className="min-h-0 flex-1 p-2">
-                <div className="flex min-h-full flex-col gap-2">
+                <ul className="flex min-h-full flex-col gap-2" role="list">
                     {tickets.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-xs text-zinc-600">
+                        <li className="rounded-lg border border-dashed border-zinc-800 px-3 py-6 text-center text-xs text-zinc-600">
                             No tickets
-                        </div>
+                        </li>
                     ) : (
                         tickets.map((ticket) => (
-                            <TicketCard
-                                key={ticket.id}
-                                ticket={ticket}
-                                onOpen={onOpenTicket}
-                                onDragStart={onTicketDragStart}
-                                onDragEnd={onTicketDragEnd}
-                            />
+                            <li key={ticket.id}>
+                                <TicketCard
+                                    ticket={ticket}
+                                    onOpen={onOpenTicket}
+                                    onDragStart={onTicketDragStart}
+                                    onDragEnd={onTicketDragEnd}
+                                />
+                            </li>
                         ))
                     )}
-                </div>
+                </ul>
             </ScrollArea>
         </section>
     );

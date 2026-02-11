@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { TicketBoard } from './components/TicketBoard';
 import { TicketCreateDialog } from './components/TicketCreateDialog';
 import { TicketFilters } from './components/TicketFilters';
@@ -1004,26 +1005,34 @@ export default function AdminTickets({
                                     <p className="mr-1 text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
                                         Status
                                     </p>
-                                    {statusColumns.map((statusColumn) => (
-                                        <button
-                                            key={statusColumn.key}
-                                            type="button"
-                                            className={`rounded-md border px-2.5 py-1 text-xs whitespace-nowrap transition-colors ${
-                                                selectedTicket.status ===
-                                                statusColumn.key
-                                                    ? 'border-emerald-600 bg-emerald-950/25 text-emerald-300'
-                                                    : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                                            }`}
-                                            onClick={() =>
-                                                void moveTicketStatus(
-                                                    selectedTicket.id,
-                                                    statusColumn.key,
-                                                )
+                                    <ToggleGroup
+                                        type="single"
+                                        value={selectedTicket.status}
+                                        onValueChange={(value) => {
+                                            if (value === '') {
+                                                return;
                                             }
-                                        >
-                                            {statusColumn.label}
-                                        </button>
-                                    ))}
+
+                                            void moveTicketStatus(
+                                                selectedTicket.id,
+                                                value as TicketStatusKey,
+                                            );
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-2 rounded-none bg-transparent"
+                                        aria-label="Ticket status"
+                                    >
+                                        {statusColumns.map((statusColumn) => (
+                                            <ToggleGroupItem
+                                                key={statusColumn.key}
+                                                value={statusColumn.key}
+                                                className="h-auto rounded-md border-zinc-800 px-2.5 py-1 text-xs whitespace-nowrap text-zinc-400 transition-colors data-[state=on]:border-emerald-600 data-[state=on]:bg-emerald-950/25 data-[state=on]:text-emerald-300 hover:border-zinc-700"
+                                            >
+                                                {statusColumn.label}
+                                            </ToggleGroupItem>
+                                        ))}
+                                    </ToggleGroup>
                                 </div>
                             </div>
 

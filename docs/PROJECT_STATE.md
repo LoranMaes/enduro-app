@@ -31,6 +31,7 @@ High — UX validated, backend structure in place
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
 - Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
 - Admin tickets refactor is mid-flight: board/filter extraction is in place, but `resources/js/pages/admin/tickets/index.tsx` is still larger than target and detail-dialog extraction is pending
+- Ticket semantics/primitives were hardened in Wave C3, but detail-dialog extraction and final size reduction are still pending
 
 ## Cleanup Audit Snapshot (2026-02-11)
 
@@ -47,6 +48,7 @@ High — UX validated, backend structure in place
     - modal overflow behavior remains fragile in some dense admin/calendar views
 - Accessibility risk:
     - semantic element usage and keyboard interaction patterns are inconsistent across advanced editors and boards
+    - ticket-board semantics were improved (region/list/button/listbox roles), but full app-wide parity work remains
 
 ## Mitigations
 
