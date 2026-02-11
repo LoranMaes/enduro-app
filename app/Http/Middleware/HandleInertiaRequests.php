@@ -48,6 +48,9 @@ class HandleInertiaRequests extends Middleware
                 'original_user' => $impersonationContext['original_user'],
                 'impersonated_user' => $impersonationContext['impersonated_user'],
             ],
+            'admin_notifications' => [
+                'unread_count' => $this->resolveAdminUnreadNotifications($user, $impersonationContext['impersonating']),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
@@ -113,5 +116,14 @@ class HandleInertiaRequests extends Middleware
             'email' => $user->email,
             'role' => $user->role?->value,
         ];
+    }
+
+    private function resolveAdminUnreadNotifications(?User $user, bool $isImpersonating): int
+    {
+        if (! $user instanceof User || ! $user->isAdmin() || $isImpersonating) {
+            return 0;
+        }
+
+        return $user->unreadNotifications()->count();
     }
 }

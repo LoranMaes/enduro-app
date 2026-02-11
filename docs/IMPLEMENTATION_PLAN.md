@@ -357,3 +357,69 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
    - object storage for uploads
 5. Athlete slicing parity polish:
    - remaining work is behavior/performance polish, not architectural rewrites.
+
+---
+
+## Phase 8 — Admin Internal Ops: Tickets Module (V1 COMPLETE)
+
+- Admin-only tickets board now implemented with strict impersonation blocking.
+- Core backend domain implemented:
+    - ticket lifecycle entities + enums
+    - private per-admin internal notes
+    - ticket attachments
+    - mentions
+    - explicit ticket audit trail
+    - persisted admin ticket settings
+- Realtime implemented via Reverb:
+    - board update event broadcasts
+    - mention notification broadcasts
+- Notifications surface implemented:
+    - global admin bell
+    - unread badge
+    - mark seen / mark-all
+- Board + archive UX implemented:
+    - board columns: todo / in progress / to review / done
+    - drag/drop status changes
+    - archived table with sorting + pagination
+    - filtering (assignee, creator, type, importance) + global search
+- Delayed archive automation implemented:
+    - scheduler-backed archive job
+    - configurable archive-delay hours
+
+### 8.1 Remaining Tickets Enhancements (Next)
+
+- Upgrade description editor from structured textarea payloads to full rich-text command UX parity.
+- Add richer keyboard DnD/accessibility semantics for board interactions.
+- Expand mention parsing support for comment/internal-note contexts.
+- Add stronger notification deep-link focus behavior in ticket detail panels.
+
+### 8.2 Tickets UX Hardening (COMPLETE FOR CURRENT SLICE)
+
+- Tickets board filter model now auto-applies with debounce (manual apply button removed).
+- Tickets settings moved to dedicated Admin Settings surface:
+    - `GET /admin/settings`
+    - `PATCH /admin/settings`
+    - archive delay now managed there for future extensibility (feature flags/config blocks).
+- Notification bell is integrated into admin layout chrome instead of floating absolute corner positioning.
+- Ticket creation UX now uses richer, explicit controls:
+    - type badge group
+    - importance slider
+    - assignee input with avatar suggestions
+- Ticket description editor upgraded to lightweight WYSIWYG:
+    - formatting toolbar (bold, heading, underline, bullet list)
+    - `@admin` mentions
+    - `/user` references with caret-anchored suggestions
+    - inserted references rendered as clickable badge tokens
+- Ticket detail open/update robustness improved by normalizing resource payload shapes from API responses.
+- Ticket detail editing is now auto-sync first:
+    - manual `Save Changes` action removed
+    - debounced field sync for title/type/importance/assignee/description
+    - debounced private-note sync
+    - persistent sync status chip in modal (`pending`, `syncing`, `saved`, `error`)
+- Request validation feedback is now surfaced inline for create/detail ticket forms with field-level clear-on-edit behavior.
+- Description editor usability hardening:
+    - active toolbar state highlighting for selected formats
+    - explicit heading level selector
+    - slash command transforms (`/h1`, `/h2`, `/h3`, `/paragraph`, `/bullet`, `/bold`, `/italic`, `/underline`)
+    - bounded editor height to prevent modal growth
+- Ticket detail audit trail now uses constrained dialog layout + scroll-safe containers so long histories no longer break vertical scrolling.

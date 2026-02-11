@@ -141,6 +141,41 @@ class User extends Authenticatable
         return $this->hasMany(ActivityProviderConnection::class);
     }
 
+    public function createdTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'creator_admin_id');
+    }
+
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'assignee_admin_id');
+    }
+
+    public function ticketInternalNotes(): HasMany
+    {
+        return $this->hasMany(TicketInternalNote::class, 'admin_id');
+    }
+
+    public function ticketComments(): HasMany
+    {
+        return $this->hasMany(TicketComment::class, 'admin_id');
+    }
+
+    public function receivedTicketMentions(): HasMany
+    {
+        return $this->hasMany(TicketMention::class, 'mentioned_admin_id');
+    }
+
+    public function createdTicketMentions(): HasMany
+    {
+        return $this->hasMany(TicketMention::class, 'mentioned_by_admin_id');
+    }
+
+    public function ticketAuditLogs(): HasMany
+    {
+        return $this->hasMany(TicketAuditLog::class, 'actor_admin_id');
+    }
+
     public function isAthlete(): bool
     {
         return $this->role === null || $this->role === UserRole::Athlete;

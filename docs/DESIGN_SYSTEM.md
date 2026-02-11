@@ -219,6 +219,39 @@ They should be reused, not reinvented.
     - Backdrop blur
     - Clear exit
 
+### Dialog implementation rule (Shadcn/Radix)
+
+For every dialog implementation, always include:
+
+- `DialogContent`
+- `DialogTitle`
+
+Recommended baseline structure:
+
+- `Dialog`
+- `DialogContent`
+- `DialogHeader`
+- `DialogTitle`
+- optional `DialogDescription`
+
+Even if a visual heading is custom-rendered, keep `DialogTitle` present
+(can be visually hidden) for consistent accessibility semantics.
+
+Scrollable dialog pattern:
+
+- `DialogContent` should define viewport constraints:
+    - height: `h-[92vh]` + `max-h-[...]`
+    - width: `w-[98vw]` + `max-w-[...]`
+    - `overflow-hidden`
+- Prefer explicit viewport classes over CSS `min(...)` expressions in utility
+  classes to avoid inconsistent class generation in complex builds.
+- Inner content container should use:
+    - `flex min-h-0 flex-col`
+- Any scroll region inside a dialog must use:
+    - `min-h-0 flex-1 overflow-y-auto`
+- Avoid unconstrained children (`h-full` without a constrained parent), as this
+  breaks vertical scrolling and causes content overflow in audit/log lists.
+
 ---
 
 ## 8. State Definitions

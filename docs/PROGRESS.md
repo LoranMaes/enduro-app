@@ -1,5 +1,92 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Admin Tickets UX Hardening: Auto-Sync + Editor + Dialog Scroll)
+
+- Hardened ticket detail editing to auto-sync by default:
+    - removed manual “Save Changes” action from ticket detail
+    - debounced auto-sync now persists title/type/importance/assignee/description edits
+    - internal notes now auto-sync with the same flow
+    - added persistent in-modal sync state indicator (`pending`, `syncing`, `saved`, `error`)
+- Improved ticket create/edit error feedback:
+    - request error parser now surfaces backend validation messages
+    - create and detail forms now render field-level validation feedback
+    - field-level errors clear as users edit related inputs
+- Hardened ticket description editor interaction quality:
+    - active formatting state is now visible for bold/italic/underline/list controls
+    - heading control now supports explicit heading level selection
+    - slash commands added for quick formatting (`/h1`, `/h2`, `/h3`, `/paragraph`, `/bullet`, `/bold`, `/italic`, `/underline`)
+    - list and heading output now renders with visible typography/list styling
+    - editor height is constrained to prevent modal growth beyond viewport
+- Fixed ticket detail audit trail scroll behavior:
+    - dialog content now uses a constrained viewport-aware layout
+    - audit list switched to proper `min-h-0 flex-1 overflow-y-auto` structure
+    - audit metadata payload preview now has max-height caps to avoid overflow lockups
+- Updated shared dialog primitive default sizing:
+    - wider default max-width for shadcn dialog content to reduce content clipping in complex admin modals
+- Documented dialog implementation guardrails in `docs/DESIGN_SYSTEM.md`:
+    - required semantic structure
+    - required scroll-container pattern for overflow-safe dialog layouts
+
+## 2026-02-10 (Admin Tickets Board + Archive + Mentions + Realtime Notifications)
+
+- Implemented new admin-only Tickets module (`/admin/tickets`) with strict impersonation blocking:
+    - middleware alias added: `not_impersonating`
+    - admin web/API ticket routes now require `admin` + `not_impersonating`
+    - sidebar now includes admin `Tickets` icon entry
+- Added tickets domain schema + models:
+    - tables: `tickets`, `ticket_internal_notes`, `ticket_comments`, `ticket_attachments`, `ticket_mentions`, `ticket_audit_logs`, `admin_settings`
+    - Laravel notifications table added for in-app admin mentions
+    - enums: `TicketStatus`, `TicketType`, `TicketImportance`
+    - model relationships and casts wired for explicit, typed domain behavior
+- Added ticket policy + service layer:
+    - `TicketPolicy` (admin-only, blocked while impersonating)
+    - `TicketArchiveDelayResolver` (config + persisted admin setting fallback)
+    - `TicketAuditLogger` (explicit audit event persistence)
+    - `TicketMentionService` (mention sync + database notifications + realtime push)
+    - reusable upload service: `FileUploadService`
+- Implemented admin ticket APIs:
+    - board/archived listing + filtering + sorting + pagination
+    - create/update/delete ticket
+    - status move endpoint (kanban drag target)
+    - attachment upload/download/remove
+    - private internal note upsert/delete (per-admin scoped)
+    - audit log fetch endpoint
+    - admin notification endpoints (list, mark seen, mark all seen)
+    - `/user` helper endpoint for athlete/coach lookup (top-3 search)
+- Added realtime events over Reverb:
+    - `TicketUpdated` (board refresh signal)
+    - `AdminNotificationCreated` (mention notification push)
+- Added delayed-archive job + scheduler:
+    - job: `ArchiveDoneTicketsJob`
+    - schedule: every 5 minutes
+    - archives `done` tickets older than configured delay
+    - writes explicit archive audit events
+- Added admin tickets UI (Inertia + React):
+    - Board tab with 4 columns: `Todo`, `In Progress`, `To Review`, `Done`
+    - drag/drop status transitions
+    - ticket create dialog
+    - ticket detail dialog:
+        - editable title/type/importance/assignee/description
+        - attachments section
+        - private internal notes section
+        - audit trail tab
+    - Archived tab with header-click sorting + pagination
+    - filtering by assignee/creator/type/importance + global search
+    - archive delay setting control wired to backend
+- Added global admin notification bell in app layout:
+    - unread badge
+    - realtime mention updates
+    - mark seen / mark all seen actions
+- Hardened existing request activity logger:
+    - safe serialization for uploaded file payloads to prevent JSON encoding failures in production paths
+- Added targeted tests:
+    - `tests/Feature/AdminTicketsTest.php`
+    - coverage includes authorization, impersonation blocking, mentions → notifications, internal-note privacy search, delayed archive behavior, and attachment auth flow
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/AdminUserManagementTest.php tests/Feature/NavigationShellPagesTest.php`
+
 ## 2026-02-10 (Coach Registration Upload Guardrails + S3-Ready Storage)
 
 - Hardened coach certification upload UX on register flow:
@@ -969,3 +1056,23 @@ Next milestone:
 
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).
+
+- Admin tickets UX hardening pass completed:
+    - notification bell moved into integrated admin layout chrome (no floating corner placement)
+    - archive delay control moved out of tickets page to dedicated admin settings page (`/admin/settings`)
+    - tickets page now uses debounced auto-apply filters (removed manual “Apply Filters” action)
+    - all ticket selects now use the shadcn `Select` primitives (themed to Endure dark system)
+    - new ticket flow upgraded:
+        - type picker as interactive badges
+        - importance slider interaction
+        - assignee text input with avatar suggestions
+    - ticket description upgraded from plain textarea to lightweight WYSIWYG editor:
+        - bold / heading / underline / bullet list controls
+        - `@admin` mention insertion
+        - `/user` reference insertion with dropdown anchored to typing position
+        - inserted mention/user references render as clickable badges
+    - ticket opening bug fixed by normalizing resource JSON payload shape (`{ data: ... }` vs flat object) for show/create/update flows
+- Validation completed for this pass:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php tests/Feature/AdminImpersonationTest.php` (19 passed)

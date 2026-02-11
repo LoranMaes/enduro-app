@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Activity;
+use App\Models\Ticket;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Policies\ActivityPolicy;
+use App\Policies\TicketPolicy;
 use App\Policies\TrainingPlanPolicy;
 use App\Policies\TrainingSessionPolicy;
 use App\Policies\TrainingWeekPolicy;
@@ -72,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TrainingWeek::class, TrainingWeekPolicy::class);
         Gate::policy(TrainingSession::class, TrainingSessionPolicy::class);
         Gate::policy(Activity::class, ActivityPolicy::class);
+        Gate::policy(Ticket::class, TicketPolicy::class);
     }
 
     /**

@@ -5,6 +5,7 @@ import {
     ClipboardCheck,
     Eye,
     FileText,
+    KanbanSquare,
     LogOut,
     Settings,
     ShieldCheck,
@@ -61,11 +62,23 @@ export function AppSidebar() {
                   isActive: (path: string) => path.startsWith('/admin/analytics'),
               },
               {
+                  title: 'Tickets',
+                  href: '/admin/tickets',
+                  icon: KanbanSquare,
+                  isActive: (path: string) => path.startsWith('/admin/tickets'),
+              },
+              {
                   title: 'Coach Applications',
                   href: '/admin/coach-applications',
                   icon: ClipboardCheck,
                   isActive: (path: string) =>
                       path.startsWith('/admin/coach-applications'),
+              },
+              {
+                  title: 'Settings',
+                  href: '/admin/settings',
+                  icon: Settings,
+                  isActive: (path: string) => path.startsWith('/admin/settings'),
               },
           ]
         : [

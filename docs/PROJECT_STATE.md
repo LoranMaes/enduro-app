@@ -27,6 +27,7 @@ High — UX validated, backend structure in place
 - Athlete session-detail chart/map visual fidelity still needs screenshot-level polish against slicing reference
 - Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
+- Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
 
 ## Mitigations
 
@@ -109,6 +110,15 @@ LOCKED for MVP
     - explicit validation in training session store/update requests
     - nested structure items (`steps[*].items`) + `repeats` type validation are supported
     - no auto-derived metrics or science logic attached
+- Admin internal-ops tickets backbone is available:
+    - admin-only web surface: `GET /admin/tickets`
+    - admin-only ticket APIs under `/api/admin/tickets...`
+    - strict impersonation blocking for all ticket web/API paths
+    - delayed done-ticket archiving via `ArchiveDoneTicketsJob` + scheduler
+    - persisted archive-delay setting via `admin_settings`
+    - realtime board update and mention notification events via Reverb
+    - mention notifications persisted in Laravel `notifications` table
+    - per-ticket audit events persisted in `ticket_audit_logs`
 - Session read payloads now include resolved historical load hints:
     - `actual_tss` remains persisted write-state
     - `resolved_actual_tss` is computed for read surfaces using activity payload + conservative fallback estimates
@@ -235,6 +245,31 @@ LOCKED for MVP
     - deterministic stream-point downsampling for smoother chart interaction
     - no-planned-structure sessions collapse to full-width analysis layout (no empty planned-block shell)
 - Plans page now uses slicing-style coming-soon layout.
+- Admin tickets UI is now live and in-theme:
+    - board tab with 4 kanban columns and drag/drop status moves
+    - archived tab with sort-on-header and pagination
+    - ticket create + detail dialogs
+    - per-ticket attachments + private internal note editing
+    - audit trail tab
+    - global admin notification bell with realtime unread updates
+- Admin tickets UX hardening applied:
+    - debounced auto-filters (no manual apply action)
+    - shadcn `Select` usage across ticket filters/forms
+    - dedicated admin settings page (`/admin/settings`) for archive delay + future controls
+    - integrated notification bell placement in admin layout chrome
+    - WYSIWYG ticket description editor with:
+        - formatting toolbar
+        - `@admin` mentions
+        - `/user` reference insertion
+        - clickable reference badges
+    - resource-payload normalization fix for reliable ticket open after create/update
+- Admin ticket detail modal hardening applied:
+    - auto-sync ticket edits (no manual save button)
+    - auto-sync internal notes
+    - persistent in-modal sync-state indicator
+    - inline validation feedback for create/edit flows
+    - bounded editor region + improved WYSIWYG active states
+    - audit-trail tab now has guaranteed y-scroll inside constrained dialog viewport
 - Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.
 
 ## Auth & Approval Status

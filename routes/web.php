@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminConsoleController;
+use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\AdminTicketBoardController;
 use App\Http\Controllers\Admin\AdminUserIndexController;
 use App\Http\Controllers\Admin\AdminUserShowController;
 use App\Http\Controllers\Admin\AdminUserSuspensionController;
@@ -76,7 +78,7 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
         return Inertia::render('plans/index');
     })->middleware('approved_coach')->name('plans.index');
 
-    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function (): void {
+    Route::middleware(['admin', 'not_impersonating'])->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', AdminConsoleController::class)->name('index');
         Route::get('/analytics', AdminAnalyticsController::class)->name('analytics');
         Route::get('/users', AdminUserIndexController::class)->name('users.index');
@@ -98,6 +100,12 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
             ->whereNumber('coachApplication')
             ->whereNumber('coachApplicationFile')
             ->name('coach-applications.files.show');
+        Route::get('/tickets', AdminTicketBoardController::class)
+            ->name('tickets.index');
+        Route::get('/settings', [AdminSettingsController::class, 'show'])
+            ->name('settings.show');
+        Route::patch('/settings', [AdminSettingsController::class, 'update'])
+            ->name('settings.update');
         Route::post('/impersonate/{user}', ImpersonationStartController::class)
             ->whereNumber('user')
             ->name('impersonate.start');

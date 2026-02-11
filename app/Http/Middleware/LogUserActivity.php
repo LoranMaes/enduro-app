@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -113,6 +114,23 @@ class LogUserActivity
 
             if (is_string($value)) {
                 $sanitized[$key] = Str::limit($value, 300, '...');
+
+                continue;
+            }
+
+            if ($value instanceof UploadedFile) {
+                $sanitized[$key] = [
+                    'uploaded_file' => true,
+                    'original_name' => $value->getClientOriginalName(),
+                    'mime_type' => $value->getClientMimeType(),
+                    'size_bytes' => max(0, (int) $value->getSize()),
+                ];
+
+                continue;
+            }
+
+            if (is_object($value)) {
+                $sanitized[$key] = '[complex-object]';
 
                 continue;
             }
