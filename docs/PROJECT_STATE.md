@@ -6,7 +6,7 @@ Backend spine + athlete operational flows are complete, including activity sync/
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
-Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is now in progress.
+Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is in progress with tickets (C3/C4) and session-detail (C5) decomposition completed.
 
 ## Confidence Level
 
@@ -318,6 +318,20 @@ LOCKED for MVP
     - `resources/js/pages/admin/tickets/index.tsx` now delegates shared display + serialization concerns to extracted modules (behavior preserved).
     - `resources/js/pages/admin/tickets/index.tsx` reduced to 395 lines and now acts as a thin orchestration layer.
     - Ticket description editor (TipTap) integration is now API-accurate for current package versions (typed attributes/setContent contract fixed).
+- Session detail decomposition (Wave C5) is now completed with behavior preserved:
+    - `resources/js/pages/calendar/session-detail.tsx` reduced to 347 lines (thin orchestration layer)
+    - extracted modules:
+        - `resources/js/pages/calendar/session-detail/SessionDetailLayout.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionMap.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionStatisticsCard.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionInternalNotes.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionPlannedStructurePreview.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionAnalysisChart.tsx`
+    - extracted hooks:
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionStreams.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionZoom.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionHover.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionStats.ts`
     - Session editor modal tab scaffold is now structurally stable (`Tabs` closure fix) with the shared dialog size contract still intact.
 - Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.
 

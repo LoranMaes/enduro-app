@@ -1,5 +1,34 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Wave C5: Session Detail Decomposition)
+
+- Completed structural decomposition of the session detail page with no backend/API/route changes:
+    - `resources/js/pages/calendar/session-detail.tsx` reduced from ~2473 lines to 347 lines (thin orchestrator)
+    - extracted UI modules:
+        - `SessionDetailLayout`
+        - `SessionMap`
+        - `SessionStatisticsCard`
+        - `SessionInternalNotes`
+        - `SessionPlannedStructurePreview`
+        - `SessionAnalysisChart`
+    - extracted state/derivation hooks:
+        - `useSessionStreams`
+        - `useSessionZoom`
+        - `useSessionHover`
+        - `useSessionStats`
+    - extracted shared session-detail constants/types/utils modules for stable reuse
+- Preserved session-detail behavior:
+    - chart drag-to-zoom + reset
+    - hover sync between chart and map
+    - route highlight segment + hover marker
+    - x-axis mode toggle behavior
+    - planned structure conditional rendering
+    - internal notes save flow and validation handling
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-11 (Wave C4: Tickets Full Decomposition + Hook Isolation)
 
 - Completed ticket-page decomposition with behavior preserved:

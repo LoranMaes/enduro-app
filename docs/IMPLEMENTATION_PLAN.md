@@ -297,6 +297,31 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
 - integrations tab now reflects real provider state; static Garmin copy removed
 - added backend persistence endpoints/validation for profile + training preferences
 
+### 9.5 Session Detail Decomposition (COMPLETE FOR WAVE C5)
+
+- Objective:
+  - split oversized `session-detail.tsx` into orchestration + focused modules without behavior/API drift
+- Completed:
+  - reduced `resources/js/pages/calendar/session-detail.tsx` to 347 lines
+  - extracted UI modules:
+    - `SessionDetailLayout`
+    - `SessionMap`
+    - `SessionStatisticsCard`
+    - `SessionInternalNotes`
+    - `SessionPlannedStructurePreview`
+    - `SessionAnalysisChart`
+  - extracted hooks:
+    - `useSessionStreams`
+    - `useSessionZoom`
+    - `useSessionHover`
+    - `useSessionStats`
+  - extracted shared `constants.ts`, `types.ts`, `utils.ts` for session-detail scope
+- Constraints respected:
+  - no backend changes
+  - no route/API contract changes
+  - no visual redesign
+  - chart/map/zoom/hover/statistics/notes behavior preserved
+
 ### 7.2 Calendar + Session Detail Parity (CORE COMPLETE)
 
 - replaced static calendar provider badge with real Strava connection/sync state
