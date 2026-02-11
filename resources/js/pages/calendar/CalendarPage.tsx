@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
 import type { SharedData } from '@/types';
 import type {
@@ -205,6 +205,8 @@ export default function CalendarPage({
             ref={scrollState.scrollContainerRef}
             className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background [--calendar-controls-height:2.5rem] [--calendar-days-height:2.75rem] [--calendar-header-height:4rem] [--calendar-week-sticky:calc(var(--calendar-header-height)+var(--calendar-controls-height)+var(--calendar-days-height))]"
         >
+            <Head title="Calendar" />
+
             <CalendarHeader
                 viewingAthleteName={viewingAthleteName}
                 canManageSessionWrites={selection.canManageSessionWrites}

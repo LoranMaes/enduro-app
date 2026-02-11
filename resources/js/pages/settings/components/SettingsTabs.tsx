@@ -18,7 +18,7 @@ export function SettingsTabs({
     return (
         <aside className="hidden w-64 shrink-0 border-r border-border bg-background px-6 py-8 md:block">
             <h1 className="text-xl font-medium text-zinc-100">Settings</h1>
-            <div className="mt-2 inline-flex items-center rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-medium tracking-wider text-zinc-400 uppercase">
+            <div className="mt-2 inline-flex items-center rounded bg-zinc-800 px-2 py-0.5 text-[0.625rem] font-medium tracking-wider text-zinc-400 uppercase">
                 {role.toUpperCase()} ACCOUNT
             </div>
 

@@ -252,7 +252,7 @@ export default function Connections({
                                                         }
                                                     </p>
                                                     <span
-                                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${connectionStatusClass}`}
+                                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.625rem] font-medium uppercase ${connectionStatusClass}`}
                                                     >
                                                         {providerConnection.connected
                                                             ? 'Connected'

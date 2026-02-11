@@ -204,7 +204,7 @@ export default function AdminAnalytics({
                         <div>
                             <div className="flex items-center gap-2">
                                 <BarChart3 className="h-4 w-4 text-zinc-500" />
-                                <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                                <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                                     Admin Reporting
                                 </p>
                             </div>
@@ -284,7 +284,7 @@ export default function AdminAnalytics({
                             </div>
 
                             <div className="relative h-72 overflow-hidden rounded-lg border border-border/70 bg-background/70">
-                                <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[11px]">
+                                <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[0.6875rem]">
                                     <p className="text-zinc-400">{activeLabel}</p>
                                     <div className="mt-1 flex items-center gap-2 text-zinc-300">
                                         <span className="text-zinc-500">T</span>
@@ -619,7 +619,7 @@ export default function AdminAnalytics({
 
                                 <div className="mt-5 overflow-hidden rounded-lg border border-border">
                                     <div className="border-b border-border bg-zinc-900/40 px-3 py-2">
-                                        <p className="text-[11px] tracking-wide text-zinc-500 uppercase">
+                                        <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
                                             Recent Suspensions
                                         </p>
                                     </div>
@@ -698,7 +698,7 @@ function MetricCard({
 }) {
     return (
         <div className="rounded-xl border border-border bg-surface px-4 py-4">
-            <p className="text-[11px] tracking-wide text-zinc-500 uppercase">{label}</p>
+            <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">{label}</p>
             <p className={`mt-2 font-mono text-3xl ${accent}`}>{value}</p>
         </div>
     );
@@ -719,7 +719,7 @@ function SeriesToggle({
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-[11px] transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-[0.6875rem] transition-colors ${
                 enabled
                     ? 'border-zinc-700 bg-zinc-800 text-zinc-100'
                     : 'border-border text-zinc-500 hover:bg-zinc-900/60'
@@ -758,7 +758,7 @@ function StatLine({ label, value }: { label: string; value: number | string }) {
 function MiniMetric({ label, value }: { label: string; value: number }) {
     return (
         <div className="rounded-md border border-border bg-background/50 px-3 py-2">
-            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">{label}</p>
+            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">{label}</p>
             <p className="mt-1 font-mono text-lg text-zinc-100">{value}</p>
         </div>
     );

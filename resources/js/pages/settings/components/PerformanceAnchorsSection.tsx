@@ -99,7 +99,7 @@ export function PerformanceAnchorsSection({
                         }}
                         className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                     />
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[0.6875rem] text-zinc-500">
                         Example: 240 = 4:00 / km threshold pace
                     </p>
                     <InputError

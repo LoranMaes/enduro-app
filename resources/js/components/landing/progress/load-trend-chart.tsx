@@ -149,7 +149,7 @@ export function LoadTrendChart({ weeks, height = 300 }: LoadTrendChartProps) {
                 />
             ))}
 
-            <div className="absolute top-0 left-2 font-mono text-[10px] text-zinc-500">
+            <div className="absolute top-0 left-2 font-mono text-[0.625rem] text-zinc-500">
                 {Math.round(maxTss)} TSS
             </div>
         </div>

@@ -9,11 +9,11 @@ export function MarketingFooter() {
                     <div className="font-mono text-xs font-bold tracking-wider text-white uppercase">
                         Endure
                     </div>
-                    <div className="text-[10px] text-zinc-600">
+                    <div className="text-[0.625rem] text-zinc-600">
                         © {currentYear} Performance Systems.
                     </div>
                 </div>
-                <div className="font-mono text-[10px] text-zinc-700">
+                <div className="font-mono text-[0.625rem] text-zinc-700">
                     v1.0.0-beta
                 </div>
             </div>

@@ -184,7 +184,7 @@ export function AppSidebar() {
 
             <div className="mt-auto mb-4 flex flex-col items-center gap-2">
                 <div
-                    className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[10px] font-bold ${
+                    className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[0.625rem] font-bold ${
                         visualImpersonating
                             ? 'border-amber-700 bg-amber-900/80 text-amber-100'
                             : role === 'admin'

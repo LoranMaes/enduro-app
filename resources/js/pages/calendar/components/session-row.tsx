@@ -156,29 +156,25 @@ export function SessionRow({
         onClick?.();
     };
 
-    return (
-        <div
-            onClick={(event) => {
-                event.stopPropagation();
-                activate();
-            }}
-            onKeyDown={(event) => {
-                if (!isInteractive || isOverlay) {
-                    return;
-                }
+    const isClickableCard = isInteractive && !isOverlay;
+    const Container = isClickableCard ? 'button' : 'div';
 
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    activate();
-                }
-            }}
-            role={isInteractive && !isOverlay ? 'button' : undefined}
-            tabIndex={isInteractive && !isOverlay ? 0 : undefined}
+    return (
+        <Container
+            {...(isClickableCard
+                ? {
+                      type: 'button' as const,
+                      onClick: (event) => {
+                          event.stopPropagation();
+                          activate();
+                      },
+                  }
+                : {})}
             className={cn(
-                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
+                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 text-left transition-all duration-200',
                 currentStatusStyle,
                 reconciliationStateStyle,
-                compact ? 'min-h-[56px] gap-0.5' : 'min-h-[72px] gap-1',
+                compact ? 'min-h-[3.5rem] gap-0.5' : 'min-h-[4.5rem] gap-1',
                 isOverlay && 'cursor-default',
                 !isOverlay && !isInteractive && 'cursor-default',
                 !isOverlay && isInteractive && 'cursor-pointer',
@@ -238,12 +234,12 @@ export function SessionRow({
                             <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
                         ) : null}
                         {isAdjusted ? (
-                            <span className="inline-flex items-center rounded-full border border-zinc-600/80 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                            <span className="inline-flex items-center rounded-full border border-zinc-600/80 bg-zinc-800/70 px-1.5 py-0.5 text-[0.625rem] text-zinc-300">
                                 Adjusted
                             </span>
                         ) : null}
                         {isReadyToComplete ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/45 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/45 bg-sky-500/10 px-1.5 py-0.5 text-[0.625rem] text-sky-200">
                                 <Link2 className="h-2.5 w-2.5" />
                                 Ready
                             </span>
@@ -267,7 +263,7 @@ export function SessionRow({
             </div>
 
             <div className="mt-auto flex items-start gap-3">
-                <div className="flex min-w-[34px] flex-col leading-[1.1]">
+                <div className="flex min-w-[2.125rem] flex-col leading-[1.1]">
                     <span
                         className={cn(
                             'font-mono text-sm font-medium',
@@ -292,7 +288,7 @@ export function SessionRow({
                 </div>
 
                 {displayTss !== undefined && displayTss > 0 ? (
-                    <div className="flex min-w-[28px] flex-col leading-[1.1]">
+                    <div className="flex min-w-[1.75rem] flex-col leading-[1.1]">
                         <span
                             className={cn(
                                 'font-mono text-sm font-light',
@@ -301,7 +297,7 @@ export function SessionRow({
                         >
                             {displayTss}
                         </span>
-                        <span className="font-mono text-[10px] tracking-wide text-zinc-600 uppercase">
+                        <span className="font-mono text-[0.625rem] tracking-wide text-zinc-600 uppercase">
                             TSS
                         </span>
                     </div>
@@ -309,16 +305,16 @@ export function SessionRow({
             </div>
 
             {!compact && !isOverlay && isReadyToComplete ? (
-                <p className="text-[10px] text-zinc-400">Ready to complete</p>
+                <p className="text-[0.625rem] text-zinc-400">Ready to complete</p>
             ) : null}
             {!compact && !isOverlay && isAdjusted ? (
-                <p className="text-[10px] text-zinc-400">
+                <p className="text-[0.625rem] text-zinc-400">
                     Completed with adjusted values
                 </p>
             ) : null}
 
             {showDate ? (
-                <p className="pl-0 text-[11px] text-zinc-500">
+                <p className="pl-0 text-[0.6875rem] text-zinc-500">
                     {session.scheduledDate}
                 </p>
             ) : null}
@@ -336,7 +332,7 @@ export function SessionRow({
                     title={`Intensity: ${intensity}`}
                 />
             ) : null}
-        </div>
+        </Container>
     );
 }
 

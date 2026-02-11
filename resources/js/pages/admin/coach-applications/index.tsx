@@ -9,8 +9,10 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
@@ -176,7 +178,7 @@ export default function CoachApplicationsIndex({
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
                 <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border px-6 py-5">
                     <div>
-                        <p className="text-[11px] tracking-[0.24em] text-zinc-500 uppercase">
+                        <p className="text-[0.6875rem] tracking-[0.24em] text-zinc-500 uppercase">
                             Coach Approval Queue
                         </p>
                         <h1 className="mt-2 text-3xl font-medium text-zinc-100">
@@ -192,43 +194,48 @@ export default function CoachApplicationsIndex({
                     </div>
                 </header>
 
-                <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(420px,0.95fr)_minmax(0,1.05fr)]">
+                <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(26.25rem,0.95fr)_minmax(0,1.05fr)]">
                     <section className="min-h-0 overflow-y-auto border-r border-border px-6 py-5">
-                        <div className="mb-4 inline-flex rounded-lg border border-border bg-surface p-1">
+                        <ToggleGroup
+                            type="single"
+                            value={activeStatus}
+                            onValueChange={(value) => {
+                                if (value === '') {
+                                    return;
+                                }
+
+                                router.get(
+                                    '/admin/coach-applications',
+                                    { status: value },
+                                    {
+                                        preserveScroll: true,
+                                        preserveState: true,
+                                        replace: true,
+                                    },
+                                );
+                            }}
+                            className="mb-4 inline-flex rounded-lg border border-border bg-surface p-1"
+                        >
                             {statusTabs.map((tab) => {
                                 const count = metrics[tab.countKey];
-                                const isActive = activeStatus === tab.value;
 
                                 return (
-                                    <button
+                                    <ToggleGroupItem
                                         key={tab.value}
-                                        type="button"
-                                        onClick={() =>
-                                            router.get(
-                                                '/admin/coach-applications',
-                                                { status: tab.value },
-                                                {
-                                                    preserveScroll: true,
-                                                    preserveState: true,
-                                                    replace: true,
-                                                },
-                                            )
-                                        }
+                                        value={tab.value}
                                         className={cn(
                                             'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                                            isActive
-                                                ? 'bg-zinc-800 text-zinc-100'
-                                                : 'text-zinc-500 hover:text-zinc-200',
+                                            'text-zinc-500 hover:text-zinc-200 data-[state=on]:bg-zinc-800 data-[state=on]:text-zinc-100',
                                         )}
                                     >
                                         {tab.label}
-                                        <span className="font-mono text-[10px] text-zinc-500">
+                                        <span className="font-mono text-[0.625rem] text-zinc-500">
                                             {count}
                                         </span>
-                                    </button>
+                                    </ToggleGroupItem>
                                 );
                             })}
-                        </div>
+                        </ToggleGroup>
 
                         {applications.length === 0 ? (
                             <div className="rounded-xl border border-border bg-surface px-4 py-6 text-sm text-zinc-500">
@@ -280,7 +287,7 @@ export default function CoachApplicationsIndex({
                                                         }
                                                     />
                                                 </div>
-                                                <p className="mt-2 text-[11px] text-zinc-500">
+                                                <p className="mt-2 text-[0.6875rem] text-zinc-500">
                                                     Submitted:{' '}
                                                     {application.submitted_at ===
                                                     null
@@ -440,7 +447,7 @@ export default function CoachApplicationsIndex({
                                     <div className="rounded border border-border/80 bg-background/60 p-2.5">
                                         <label
                                             htmlFor="review_notes"
-                                            className="text-[11px] tracking-wide text-zinc-500 uppercase"
+                                            className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase"
                                         >
                                             Review notes
                                         </label>
@@ -498,8 +505,8 @@ export default function CoachApplicationsIndex({
 
 function MetricPill({ label, value }: { label: string; value: number }) {
     return (
-        <div className="min-w-[86px] rounded border border-border bg-surface px-3 py-2 text-center">
-            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+        <div className="min-w-[5.375rem] rounded border border-border bg-surface px-3 py-2 text-center">
+            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </p>
             <p className="mt-0.5 font-mono text-sm text-zinc-100">{value}</p>
@@ -513,9 +520,9 @@ function StatusBadge({ status }: { status: string }) {
     const label = isApproved ? 'accepted' : status;
 
     return (
-        <span
+        <Badge
             className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase',
+                'inline-flex items-center gap-1 border-transparent px-2 py-0.5 text-[0.625rem] tracking-wide uppercase',
                 isPending && 'bg-amber-500/15 text-amber-300',
                 isApproved && 'bg-emerald-500/15 text-emerald-300',
                 !isPending && !isApproved && 'bg-red-500/15 text-red-300',
@@ -524,14 +531,14 @@ function StatusBadge({ status }: { status: string }) {
             {isPending ? <Clock3 className="h-3 w-3" /> : null}
             {isApproved ? <ShieldCheck className="h-3 w-3" /> : null}
             {label}
-        </span>
+        </Badge>
     );
 }
 
 function AnswerRow({ label, value }: { label: string; value: string | null }) {
     return (
         <div className="rounded border border-border/70 bg-background/50 px-3 py-2">
-            <p className="text-[10px] tracking-[0.2em] text-cyan-300/90 uppercase">
+            <p className="text-[0.625rem] tracking-[0.2em] text-cyan-300/90 uppercase">
                 {label}
             </p>
             <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">

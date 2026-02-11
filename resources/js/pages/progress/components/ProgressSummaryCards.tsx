@@ -15,7 +15,7 @@ export function ProgressSummaryCards({
 
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-border bg-surface p-6">
-                    <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                    <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                         Consistency
                     </p>
                     <p className="mt-2 font-mono text-5xl text-zinc-100">
@@ -28,7 +28,7 @@ export function ProgressSummaryCards({
                 </div>
 
                 <div className="rounded-2xl border border-emerald-900/30 bg-emerald-950/10 p-6">
-                    <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                    <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                         Current Streak
                     </p>
                     <p className="mt-2 font-mono text-5xl text-zinc-100">

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
-import type { SessionView } from './types';
+import type { SessionView } from '../types';
 import { SessionInternalNotes } from './SessionInternalNotes';
-import { formatDurationMinutes, formatNumber } from './utils';
+import { formatDurationMinutes, formatNumber } from '../utils';
 
 type SessionStatisticsCardProps = {
     sessionView: SessionView;
@@ -46,7 +46,7 @@ export function SessionStatisticsCard({
                     Route Statistics
                 </h2>
                 {sideCardTab === 'notes' && notesStatus !== null ? (
-                    <span className="text-[11px] text-emerald-300">
+                    <span className="text-[0.6875rem] text-emerald-300">
                         {notesStatus}
                     </span>
                 ) : null}
@@ -57,7 +57,7 @@ export function SessionStatisticsCard({
                     type="button"
                     onClick={() => onSideCardTabChange('statistics')}
                     className={cn(
-                        'rounded px-2 py-1 text-[11px] transition-colors',
+                        'rounded px-2 py-1 text-[0.6875rem] transition-colors',
                         sideCardTab === 'statistics'
                             ? 'bg-zinc-800 text-zinc-100'
                             : 'text-zinc-400 hover:text-zinc-200',
@@ -69,7 +69,7 @@ export function SessionStatisticsCard({
                     type="button"
                     onClick={() => onSideCardTabChange('notes')}
                     className={cn(
-                        'rounded px-2 py-1 text-[11px] transition-colors',
+                        'rounded px-2 py-1 text-[0.6875rem] transition-colors',
                         sideCardTab === 'notes'
                             ? 'bg-zinc-800 text-zinc-100'
                             : 'text-zinc-400 hover:text-zinc-200',
@@ -152,7 +152,7 @@ export function SessionStatisticsCard({
 function StatisticsRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
-            <span className="block text-[10px] tracking-wide text-zinc-500 uppercase">
+            <span className="block text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </span>
             <span className="mt-0.5 block font-mono text-xs text-zinc-200">
@@ -173,11 +173,11 @@ function ComparisonBadge({
 }) {
     return (
         <div className="rounded-full border border-border/80 bg-background/60 px-3 py-1.5">
-            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </p>
             <p className="font-mono text-xs text-zinc-100">{value}</p>
-            <p className="text-[10px] text-zinc-400">{meta}</p>
+            <p className="text-[0.625rem] text-zinc-400">{meta}</p>
         </div>
     );
 }

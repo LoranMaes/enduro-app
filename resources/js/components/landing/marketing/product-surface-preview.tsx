@@ -110,7 +110,7 @@ export function ProductSurfacePreview() {
                         <div className="absolute top-0 left-0 h-full w-1 bg-sky-500/20" />
                         <div className="space-y-1">
                             <div className="flex items-center gap-4 border-b border-border/50 py-3">
-                                <span className="font-mono text-[10px] text-zinc-600">
+                                <span className="font-mono text-[0.625rem] text-zinc-600">
                                     MON
                                 </span>
                                 <SessionCard
@@ -123,7 +123,7 @@ export function ProductSurfacePreview() {
                                 />
                             </div>
                             <div className="flex items-center gap-4 border-b border-border/50 py-3">
-                                <span className="font-mono text-[10px] text-zinc-400">
+                                <span className="font-mono text-[0.625rem] text-zinc-400">
                                     TUE
                                 </span>
                                 <SessionCard
@@ -136,7 +136,7 @@ export function ProductSurfacePreview() {
                                 />
                             </div>
                             <div className="flex items-center gap-4 border-b border-border/50 py-3">
-                                <span className="font-mono text-[10px] text-zinc-400">
+                                <span className="font-mono text-[0.625rem] text-zinc-400">
                                     WED
                                 </span>
                                 <SessionCard

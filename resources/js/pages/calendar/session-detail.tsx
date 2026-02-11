@@ -7,11 +7,11 @@ import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { update as updateTrainingSession } from '@/routes/training-sessions';
 import type { BreadcrumbItem, SharedData } from '@/types';
-import { SessionAnalysisChart } from './session-detail/SessionAnalysisChart';
-import { SessionDetailLayout } from './session-detail/SessionDetailLayout';
-import { SessionMap } from './session-detail/SessionMap';
-import { SessionPlannedStructurePreview } from './session-detail/SessionPlannedStructurePreview';
-import { SessionStatisticsCard } from './session-detail/SessionStatisticsCard';
+import { SessionAnalysisChart } from './session-detail/components/SessionAnalysisChart';
+import { SessionDetailLayout } from './session-detail/components/SessionDetailLayout';
+import { SessionMap } from './session-detail/components/SessionMap';
+import { SessionPlannedStructurePreview } from './session-detail/components/SessionPlannedStructurePreview';
+import { SessionStatisticsCard } from './session-detail/components/SessionStatisticsCard';
 import { useSessionHover } from './session-detail/hooks/useSessionHover';
 import { useSessionStats } from './session-detail/hooks/useSessionStats';
 import { useSessionStreams } from './session-detail/hooks/useSessionStreams';
@@ -222,7 +222,7 @@ export default function SessionDetailPage({
                             </Link>
 
                             <div>
-                                <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                                <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                                     {isActivityOnly
                                         ? 'Activity Detail'
                                         : 'Training Detail'}

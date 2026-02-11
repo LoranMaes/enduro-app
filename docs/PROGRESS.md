@@ -1,5 +1,26 @@
 # Endure — Progress Log
 
+## 2026-02-12 (Wave D: Global Frontend Hardening Pass)
+
+- Completed a behavior-preserving frontend hardening pass across `resources/js` with no backend/API/route/policy changes.
+- ShadCN standardization updates:
+    - native `<select>` usage fully migrated to ShadCN `Select` (including remaining admin/auth/workout-builder usage)
+    - remaining admin status/event pills standardized to ShadCN `Badge`
+    - coach-application status switcher standardized to ShadCN `ToggleGroup`
+- Pixel utility cleanup:
+    - arbitrary Tailwind pixel utilities reduced from 219 to 10
+    - remaining pixel utilities are shadow/border accent exceptions only
+- Semantic + accessibility hardening:
+    - converted remaining clickable non-semantic wrappers in calendar/landing cards to semantic button patterns
+    - preserved keyboard and focus behavior for interactive cards/day cells
+- Stability + test hardening:
+    - resolved metadata test drift by moving session-detail helper files under `session-detail/components`
+    - added missing page `<Head>` declarations in thin wrappers to keep title metadata coverage green
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-11 (Wave C5: Session Detail Decomposition)
 
 - Completed structural decomposition of the session detail page with no backend/API/route changes:

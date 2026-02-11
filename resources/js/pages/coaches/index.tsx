@@ -90,7 +90,7 @@ export default function CoachesIndex({ assignedAthletes }: CoachesIndexProps) {
                                             <p className="font-mono text-sm text-zinc-200">
                                                 {athlete.training_plans_count}
                                             </p>
-                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                                 Plans
                                             </p>
                                         </div>

@@ -200,7 +200,7 @@ export function WeekSection({
             >
                 <p
                     className={cn(
-                        'font-sans text-[10px] font-medium tracking-wider text-zinc-500 uppercase',
+                        'font-sans text-[0.625rem] font-medium tracking-wider text-zinc-500 uppercase',
                         isCurrentWeek && 'text-zinc-200',
                     )}
                 >
@@ -208,7 +208,7 @@ export function WeekSection({
                 </p>
                 <div className="flex items-center gap-2">
                     {!hasPlannedSessions ? (
-                        <p className="text-[10px] text-zinc-600">
+                        <p className="text-[0.625rem] text-zinc-600">
                             No training planned
                         </p>
                     ) : null}
@@ -230,7 +230,7 @@ export function WeekSection({
                     return (
                         <div
                             key={`${week.id}-${currentDayKey}`}
-                            className="min-h-[112px] border-b border-border md:min-h-[184px] md:border-b-0"
+                            className="min-h-[7rem] border-b border-border md:min-h-[11.5rem] md:border-b-0"
                         >
                             <DayColumn
                                 dayNumber={dayToken(currentDay)}

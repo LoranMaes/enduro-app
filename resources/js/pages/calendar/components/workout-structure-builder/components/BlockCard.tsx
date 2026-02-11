@@ -1,5 +1,12 @@
 import { ArrowDown, ArrowUp, GripVertical, Trash2 } from 'lucide-react';
 import type { DragEvent } from 'react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import type {
     AthleteTrainingTargets,
     WorkoutStructureBlockType,
@@ -169,20 +176,26 @@ export function BlockCard({
                     <GripVertical className="h-3.5 w-3.5" />
                 </button>
 
-                <select
+                <Select
                     value={step.type}
                     disabled={disabled}
-                    onChange={(event) => {
-                        onTypeChange(event.target.value as WorkoutStructureBlockType);
+                    onValueChange={(value) => {
+                        onTypeChange(value as WorkoutStructureBlockType);
                     }}
-                    className="rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                 >
-                    {blockDefinitions.map((item) => (
-                        <option key={item.type} value={item.type}>
-                            {item.label}
-                        </option>
-                    ))}
-                </select>
+                    <SelectTrigger
+                        className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {blockDefinitions.map((item) => (
+                            <SelectItem key={item.type} value={item.type}>
+                                {item.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
                 {patternLabelForStep(step) !== null ? (
                     <span className="rounded border border-zinc-700/80 bg-zinc-800/70 px-1.5 py-0.5 text-[0.625rem] text-zinc-300">

@@ -34,7 +34,7 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
                 <span className="text-xs font-medium text-zinc-300">
                     {formatShortDate(week.week_start)} — {formatShortDate(week.week_end)}
                 </span>
-                <span className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                <span className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                     Planned {formatDuration(week.planned_duration_minutes)} • Actual{' '}
                     {formatDuration(week.actual_duration_minutes)}
                 </span>
@@ -60,7 +60,7 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
                 </div>
                 <div className="flex w-20 flex-col items-end">
                     <span className="font-mono text-sm text-zinc-200">{week.actual_tss ?? 0} TSS</span>
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[0.625rem] text-zinc-500">
                         {plannedTss > 0 ? `${compliance}%` : '—'}
                     </span>
                 </div>

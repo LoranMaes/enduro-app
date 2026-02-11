@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Eye, Filter, Shield } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,6 +9,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import { index as adminUsersIndex } from '@/routes/admin/users';
@@ -202,7 +210,7 @@ export default function AdminUserShow({
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <Shield className="h-4 w-4 text-zinc-500" />
-                            <p className="text-[11px] tracking-[0.22em] text-zinc-500 uppercase">
+                            <p className="text-[0.6875rem] tracking-[0.22em] text-zinc-500 uppercase">
                                 User Detail
                             </p>
                         </div>
@@ -345,91 +353,111 @@ export default function AdminUserShow({
                                 <div className="space-y-1">
                                     <label
                                         htmlFor="scope"
-                                        className="text-[11px] tracking-wide text-zinc-500 uppercase"
+                                        className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase"
                                     >
                                         Scope
                                     </label>
-                                    <select
-                                        id="scope"
+                                    <Select
                                         value={filters.scope}
-                                        onChange={(event) =>
+                                        onValueChange={(value) =>
                                             updateFilters({
-                                                scope: event.target.value,
+                                                scope: value,
                                                 page: 1,
                                             })
                                         }
-                                        className="h-9 rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                                     >
-                                        {scopeOptions.map((scopeOption) => (
-                                            <option
-                                                key={scopeOption.value}
-                                                value={scopeOption.value}
-                                            >
-                                                {scopeOption.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger
+                                            id="scope"
+                                            className="h-9 rounded-md border-border bg-background text-sm text-zinc-200"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {scopeOptions.map((scopeOption) => (
+                                                <SelectItem
+                                                    key={scopeOption.value}
+                                                    value={scopeOption.value}
+                                                >
+                                                    {scopeOption.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-1">
                                     <label
                                         htmlFor="event"
-                                        className="text-[11px] tracking-wide text-zinc-500 uppercase"
+                                        className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase"
                                     >
                                         Event
                                     </label>
-                                    <select
-                                        id="event"
-                                        value={filters.event ?? ''}
-                                        onChange={(event) =>
+                                    <Select
+                                        value={filters.event ?? '__all__'}
+                                        onValueChange={(value) =>
                                             updateFilters({
                                                 event:
-                                                    event.target.value === ''
+                                                    value === '__all__'
                                                         ? null
-                                                        : event.target.value,
+                                                        : value,
                                                 page: 1,
                                             })
                                         }
-                                        className="h-9 rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                                     >
-                                        <option value="">All events</option>
-                                        {eventOptions.map((eventOption) => (
-                                            <option
-                                                key={eventOption}
-                                                value={eventOption}
-                                            >
-                                                {eventOption}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger
+                                            id="event"
+                                            className="h-9 rounded-md border-border bg-background text-sm text-zinc-200"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__all__">
+                                                All events
+                                            </SelectItem>
+                                            {eventOptions.map((eventOption) => (
+                                                <SelectItem
+                                                    key={eventOption}
+                                                    value={eventOption}
+                                                >
+                                                    {eventOption}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-1">
                                     <label
                                         htmlFor="per-page"
-                                        className="text-[11px] tracking-wide text-zinc-500 uppercase"
+                                        className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase"
                                     >
                                         Rows
                                     </label>
-                                    <select
-                                        id="per-page"
-                                        value={filters.per_page}
-                                        onChange={(event) =>
+                                    <Select
+                                        value={String(filters.per_page)}
+                                        onValueChange={(value) =>
                                             updateFilters({
                                                 per_page: Number.parseInt(
-                                                    event.target.value,
+                                                    value,
                                                     10,
                                                 ),
                                                 page: 1,
                                             })
                                         }
-                                        className="h-9 rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                                     >
-                                        <option value={10}>10</option>
-                                        <option value={25}>25</option>
-                                        <option value={50}>50</option>
-                                        <option value={100}>100</option>
-                                    </select>
+                                        <SelectTrigger
+                                            id="per-page"
+                                            className="h-9 rounded-md border-border bg-background text-sm text-zinc-200"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="100">100</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="ml-auto flex items-center gap-2 text-xs text-zinc-500">
@@ -439,20 +467,20 @@ export default function AdminUserShow({
                             </div>
 
                             <div className="overflow-hidden rounded-xl border border-border bg-surface">
-                                <div className="grid grid-cols-[170px_110px_160px_1fr_110px] border-b border-border bg-zinc-900/40 px-4 py-2">
-                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                <div className="grid grid-cols-[10.625rem_6.875rem_10rem_1fr_6.875rem] border-b border-border bg-zinc-900/40 px-4 py-2">
+                                    <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                         Time
                                     </p>
-                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                    <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                         Event
                                     </p>
-                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                    <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                         Target
                                     </p>
-                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                    <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                         Action
                                     </p>
-                                    <p className="text-right text-[10px] tracking-wide text-zinc-500 uppercase">
+                                    <p className="text-right text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                         Values
                                     </p>
                                 </div>
@@ -466,7 +494,7 @@ export default function AdminUserShow({
                                         logs.data.map((log) => (
                                             <div
                                                 key={log.id}
-                                                className="grid grid-cols-[170px_110px_160px_1fr_110px] items-center gap-3 px-4 py-3"
+                                                className="grid grid-cols-[10.625rem_6.875rem_10rem_1fr_6.875rem] items-center gap-3 px-4 py-3"
                                             >
                                                 <p className="text-xs text-zinc-400">
                                                     {formatDateTime(
@@ -489,7 +517,7 @@ export default function AdminUserShow({
                                                         type="button"
                                                         size="sm"
                                                         variant="ghost"
-                                                        className="h-7 px-2 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                                                        className="h-7 px-2 text-[0.6875rem] text-zinc-300 hover:bg-zinc-800"
                                                         onClick={() =>
                                                             setSelectedLog(log)
                                                         }
@@ -604,7 +632,7 @@ export default function AdminUserShow({
 function OverviewCard({ label, value }: { label: string; value: string }) {
     return (
         <div className="rounded-xl border border-border bg-surface px-4 py-3">
-            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </p>
             <p className="mt-1 text-sm text-zinc-100">{value}</p>
@@ -621,7 +649,7 @@ function LogDetail({
 }) {
     return (
         <div className="rounded-md border border-border bg-background px-3 py-2">
-            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </p>
             <p className="mt-1 text-xs text-zinc-200">{children}</p>
@@ -638,10 +666,10 @@ function JsonPanel({
 }) {
     return (
         <div className="rounded-md border border-border bg-background p-3">
-            <p className="mb-2 text-[10px] tracking-wide text-zinc-500 uppercase">
+            <p className="mb-2 text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                 {label}
             </p>
-            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-[11px] text-zinc-300">
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-[0.6875rem] text-zinc-300">
                 {JSON.stringify(payload, null, 2)}
             </pre>
         </div>
@@ -660,44 +688,44 @@ function EventBadge({ event }: { event: string | null }) {
                 : 'bg-zinc-700/60 text-zinc-300';
 
     return (
-        <span
-            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${baseClass}`}
+        <Badge
+            className={`inline-flex w-fit items-center border-transparent px-2 py-0.5 text-[0.625rem] tracking-wide uppercase ${baseClass}`}
         >
             {value}
-        </span>
+        </Badge>
     );
 }
 
 function StatusPill({ status }: { status: string }) {
     if (status === 'active') {
         return (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/30 px-2.5 py-1 text-[11px] font-medium tracking-wide text-emerald-400 uppercase">
+            <Badge className="inline-flex items-center gap-1.5 border-transparent bg-emerald-950/30 px-2.5 py-1 text-[0.6875rem] font-medium tracking-wide text-emerald-400 uppercase">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 Active
-            </span>
+            </Badge>
         );
     }
 
     if (status === 'rejected') {
         return (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-950/40 px-2.5 py-1 text-[11px] font-medium tracking-wide text-red-300 uppercase">
+            <Badge className="inline-flex items-center gap-1.5 border-transparent bg-red-950/40 px-2.5 py-1 text-[0.6875rem] font-medium tracking-wide text-red-300 uppercase">
                 Rejected
-            </span>
+            </Badge>
         );
     }
 
     if (status === 'suspended') {
         return (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-medium tracking-wide text-zinc-200 uppercase">
+            <Badge className="inline-flex items-center gap-1.5 border-transparent bg-zinc-800 px-2.5 py-1 text-[0.6875rem] font-medium tracking-wide text-zinc-200 uppercase">
                 Suspended
-            </span>
+            </Badge>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-950/35 px-2.5 py-1 text-[11px] font-medium tracking-wide text-amber-300 uppercase">
+        <Badge className="inline-flex items-center gap-1.5 border-transparent bg-amber-950/35 px-2.5 py-1 text-[0.6875rem] font-medium tracking-wide text-amber-300 uppercase">
             Pending
-        </span>
+        </Badge>
     );
 }
 

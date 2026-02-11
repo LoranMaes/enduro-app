@@ -6,7 +6,7 @@ Backend spine + athlete operational flows are complete, including activity sync/
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
-Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is in progress with tickets (C3/C4) and session-detail (C5) decomposition completed.
+Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is in progress with tickets (C3/C4), session-detail (C5), and additional surface decomposition waves completed. Wave D global frontend hardening has now been executed with behavior-preserving constraints.
 
 ## Confidence Level
 
@@ -74,6 +74,11 @@ High — UX validated, backend structure in place
     - monitoring/alerts
     - verified backups
     - object storage for user uploads
+- Wave D hardening mitigations now applied:
+    - native selects removed from app surfaces (ShadCN select standardized)
+    - arbitrary pixel utilities reduced to shadow/border exceptions only
+    - remaining clickable non-semantic wrappers converted to semantic interactive elements
+    - decomposed page-helper metadata/title coverage stabilized for frontend test guards
 
 ## UI Chart Guardrails
 

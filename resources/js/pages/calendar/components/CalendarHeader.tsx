@@ -65,7 +65,7 @@ export function CalendarHeader({
                 <div className="flex items-center gap-3">
                     {isRefreshing ? (
                         <p
-                            className="flex items-center gap-1.5 text-[11px] text-zinc-500"
+                            className="flex items-center gap-1.5 text-[0.6875rem] text-zinc-500"
                             aria-live="polite"
                         >
                             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500" />
@@ -130,7 +130,7 @@ export function CalendarHeader({
                                     onModeChange(mode);
                                 }}
                                 className={cn(
-                                    'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                                    'rounded-md px-2.5 py-1 text-[0.6875rem] font-medium transition-colors',
                                     isActive
                                         ? 'bg-zinc-800 text-zinc-100'
                                         : 'text-zinc-500 hover:text-zinc-300',
@@ -158,7 +158,7 @@ export function CalendarHeader({
                             >
                                 <ChevronLeft className="h-3.5 w-3.5" />
                             </button>
-                            <p className="min-w-[120px] text-center text-[11px] text-zinc-400">
+                            <p className="min-w-[7.5rem] text-center text-[0.6875rem] text-zinc-400">
                                 {focusLabel}
                             </p>
                             <button
@@ -178,7 +178,7 @@ export function CalendarHeader({
                         <button
                             type="button"
                             onClick={onJumpToCurrentWeek}
-                            className="rounded-md border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1 text-[11px] text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
+                            className="rounded-md border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1 text-[0.6875rem] text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
                         >
                             Jump to current week
                         </button>
@@ -196,7 +196,7 @@ export function CalendarHeader({
                 {activeDayHeaders.map((day) => (
                     <div
                         key={day}
-                        className="flex h-11 items-center justify-center border-r border-border/30 px-2 text-center text-[10px] font-medium tracking-wider text-zinc-500 uppercase"
+                        className="flex h-11 items-center justify-center border-r border-border/30 px-2 text-center text-[0.625rem] font-medium tracking-wider text-zinc-500 uppercase"
                     >
                         {day}
                     </div>

@@ -15,6 +15,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import AuthSplitLayout from '@/layouts/auth/auth-split-layout';
@@ -701,7 +708,7 @@ function StepIndicator({
                                 <div className="flex flex-col gap-2">
                                     <span
                                         className={cn(
-                                            'inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-medium',
+                                            'inline-flex h-4 w-4 items-center justify-center rounded-full text-[0.5625rem] font-medium',
                                             isComplete
                                                 ? 'bg-emerald-400 text-zinc-950'
                                                 : isActive
@@ -718,7 +725,7 @@ function StepIndicator({
                                     <div className="space-y-0.5">
                                         <p
                                             className={cn(
-                                                'text-[11px] leading-tight font-medium',
+                                                'text-[0.6875rem] leading-tight font-medium',
                                                 isActive
                                                     ? 'text-zinc-100'
                                                     : 'text-zinc-400',
@@ -726,7 +733,7 @@ function StepIndicator({
                                         >
                                             {step.title}
                                         </p>
-                                        <p className="text-[10px] leading-tight text-zinc-500">
+                                        <p className="text-[0.625rem] leading-tight text-zinc-500">
                                             {step.subtitle}
                                         </p>
                                     </div>
@@ -755,7 +762,7 @@ function StepIndicator({
                         >
                             <span
                                 className={cn(
-                                    'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium',
+                                    'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-medium',
                                     isComplete
                                         ? 'bg-emerald-400 text-zinc-950'
                                         : isActive
@@ -773,7 +780,7 @@ function StepIndicator({
                                 <p className="text-xs font-medium text-zinc-100">
                                     {step.title}
                                 </p>
-                                <p className="text-[11px] text-zinc-500">
+                                <p className="text-[0.6875rem] text-zinc-500">
                                     {step.subtitle}
                                 </p>
                             </div>
@@ -925,24 +932,29 @@ function AthletePreferencesStep({
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                     <Label htmlFor="primary_sport">Primary sport</Label>
-                    <select
-                        id="primary_sport"
+                    <Select
                         value={form.data.primary_sport}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                             form.setData(
                                 'primary_sport',
-                                event.target
-                                    .value as RegistrationFormData['primary_sport'],
+                                value as RegistrationFormData['primary_sport'],
                             )
                         }
-                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                     >
-                        <option value="triathlon">Triathlon</option>
-                        <option value="bike">Bike</option>
-                        <option value="run">Run</option>
-                        <option value="swim">Swim</option>
-                        <option value="other">Other</option>
-                    </select>
+                        <SelectTrigger
+                            id="primary_sport"
+                            className="h-10 w-full rounded-md border-border bg-background text-sm text-zinc-200"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="triathlon">Triathlon</SelectItem>
+                            <SelectItem value="bike">Bike</SelectItem>
+                            <SelectItem value="run">Run</SelectItem>
+                            <SelectItem value="swim">Swim</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <InputError message={form.errors.primary_sport} />
                 </div>
 
@@ -972,26 +984,31 @@ function AthletePreferencesStep({
                     <Label htmlFor="preferred_rest_day">
                         Preferred rest day
                     </Label>
-                    <select
-                        id="preferred_rest_day"
+                    <Select
                         value={form.data.preferred_rest_day}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                             form.setData(
                                 'preferred_rest_day',
-                                event.target
-                                    .value as RegistrationFormData['preferred_rest_day'],
+                                value as RegistrationFormData['preferred_rest_day'],
                             )
                         }
-                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                     >
-                        <option value="monday">Monday</option>
-                        <option value="tuesday">Tuesday</option>
-                        <option value="wednesday">Wednesday</option>
-                        <option value="thursday">Thursday</option>
-                        <option value="friday">Friday</option>
-                        <option value="saturday">Saturday</option>
-                        <option value="sunday">Sunday</option>
-                    </select>
+                        <SelectTrigger
+                            id="preferred_rest_day"
+                            className="h-10 w-full rounded-md border-border bg-background text-sm text-zinc-200"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="monday">Monday</SelectItem>
+                            <SelectItem value="tuesday">Tuesday</SelectItem>
+                            <SelectItem value="wednesday">Wednesday</SelectItem>
+                            <SelectItem value="thursday">Thursday</SelectItem>
+                            <SelectItem value="friday">Friday</SelectItem>
+                            <SelectItem value="saturday">Saturday</SelectItem>
+                            <SelectItem value="sunday">Sunday</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <InputError message={form.errors.preferred_rest_day} />
                 </div>
 
@@ -999,23 +1016,28 @@ function AthletePreferencesStep({
                     <Label htmlFor="intensity_distribution">
                         Intensity distribution
                     </Label>
-                    <select
-                        id="intensity_distribution"
+                    <Select
                         value={form.data.intensity_distribution}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                             form.setData(
                                 'intensity_distribution',
-                                event.target
-                                    .value as RegistrationFormData['intensity_distribution'],
+                                value as RegistrationFormData['intensity_distribution'],
                             )
                         }
-                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-zinc-200"
                     >
-                        <option value="polarized">Polarized</option>
-                        <option value="pyramidal">Pyramidal</option>
-                        <option value="threshold">Threshold</option>
-                        <option value="mixed">Mixed</option>
-                    </select>
+                        <SelectTrigger
+                            id="intensity_distribution"
+                            className="h-10 w-full rounded-md border-border bg-background text-sm text-zinc-200"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="polarized">Polarized</SelectItem>
+                            <SelectItem value="pyramidal">Pyramidal</SelectItem>
+                            <SelectItem value="threshold">Threshold</SelectItem>
+                            <SelectItem value="mixed">Mixed</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <InputError message={form.errors.intensity_distribution} />
                 </div>
             </div>
@@ -1516,7 +1538,7 @@ function CoachApplicationStep({
 
                                 {entry.renameFlash !== null ? (
                                     <p
-                                        className={`mt-2 inline-flex items-center gap-1 text-[11px] ${
+                                        className={`mt-2 inline-flex items-center gap-1 text-[0.6875rem] ${
                                             entry.renameFlash === 'saved'
                                                 ? 'text-emerald-400'
                                                 : 'text-red-300'
@@ -1560,7 +1582,7 @@ function ZoneEditor({
                 {zones.map((zone, index) => (
                     <div
                         key={zone.label}
-                        className="grid grid-cols-[42px_1fr_auto_1fr] items-center gap-2"
+                        className="grid grid-cols-[2.625rem_1fr_auto_1fr] items-center gap-2"
                     >
                         <span className="text-xs text-zinc-400">
                             {zone.label}

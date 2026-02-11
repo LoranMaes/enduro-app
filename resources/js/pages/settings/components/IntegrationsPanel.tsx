@@ -44,7 +44,7 @@ export function IntegrationsPanel({
                                     </p>
                                     <span
                                         className={cn(
-                                            'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase',
+                                            'inline-flex items-center rounded-full border px-2 py-0.5 text-[0.625rem] font-medium uppercase',
                                             provider.connected
                                                 ? 'border-emerald-900/50 text-emerald-400'
                                                 : 'border-zinc-700 text-zinc-400',

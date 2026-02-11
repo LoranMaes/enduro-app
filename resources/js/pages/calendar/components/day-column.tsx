@@ -54,23 +54,32 @@ export function DayColumn({
         onCreateSession(dayDate);
     };
 
-    return (
-        <div
-            onClick={openCreateSession}
-            onKeyDown={(event) => {
-                if (!canOpenCreateModal) {
-                    return;
-                }
+    const isCreateClickable = canOpenCreateModal;
+    const canUseSemanticButton = isCreateClickable && !hasEntries;
+    const DayContainer = canUseSemanticButton ? 'button' : 'div';
 
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openCreateSession();
-                }
-            }}
-            role={canOpenCreateModal ? 'button' : undefined}
-            tabIndex={canOpenCreateModal ? 0 : undefined}
+    return (
+        <DayContainer
+            {...(canUseSemanticButton
+                ? {
+                      type: 'button' as const,
+                      onClick: openCreateSession,
+                  }
+                : isCreateClickable
+                  ? {
+                        onClick: openCreateSession,
+                        onKeyDown: (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                openCreateSession();
+                            }
+                        },
+                        role: 'button' as const,
+                        tabIndex: 0,
+                    }
+                : {})}
             className={cn(
-                'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 transition-all duration-200',
+                'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 text-left transition-all duration-200',
                 isToday
                     ? 'bg-zinc-900/40 ring-1 ring-white/5 ring-inset'
                     : 'bg-transparent',
@@ -100,24 +109,38 @@ export function DayColumn({
                     {dayNumber.replace(/^\w+\s/, '')}
                 </span>
                 {canManageSessions ? (
-                    <button
-                        type="button"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onCreateSession(dayDate);
-                        }}
-                        className={cn(
-                            'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100 hover:text-white',
-                            isPast
-                                ? 'hover:bg-zinc-800/50'
-                                : 'hover:bg-zinc-800',
-                            'focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none',
-                        )}
-                        aria-label="Add session"
-                    >
-                        <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    isCreateClickable ? (
+                        <span
+                            className={cn(
+                                'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100',
+                                isPast
+                                    ? 'group-hover/day:bg-zinc-800/50'
+                                    : 'group-hover/day:bg-zinc-800',
+                            )}
+                            aria-hidden="true"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </span>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onCreateSession(dayDate);
+                            }}
+                            className={cn(
+                                'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100 hover:text-white',
+                                isPast
+                                    ? 'hover:bg-zinc-800/50'
+                                    : 'hover:bg-zinc-800',
+                                'focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none',
+                            )}
+                            aria-label="Add session"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </button>
+                    )
                 ) : null}
             </div>
 
@@ -150,13 +173,13 @@ export function DayColumn({
                 ))}
 
                 {!hasEntries ? (
-                    <div className="flex min-h-[40px] w-full flex-1 items-start px-1 pt-0.5">
-                        <p className="text-[10px] text-zinc-700">
+                    <div className="flex min-h-[2.5rem] w-full flex-1 items-start px-1 pt-0.5">
+                        <p className="text-[0.625rem] text-zinc-700">
                             No training planned
                         </p>
                     </div>
                 ) : null}
             </div>
-        </div>
+        </DayContainer>
     );
 }

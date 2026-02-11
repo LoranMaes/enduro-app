@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { PlannedSegment, SessionView } from './types';
+import type { PlannedSegment, SessionView } from '../types';
 import {
     formatDurationMinutes,
     formatNumber,
     formatPlannedSegmentSummary,
     formatStructureUnit,
     plannedBlockColor,
-} from './utils';
+} from '../utils';
 
 type SessionPlannedStructurePreviewProps = {
     sessionView: SessionView;
@@ -44,7 +44,7 @@ export function SessionPlannedStructurePreview({
                 Planned Structure
             </h2>
 
-            <div className="mt-2 flex items-center justify-between text-[10px] tracking-wider text-zinc-500 uppercase">
+            <div className="mt-2 flex items-center justify-between text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                 <span>
                     {formatStructureUnit(
                         sessionView.plannedStructure?.unit ?? 'rpe',
@@ -54,7 +54,7 @@ export function SessionPlannedStructurePreview({
             </div>
 
             <div className="mt-3 h-36 overflow-hidden rounded border border-border/60 bg-background/70 p-2">
-                <div className="flex h-full items-end gap-[1px]">
+                <div className="flex h-full items-end gap-[0.0625rem]">
                     {plannedSegments.map((segment) => {
                         const width =
                             totalPlannedSegmentDuration > 0
@@ -82,12 +82,12 @@ export function SessionPlannedStructurePreview({
                                 onMouseLeave={() => {
                                     setHoveredPlannedSegmentId(null);
                                 }}
-                                className="relative h-full min-w-[6px] border-r border-zinc-900/60"
+                                className="relative h-full min-w-[0.375rem] border-r border-zinc-900/60"
                                 style={{ width: `${Math.max(4, width)}%` }}
                             >
                                 <span
                                     className={cn(
-                                        'absolute inset-x-0 bottom-0 rounded-[2px] border border-white/5 opacity-45',
+                                        'absolute inset-x-0 bottom-0 rounded-[0.125rem] border border-white/5 opacity-45',
                                         plannedBlockColor(segment.type),
                                     )}
                                     style={{
@@ -96,7 +96,7 @@ export function SessionPlannedStructurePreview({
                                 />
                                 <span
                                     className={cn(
-                                        'absolute inset-x-0 rounded-[2px] border border-white/20',
+                                        'absolute inset-x-0 rounded-[0.125rem] border border-white/20',
                                         plannedBlockColor(segment.type),
                                     )}
                                     style={{
@@ -110,7 +110,7 @@ export function SessionPlannedStructurePreview({
                 </div>
             </div>
 
-            <p className="mt-2 text-[11px] text-zinc-400">
+            <p className="mt-2 text-[0.6875rem] text-zinc-400">
                 {hoveredPlannedSegment !== null
                     ? formatPlannedSegmentSummary(
                           hoveredPlannedSegment,
@@ -119,7 +119,7 @@ export function SessionPlannedStructurePreview({
                     : 'Hover a segment to inspect block details.'}
             </p>
 
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-1 text-[0.6875rem] text-zinc-500">
                 Planned total: {formatDurationMinutes(sessionView.durationMinutes)}
                 {' • '}Planned TSS: {formatNumber(sessionView.plannedTss)}
             </p>

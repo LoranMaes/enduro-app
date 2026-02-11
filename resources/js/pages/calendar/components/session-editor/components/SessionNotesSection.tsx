@@ -35,7 +35,7 @@ export function SessionNotesSection({
                 }}
                 className={cn(
                     'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
-                    'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                    'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[0.1875rem] focus-visible:ring-ring/50 focus-visible:outline-none',
                     !canManageSessionWrites &&
                         'cursor-default opacity-65',
                 )}

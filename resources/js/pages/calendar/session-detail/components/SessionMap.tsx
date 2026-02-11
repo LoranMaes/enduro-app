@@ -9,9 +9,9 @@ import {
     useMap,
     useMapEvents,
 } from 'react-leaflet';
-import { streamColors, streamLabels } from './constants';
-import type { MapPoint, XAxisMode } from './types';
-import { formatStreamValue, formatXAxisValue } from './utils';
+import { streamColors, streamLabels } from '../constants';
+import type { MapPoint, XAxisMode } from '../types';
+import { formatStreamValue, formatXAxisValue } from '../utils';
 
 type SessionMapProps = {
     latLngPoints: MapPoint[];
@@ -40,7 +40,7 @@ export function SessionMap({
                 <h2 className="text-sm font-medium text-zinc-200">Route</h2>
             </div>
 
-            <div className="relative box-border h-[300px] overflow-hidden rounded-lg border border-border/60 bg-background/70 p-2 xl:h-[320px]">
+            <div className="relative box-border h-[18.75rem] overflow-hidden rounded-lg border border-border/60 bg-background/70 p-2 xl:h-[20rem]">
                 {latLngPoints.length > 1 ? (
                     <>
                         <ActivityMap
@@ -52,7 +52,7 @@ export function SessionMap({
 
                         {hoverSummary !== null ? (
                             <div className="pointer-events-none absolute top-3 right-3 z-[600] min-w-44 rounded-md border border-zinc-700/80 bg-zinc-950/85 px-3 py-2">
-                                <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                     {xAxisMode === 'distance'
                                         ? 'Distance'
                                         : 'Elapsed Time'}
@@ -70,12 +70,12 @@ export function SessionMap({
                                             key={item.key}
                                             className="flex items-center justify-between gap-3"
                                         >
-                                            <span className="text-[10px] text-zinc-400">
+                                            <span className="text-[0.625rem] text-zinc-400">
                                                 {streamLabels[item.key] ??
                                                     item.key}
                                             </span>
                                             <span
-                                                className="font-mono text-[10px]"
+                                                className="font-mono text-[0.625rem]"
                                                 style={{
                                                     color:
                                                         streamColors[

@@ -9,6 +9,14 @@ import {
     UsersRound,
 } from 'lucide-react';
 import { type FormEvent, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import { start as startImpersonation } from '@/routes/admin/impersonate';
@@ -175,7 +183,7 @@ export default function AdminUsersIndex({
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <Shield className="h-4 w-4 text-zinc-500" />
-                            <p className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+                            <p className="text-[0.6875rem] font-medium tracking-wide text-zinc-500 uppercase">
                                 Directory
                             </p>
                         </div>
@@ -202,79 +210,106 @@ export default function AdminUsersIndex({
                             <div className="space-y-1">
                                 <label
                                     htmlFor="role-filter"
-                                    className="text-[10px] tracking-wide text-zinc-500 uppercase"
+                                    className="text-[0.625rem] tracking-wide text-zinc-500 uppercase"
                                 >
                                     Role
                                 </label>
-                                <select
-                                    id="role-filter"
+                                <Select
                                     value={filters.role}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                         updateTable({
-                                            role: event.target.value,
+                                            role: value,
                                             page: 1,
                                         })
                                     }
-                                    className="h-9 rounded-md border border-border bg-background px-3 text-xs text-zinc-200"
                                 >
-                                    {roleOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger
+                                        id="role-filter"
+                                        className="h-9 rounded-md border-border bg-background text-xs text-zinc-200"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roleOptions.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-1">
                                 <label
                                     htmlFor="status-filter"
-                                    className="text-[10px] tracking-wide text-zinc-500 uppercase"
+                                    className="text-[0.625rem] tracking-wide text-zinc-500 uppercase"
                                 >
                                     Status
                                 </label>
-                                <select
-                                    id="status-filter"
+                                <Select
                                     value={filters.status}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                         updateTable({
-                                            status: event.target.value,
+                                            status: value,
                                             page: 1,
                                         })
                                     }
-                                    className="h-9 rounded-md border border-border bg-background px-3 text-xs text-zinc-200"
                                 >
-                                    {statusOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger
+                                        id="status-filter"
+                                        className="h-9 rounded-md border-border bg-background text-xs text-zinc-200"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statusOptions.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-1">
                                 <label
                                     htmlFor="sort-filter"
-                                    className="text-[10px] tracking-wide text-zinc-500 uppercase"
+                                    className="text-[0.625rem] tracking-wide text-zinc-500 uppercase"
                                 >
                                     Sort
                                 </label>
-                                <select
-                                    id="sort-filter"
+                                <Select
                                     value={filters.sort}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                         updateTable({
-                                            sort: event.target.value,
+                                            sort: value,
                                             page: 1,
                                         })
                                     }
-                                    className="h-9 rounded-md border border-border bg-background px-3 text-xs text-zinc-200"
                                 >
-                                    {sortOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger
+                                        id="sort-filter"
+                                        className="h-9 rounded-md border-border bg-background text-xs text-zinc-200"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sortOptions.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <button
@@ -301,33 +336,36 @@ export default function AdminUsersIndex({
                             <div className="ml-auto space-y-1">
                                 <label
                                     htmlFor="rows-filter"
-                                    className="text-[10px] tracking-wide text-zinc-500 uppercase"
+                                    className="text-[0.625rem] tracking-wide text-zinc-500 uppercase"
                                 >
                                     Rows
                                 </label>
-                                <select
-                                    id="rows-filter"
-                                    value={filters.per_page}
-                                    onChange={(event) =>
+                                <Select
+                                    value={String(filters.per_page)}
+                                    onValueChange={(value) =>
                                         updateTable({
-                                            per_page: Number.parseInt(
-                                                event.target.value,
-                                                10,
-                                            ),
+                                            per_page: Number.parseInt(value, 10),
                                             page: 1,
                                         })
                                     }
-                                    className="h-9 rounded-md border border-border bg-background px-3 text-xs text-zinc-200"
                                 >
-                                    <option value={10}>10</option>
-                                    <option value={25}>25</option>
-                                    <option value={50}>50</option>
-                                    <option value={100}>100</option>
-                                </select>
+                                    <SelectTrigger
+                                        id="rows-filter"
+                                        className="h-9 rounded-md border-border bg-background text-xs text-zinc-200"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_80px_132px] border-b border-border bg-zinc-900/40 px-6 py-2">
+                        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_5rem_8.25rem] border-b border-border bg-zinc-900/40 px-6 py-2">
                             <HeaderCell label="User" onClick={() => toggleSort('name')} />
                             <HeaderCell label="Role" onClick={() => toggleSort('role')} />
                             <HeaderCell label="Status" onClick={() => toggleSort('status')} />
@@ -337,7 +375,7 @@ export default function AdminUsersIndex({
                                 onClick={() => toggleSort('created_at')}
                             />
                             <HeaderCell label="Detail" />
-                            <p className="text-right text-[10px] tracking-wider text-zinc-500 uppercase">
+                            <p className="text-right text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                                 Access
                             </p>
                         </div>
@@ -351,7 +389,7 @@ export default function AdminUsersIndex({
                                 users.data.map((user) => (
                                     <div
                                         key={user.id}
-                                        className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_80px_132px] items-center gap-3 px-6 py-3 transition-colors hover:bg-zinc-800/30"
+                                        className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_5rem_8.25rem] items-center gap-3 px-6 py-3 transition-colors hover:bg-zinc-800/30"
                                     >
                                         <div>
                                             <p className="text-sm font-medium text-zinc-200">
@@ -384,7 +422,7 @@ export default function AdminUsersIndex({
                                             {user.can_impersonate ? (
                                                 <button
                                                     type="button"
-                                                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-[10px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 hover:text-white"
+                                                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-[0.625rem] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 hover:text-white"
                                                     onClick={() =>
                                                         impersonate(user.id)
                                                     }
@@ -462,7 +500,7 @@ function HeaderCell({
 }) {
     if (onClick === undefined) {
         return (
-            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+            <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                 {label}
             </p>
         );
@@ -472,7 +510,7 @@ function HeaderCell({
         <button
             type="button"
             onClick={onClick}
-            className="w-fit text-left text-[10px] tracking-wider text-zinc-500 uppercase transition-colors hover:text-zinc-200"
+            className="w-fit text-left text-[0.625rem] tracking-wider text-zinc-500 uppercase transition-colors hover:text-zinc-200"
         >
             {label}
         </button>
@@ -486,24 +524,22 @@ function StatusPill({ status }: { status: string }) {
     const isSuspended = value === 'suspended';
 
     return (
-        <div>
-            <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
-                    isActive
-                        ? 'bg-emerald-950/30 text-emerald-500'
-                        : isRejected
-                          ? 'bg-red-950/35 text-red-300'
-                          : isSuspended
-                            ? 'bg-zinc-800 text-zinc-300'
-                            : 'bg-amber-950/35 text-amber-300'
-                }`}
-            >
-                {isActive ? (
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                ) : null}
-                {value}
-            </span>
-        </div>
+        <Badge
+            className={`inline-flex items-center gap-1.5 border-transparent px-2 py-0.5 text-[0.625rem] font-medium tracking-wide uppercase ${
+                isActive
+                    ? 'bg-emerald-950/30 text-emerald-500'
+                    : isRejected
+                      ? 'bg-red-950/35 text-red-300'
+                      : isSuspended
+                        ? 'bg-zinc-800 text-zinc-300'
+                        : 'bg-amber-950/35 text-amber-300'
+            }`}
+        >
+            {isActive ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            ) : null}
+            {value}
+        </Badge>
     );
 }
 

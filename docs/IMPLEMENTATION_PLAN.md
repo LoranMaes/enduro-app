@@ -4,6 +4,26 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 9.5 — Global Hardening (COMPLETE)
+
+- Frontend hardening wave executed with strict no-backend-change constraints.
+- Completed:
+  - global native `<select>` migration to ShadCN `Select`
+  - admin pill/badge normalization onto ShadCN `Badge`
+  - coach-application status switcher normalization to ShadCN `ToggleGroup`
+  - arbitrary pixel-utility reduction (layout sizing converted to rem/responsive equivalents)
+  - semantic click-target cleanup for remaining interactive card/day wrappers
+  - page metadata safety fix for decomposed page-helper files
+- Preserved:
+  - existing API contracts
+  - routes/policies
+  - slicing-aligned UI behavior
+  - ticket/calendar/session interaction flow
+- Validation gate passed:
+  - types, full compact test suite, and Pint formatting.
+
+---
+
 ## Phase 0 — Design (COMPLETE)
 
 - Google AI Studio prototype

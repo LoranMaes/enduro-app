@@ -77,27 +77,21 @@ export function ActivityRow({
         onClick?.();
     };
 
-    return (
-        <div
-            onClick={(event) => {
-                event.stopPropagation();
-                activate();
-            }}
-            onKeyDown={(event) => {
-                if (!isInteractive) {
-                    return;
-                }
+    const Container = isInteractive ? 'button' : 'div';
 
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    activate();
-                }
-            }}
-            role={isInteractive ? 'button' : undefined}
-            tabIndex={isInteractive ? 0 : undefined}
+    return (
+        <Container
+            {...(isInteractive
+                ? {
+                      type: 'button' as const,
+                      onClick: (event) => {
+                          event.stopPropagation();
+                          activate();
+                      },
+                  }
+                : {})}
             className={cn(
-                'relative flex w-full flex-col overflow-hidden rounded-md border border-zinc-800/80 bg-zinc-900/60 px-3 py-2',
+                'relative flex w-full flex-col overflow-hidden rounded-md border border-zinc-800/80 bg-zinc-900/60 px-3 py-2 text-left',
                 isInteractive &&
                     'cursor-pointer transition-colors hover:border-zinc-700 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:ring-offset-0 focus-visible:outline-none',
             )}
@@ -119,7 +113,7 @@ export function ActivityRow({
                 </div>
                 <span
                     className={cn(
-                        'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px]',
+                        'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.625rem]',
                         isLinked
                             ? 'border-zinc-600 text-zinc-300'
                             : 'border-zinc-700 text-zinc-500',
@@ -129,7 +123,7 @@ export function ActivityRow({
                 </span>
             </div>
 
-            <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-500">
+            <div className="mt-1 flex items-center gap-2 text-[0.625rem] text-zinc-500">
                 <span className="inline-flex items-center gap-1">
                     <Clock3 className="h-3 w-3" />
                     {startedAtLabel}
@@ -145,7 +139,7 @@ export function ActivityRow({
                     {activity.provider}
                 </span>
             </div>
-        </div>
+        </Container>
     );
 }
 

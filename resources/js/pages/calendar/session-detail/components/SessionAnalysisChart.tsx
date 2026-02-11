@@ -1,19 +1,19 @@
 import { useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { streamColors, streamLabels } from './constants';
+import { streamColors, streamLabels } from '../constants';
 import type {
     SelectionRangeSummary,
     StreamSeries,
     XAxisMode,
-} from './types';
+} from '../types';
 import {
     formatAverageSpeedForSport,
     formatDurationSeconds,
     formatStreamValue,
     formatXAxisTick,
     formatXAxisValue,
-} from './utils';
+} from '../utils';
 
 type SessionAnalysisChartProps = {
     mode: XAxisMode;
@@ -77,7 +77,7 @@ export function SessionAnalysisChart({
                             onHoverSampleIndexChange(null);
                         }}
                         className={cn(
-                            'rounded border px-2 py-1 text-[10px] transition-colors',
+                            'rounded border px-2 py-1 text-[0.625rem] transition-colors',
                             mode === 'distance'
                                 ? 'border-zinc-600 bg-zinc-800 text-zinc-100'
                                 : canUseDistanceAxis
@@ -94,7 +94,7 @@ export function SessionAnalysisChart({
                             onHoverSampleIndexChange(null);
                         }}
                         className={cn(
-                            'rounded border px-2 py-1 text-[10px] transition-colors',
+                            'rounded border px-2 py-1 text-[0.625rem] transition-colors',
                             mode === 'time'
                                 ? 'border-zinc-600 bg-zinc-800 text-zinc-100'
                                 : 'border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200',
@@ -106,7 +106,7 @@ export function SessionAnalysisChart({
                         <button
                             type="button"
                             onClick={onResetZoom}
-                            className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900/60 px-2 py-1 text-[10px] text-zinc-300 hover:text-zinc-100"
+                            className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900/60 px-2 py-1 text-[0.625rem] text-zinc-300 hover:text-zinc-100"
                         >
                             <RotateCcw className="h-3.5 w-3.5" />
                             Reset Zoom
@@ -133,7 +133,7 @@ export function SessionAnalysisChart({
                                 onStreamToggle(streamKey);
                             }}
                             className={cn(
-                                'rounded border px-2 py-1 text-[10px] transition-colors',
+                                'rounded border px-2 py-1 text-[0.625rem] transition-colors',
                                 isEnabled
                                     ? 'border-zinc-600 bg-zinc-800 text-zinc-200'
                                     : isAvailable
@@ -147,7 +147,7 @@ export function SessionAnalysisChart({
                 })}
             </div>
 
-            <p className="mt-2 text-[11px] text-zinc-500">
+            <p className="mt-2 text-[0.6875rem] text-zinc-500">
                 Click and drag on the chart to zoom into a section.
             </p>
 
@@ -161,7 +161,7 @@ export function SessionAnalysisChart({
                                 : 'xl:w-full',
                         )}
                     >
-                        <div className="aspect-[16/6] min-h-[220px] w-full">
+                        <div className="aspect-[16/6] min-h-[13.75rem] w-full">
                             {isLoadingStreams ? (
                                 <p className="text-xs text-zinc-500">
                                     Loading activity streams...
@@ -193,7 +193,7 @@ export function SessionAnalysisChart({
                         <div className="mt-3 rounded-md border border-border/70 bg-zinc-900/30 px-3 py-2">
                             {hoverSummary !== null ? (
                                 <>
-                                    <p className="text-[11px] text-zinc-400">
+                                    <p className="text-[0.6875rem] text-zinc-400">
                                         {mode === 'distance'
                                             ? 'Distance'
                                             : 'Elapsed Time'}{' '}
@@ -208,7 +208,7 @@ export function SessionAnalysisChart({
                                         {hoverSummary.values.map((item) => (
                                             <p
                                                 key={item.key}
-                                                className="text-[11px] text-zinc-500"
+                                                className="text-[0.6875rem] text-zinc-500"
                                             >
                                                 {streamLabels[item.key] ??
                                                     item.key}
@@ -232,7 +232,7 @@ export function SessionAnalysisChart({
                                     </div>
                                 </>
                             ) : (
-                                <p className="text-[11px] text-zinc-500">
+                                <p className="text-[0.6875rem] text-zinc-500">
                                     Hover the chart to inspect values and
                                     highlight route position.
                                 </p>
@@ -242,15 +242,15 @@ export function SessionAnalysisChart({
 
                     <aside
                         className={cn(
-                            'overflow-hidden rounded-md border text-[11px] transition-all duration-300 ease-out xl:shrink-0',
+                            'overflow-hidden rounded-md border text-[0.6875rem] transition-all duration-300 ease-out xl:shrink-0',
                             showSelectionPanel
-                                ? 'max-h-[420px] border-border/70 bg-zinc-900/35 px-3 py-2 opacity-100 xl:max-h-none xl:w-[17rem]'
+                                ? 'max-h-[26.25rem] border-border/70 bg-zinc-900/35 px-3 py-2 opacity-100 xl:max-h-none xl:w-[17rem]'
                                 : 'max-h-0 border-transparent p-0 opacity-0 xl:w-0',
                         )}
                     >
                         {selectedRangeSummary !== null ? (
                             <>
-                                <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                     Selected Range
                                 </p>
                                 <div className="mt-1 grid gap-1">
@@ -349,8 +349,8 @@ export function SessionAnalysisChart({
 function SelectionStatLine({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex items-center justify-between gap-2 rounded border border-zinc-800/80 bg-black/20 px-2 py-1.5">
-            <span className="text-[10px] text-zinc-500">{label}</span>
-            <span className="font-mono text-[11px] text-zinc-200">{value}</span>
+            <span className="text-[0.625rem] text-zinc-500">{label}</span>
+            <span className="font-mono text-[0.6875rem] text-zinc-200">{value}</span>
         </div>
     );
 }

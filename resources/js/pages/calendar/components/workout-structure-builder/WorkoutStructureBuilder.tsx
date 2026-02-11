@@ -1,4 +1,11 @@
 import { Plus, RotateCcw } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { blockDefinitions, unitLabels } from './constants';
 import {
     BlockCard,
@@ -175,12 +182,11 @@ export function WorkoutStructureBuilder({
                             <label className="text-[0.625rem] text-zinc-500 uppercase">
                                 Unit
                             </label>
-                            <select
+                            <Select
                                 value={structure.unit}
                                 disabled={disabled}
-                                onChange={(event) => {
-                                    const nextUnit =
-                                        event.target.value as WorkoutStructureUnit;
+                                onValueChange={(value) => {
+                                    const nextUnit = value as WorkoutStructureUnit;
                                     updateStructure((current) => ({
                                         ...current,
                                         unit: nextUnit,
@@ -194,36 +200,48 @@ export function WorkoutStructureBuilder({
                                         }),
                                     }));
                                 }}
-                                className="w-full rounded-md border border-border bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none disabled:opacity-60"
                             >
-                                {Object.entries(unitLabels).map(([unit, label]) => (
-                                    <option key={unit} value={unit}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
+                                <SelectTrigger
+                                    className="h-8 w-full rounded-md border-border bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 disabled:opacity-60"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(unitLabels).map(([unit, label]) => (
+                                        <SelectItem key={unit} value={unit}>
+                                            {label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="space-y-1">
                             <label className="text-[0.625rem] text-zinc-500 uppercase">
                                 Mode
                             </label>
-                            <select
+                            <Select
                                 value={structure.mode}
                                 disabled={disabled}
-                                onChange={(event) => {
+                                onValueChange={(value) => {
                                     updateStructure((current) => ({
                                         ...current,
-                                        mode: event.target.value as
+                                        mode: value as
                                             | 'range'
                                             | 'target',
                                     }));
                                 }}
-                                className="w-full rounded-md border border-border bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none disabled:opacity-60"
                             >
-                                <option value="range">Range</option>
-                                <option value="target">Target</option>
-                            </select>
+                                <SelectTrigger
+                                    className="h-8 w-full rounded-md border-border bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 disabled:opacity-60"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="range">Range</SelectItem>
+                                    <SelectItem value="target">Target</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 

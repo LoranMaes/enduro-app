@@ -49,7 +49,7 @@ export function CalendarWeekGrid({
         <div className={cn('flex-1 transition-opacity', isRefreshing && 'opacity-80')}>
             <div ref={topSentinelRef} className="h-px w-full" />
             {isLoadingPast ? (
-                <p className="border-b border-border/50 px-4 py-1 text-[10px] text-zinc-500 uppercase">
+                <p className="border-b border-border/50 px-4 py-1 text-[0.625rem] text-zinc-500 uppercase">
                     Loading earlier weeks...
                 </p>
             ) : null}
@@ -77,7 +77,7 @@ export function CalendarWeekGrid({
             ))}
             {visibleWeeks.length === 0 ? <CalendarEmptyState /> : null}
             {isLoadingFuture ? (
-                <p className="border-t border-border/50 px-4 py-1 text-[10px] text-zinc-500 uppercase">
+                <p className="border-t border-border/50 px-4 py-1 text-[0.625rem] text-zinc-500 uppercase">
                     Loading upcoming weeks...
                 </p>
             ) : null}

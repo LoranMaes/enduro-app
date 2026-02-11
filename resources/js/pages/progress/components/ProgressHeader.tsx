@@ -18,7 +18,7 @@ export function ProgressHeader({
     return (
         <header className="flex shrink-0 items-end justify-between gap-6 border-b border-border px-6 pt-5 pb-6">
             <div>
-                <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                     Long Term Analysis
                 </p>
                 <h1 className="mt-1 text-4xl font-medium text-zinc-100">
@@ -66,7 +66,7 @@ function MetricLabel({
 }) {
     return (
         <div>
-            <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+            <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                 {label}
             </p>
             <p className="mt-1 flex items-end gap-1 font-mono text-4xl text-zinc-100">

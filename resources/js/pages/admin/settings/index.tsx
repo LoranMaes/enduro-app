@@ -63,7 +63,7 @@ export default function AdminSettings({
                 <header className="border-b border-border px-6 py-6">
                     <div className="flex items-center gap-2">
                         <Cog className="h-4 w-4 text-zinc-500" />
-                        <p className="text-[11px] tracking-wide text-zinc-500 uppercase">
+                        <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
                             Admin Controls
                         </p>
                     </div>

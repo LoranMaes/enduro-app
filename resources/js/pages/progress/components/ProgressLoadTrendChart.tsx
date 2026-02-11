@@ -23,8 +23,8 @@ export function ProgressLoadTrendChart({
     return (
         <section className="rounded-2xl border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-[30px] font-medium text-zinc-200">Load Trend</h2>
-                <div className="flex items-center gap-5 text-[11px] text-zinc-500 uppercase">
+                <h2 className="text-[1.875rem] font-medium text-zinc-200">Load Trend</h2>
+                <div className="flex items-center gap-5 text-[0.6875rem] text-zinc-500 uppercase">
                     <span className="inline-flex items-center gap-2">
                         <span className="h-0.5 w-4 bg-emerald-500" />
                         Actual
@@ -55,9 +55,9 @@ export function ProgressLoadTrendChart({
                 </p>
             </div>
 
-            <div className="relative mt-5 h-[340px] overflow-hidden rounded-xl border border-border/70 bg-background/60">
+            <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/70 bg-background/60">
                 {activePoint !== undefined ? (
-                    <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[11px]">
+                    <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[0.6875rem]">
                         <p className="text-zinc-400">{activePoint.label}</p>
                         <div className="mt-1 flex items-center gap-3">
                             <span className="inline-flex items-center gap-1 text-zinc-300">

@@ -131,7 +131,7 @@ export default function PendingApproval({
                     </p>
                     {isRejected && application?.review_notes !== null ? (
                         <div className="mt-3 rounded border border-red-500/30 bg-red-950/40 px-3 py-2">
-                            <p className="text-[11px] tracking-wide text-red-300 uppercase">
+                            <p className="text-[0.6875rem] tracking-wide text-red-300 uppercase">
                                 Rejection reason
                             </p>
                             <p className="mt-1 text-sm text-red-100/90">
@@ -215,7 +215,7 @@ export default function PendingApproval({
 
                             {application.review_notes !== null ? (
                                 <div className="mt-4 rounded border border-border/70 bg-zinc-900/40 px-3 py-2">
-                                    <p className="text-[11px] tracking-wide text-zinc-500 uppercase">
+                                    <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
                                         Review notes
                                     </p>
                                     <p className="mt-1 text-sm text-zinc-300">
@@ -299,7 +299,7 @@ function Question({
 }) {
     return (
         <article className="rounded-lg border border-border/70 bg-background/60 p-3">
-            <p className="text-[11px] tracking-[0.2em] text-cyan-300/90 uppercase">
+            <p className="text-[0.6875rem] tracking-[0.2em] text-cyan-300/90 uppercase">
                 {label}
             </p>
             {answer === null || answer.trim() === '' ? (

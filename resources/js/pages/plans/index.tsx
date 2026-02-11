@@ -17,7 +17,7 @@ export default function PlansIndex() {
             <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-background">
                 <div className="mx-auto flex w-full max-w-5xl flex-1 items-center px-6 py-10">
                     <section className="w-full rounded-2xl border border-border bg-surface p-10">
-                        <p className="text-[11px] tracking-wider text-zinc-500 uppercase">
+                        <p className="text-[0.6875rem] tracking-wider text-zinc-500 uppercase">
                             Planning Surface
                         </p>
                         <h1 className="mt-2 text-3xl font-medium text-zinc-100">
@@ -31,7 +31,7 @@ export default function PlansIndex() {
 
                         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
-                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                                     Coach-authored
                                 </p>
                                 <p className="mt-2 text-sm text-zinc-300">
@@ -39,7 +39,7 @@ export default function PlansIndex() {
                                 </p>
                             </div>
                             <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
-                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                                     AI-assisted
                                 </p>
                                 <p className="mt-2 text-sm text-zinc-300">
@@ -47,7 +47,7 @@ export default function PlansIndex() {
                                 </p>
                             </div>
                             <div className="rounded-xl border border-border/70 bg-zinc-900/40 p-4">
-                                <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
+                                <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
                                     Calendar-linked
                                 </p>
                                 <p className="mt-2 text-sm text-zinc-300">

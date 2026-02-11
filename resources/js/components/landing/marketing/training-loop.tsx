@@ -53,7 +53,7 @@ export function TrainingLoop() {
                             className="group flex flex-col gap-6"
                         >
                             <div
-                                className={`h-[1px] w-8 transition-all duration-500 group-hover:w-full ${step.color}`}
+                                className={`h-[0.0625rem] w-8 transition-all duration-500 group-hover:w-full ${step.color}`}
                             />
 
                             <div className="space-y-2">
