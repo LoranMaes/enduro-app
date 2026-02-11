@@ -3,6 +3,11 @@ import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { initializeEcho } from '@/lib/echo';
 import {
+    index as ticketNotificationsIndex,
+    markAllSeen as ticketNotificationsMarkAllSeen,
+    markSeen as ticketNotificationsMarkSeen,
+} from '@/routes/admin/api/ticket-notifications';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -97,12 +102,17 @@ export function AdminNotificationBell({ className }: { className?: string }) {
         setLoading(true);
 
         try {
-            const response = await fetch('/api/admin/ticket-notifications?per_page=20', {
-                method: 'GET',
+            const route = ticketNotificationsIndex({
+                query: { per_page: 20 },
+            });
+
+            const response = await fetch(route.url, {
+                method: route.method,
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                credentials: 'same-origin',
             });
 
             if (!response.ok) {
@@ -112,72 +122,87 @@ export function AdminNotificationBell({ className }: { className?: string }) {
             const payload = (await response.json()) as NotificationApiResponse;
             setItems(payload.data);
             setUnreadCount(payload.meta.unread_count);
+        } catch {
+            return;
         } finally {
             setLoading(false);
         }
     };
 
     const markSeen = async (notificationId: string): Promise<void> => {
-        const response = await fetch(
-            `/api/admin/ticket-notifications/${notificationId}/mark-seen`,
-            {
-                method: 'PATCH',
+        try {
+            const route = ticketNotificationsMarkSeen.form.patch({
+                notification: notificationId,
+            });
+
+            const response = await fetch(route.action, {
+                method: route.method,
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken(),
                 },
-            },
-        );
+                credentials: 'same-origin',
+            });
 
-        if (!response.ok) {
+            if (!response.ok) {
+                return;
+            }
+
+            const payload = (await response.json()) as {
+                unread_count: number;
+                notification: AdminNotification;
+            };
+
+            setUnreadCount(payload.unread_count);
+            setItems((current) =>
+                current.map((notification) =>
+                    notification.id === notificationId
+                        ? {
+                              ...notification,
+                              read_at: payload.notification.read_at,
+                          }
+                        : notification,
+                ),
+            );
+        } catch {
             return;
         }
-
-        const payload = (await response.json()) as {
-            unread_count: number;
-            notification: AdminNotification;
-        };
-
-        setUnreadCount(payload.unread_count);
-        setItems((current) =>
-            current.map((notification) =>
-                notification.id === notificationId
-                    ? {
-                          ...notification,
-                          read_at: payload.notification.read_at,
-                      }
-                    : notification,
-            ),
-        );
     };
 
     const markAllSeen = async (): Promise<void> => {
-        const response = await fetch('/api/admin/ticket-notifications/mark-all-seen', {
-            method: 'PATCH',
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrfToken(),
-            },
-        });
+        try {
+            const route = ticketNotificationsMarkAllSeen.form.patch();
 
-        if (!response.ok) {
+            const response = await fetch(route.action, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            setUnreadCount(0);
+            setItems((current) =>
+                current.map((notification) => ({
+                    ...notification,
+                    read_at: notification.read_at ?? new Date().toISOString(),
+                })),
+            );
+        } catch {
             return;
         }
-
-        setUnreadCount(0);
-        setItems((current) =>
-            current.map((notification) => ({
-                ...notification,
-                read_at: notification.read_at ?? new Date().toISOString(),
-            })),
-        );
     };
 
     const openTicket = async (notification: AdminNotification): Promise<void> => {
         if (notification.read_at === null) {
-            await markSeen(notification.id);
+            void markSeen(notification.id);
         }
 
         const destination = notification.data.url;

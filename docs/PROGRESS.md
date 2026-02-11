@@ -1,5 +1,55 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Phase 9 Wave A Complete: Mechanical Cleanup)
+
+- Completed strict Wayfinder migration for remaining frontend API calls in Wave A scope:
+    - admin tickets board/detail fetches now use generated Wayfinder helpers
+    - admin notification bell fetches now use generated Wayfinder helpers
+    - session detail activity-stream fetch now uses generated Wayfinder helper
+    - removed ticket API URL prop injection from `AdminTicketBoardController`
+- Extracted ticket index filter validation into dedicated FormRequest:
+    - added `TicketIndexRequest`
+    - moved `TicketController@index` inline validation into request class
+    - preserved response/query behavior
+- De-duplicated shared ticket constants:
+    - backend enums now expose `values()` for rule reuse
+    - ticket store/update/move-status requests now consume enum `values()`
+    - frontend ticket status/type/importance constants centralized in `resources/js/pages/admin/tickets/constants.ts`
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail npm run build`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+
+## 2026-02-11 (Phase 9 Wave A Start: Mechanical Cleanup)
+
+- Wave A execution started with strict behavior-preservation constraints.
+- Scope locked to:
+    - strict Wayfinder migration for remaining frontend API fetches
+    - ticket filter validation extraction to FormRequest
+    - shared ticket constant cleanup (status/type/importance string de-duplication)
+- No functional UX or policy changes are included in this wave.
+
+## 2026-02-11 (Phase 1 Global Codebase Audit Baseline)
+
+- Completed a structured, no-refactor audit across backend, frontend, styling, accessibility, and performance.
+- Confirmed key backend hotspots:
+    - fat controllers (`DashboardController`, `AthleteCalendarController`, `TrainingSessionController`, `Api/Admin/TicketController`, `AdminAnalyticsController`)
+    - duplicated validation rules (`Store/UpdateTrainingSessionRequest`, `Store/UpdateTrainingWeekRequest`)
+    - repeated impersonation checks duplicated across policies
+    - repeated role-scope query logic (`whereRaw('1 = 0')` fallback pattern in multiple controllers)
+- Confirmed key frontend hotspots:
+    - very large components mixing orchestration + rendering + API calls (tickets board/detail, session detail, workout builder, session editor)
+    - remaining hardcoded API URLs instead of Wayfinder route usage (notably admin tickets, notifications, activity streams)
+    - custom UI patterns where shadcn primitives are available but not yet adopted consistently (tabs/command/popover/table/sonner patterns)
+- Confirmed styling/accessibility/responsive debt:
+    - high concentration of fixed pixel utility usage in critical screens
+    - dialog/modal overflow logic still fragile in large content views
+    - semantic and keyboard patterns are inconsistent across complex interactive components
+- No structural refactor was applied in this audit step.
+- Next step: execute prioritized cleanup phases after explicit approval.
+
 ## 2026-02-11 (Admin Tickets UX Hardening: Auto-Sync + Editor + Dialog Scroll)
 
 - Hardened ticket detail editing to auto-sync by default:

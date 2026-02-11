@@ -6,6 +6,8 @@ Backend spine + athlete operational flows are complete, including activity sync/
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
+Phase 9 cleanup Wave A is complete (mechanical refactor pass with no behavior changes). Wave B is the next approved scope.
+
 ## Confidence Level
 
 High — UX validated, backend structure in place
@@ -28,6 +30,22 @@ High — UX validated, backend structure in place
 - Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
 - Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
+
+## Cleanup Audit Snapshot (2026-02-11)
+
+- Backend maintainability risk:
+    - controller/service boundaries are drifting in key flows (calendar orchestration, sessions, tickets, analytics)
+    - duplicated validation and impersonation guard logic increase change risk
+- Frontend maintainability risk:
+    - very large components are combining layout, fetch orchestration, and mutation logic
+    - remaining hardcoded API URLs bypass existing Wayfinder route generation
+- Design-system risk:
+    - custom interaction patterns are still used where shadcn primitives exist and can reduce UI drift
+- Styling/responsive risk:
+    - fixed-pixel layout usage remains high in complex screens
+    - modal overflow behavior remains fragile in some dense admin/calendar views
+- Accessibility risk:
+    - semantic element usage and keyboard interaction patterns are inconsistent across advanced editors and boards
 
 ## Mitigations
 

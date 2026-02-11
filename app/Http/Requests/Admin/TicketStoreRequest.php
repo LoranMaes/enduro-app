@@ -30,25 +30,12 @@ class TicketStoreRequest extends FormRequest
      */
     public function rules(): array
     {
-        $ticketStatuses = array_map(
-            static fn (TicketStatus $status): string => $status->value,
-            TicketStatus::cases(),
-        );
-        $ticketTypes = array_map(
-            static fn (TicketType $type): string => $type->value,
-            TicketType::cases(),
-        );
-        $ticketImportance = array_map(
-            static fn (TicketImportance $importance): string => $importance->value,
-            TicketImportance::cases(),
-        );
-
         return [
             'title' => ['required', 'string', 'max:180'],
             'description' => ['nullable', 'array'],
-            'status' => ['nullable', Rule::in($ticketStatuses)],
-            'type' => ['required', Rule::in($ticketTypes)],
-            'importance' => ['required', Rule::in($ticketImportance)],
+            'status' => ['nullable', Rule::in(TicketStatus::values())],
+            'type' => ['required', Rule::in(TicketType::values())],
+            'importance' => ['required', Rule::in(TicketImportance::values())],
             'assignee_admin_id' => [
                 'nullable',
                 'integer',

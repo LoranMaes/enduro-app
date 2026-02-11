@@ -24,6 +24,20 @@ import {
 } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { initializeEcho } from '@/lib/echo';
+import { ticketUserSearch as adminTicketUserSearch } from '@/routes/admin/api';
+import {
+    index as adminTicketIndex,
+    auditLogs as adminTicketAuditLogs,
+    moveStatus as adminTicketMoveStatus,
+    show as adminTicketShow,
+    store as adminTicketStore,
+    update as adminTicketUpdate,
+} from '@/routes/admin/api/tickets';
+import {
+    destroy as adminTicketAttachmentDestroy,
+    store as adminTicketAttachmentStore,
+} from '@/routes/admin/api/tickets/attachments';
+import { upsert as adminTicketInternalNoteUpsert } from '@/routes/admin/api/tickets/internal-note';
 import { index as adminIndex } from '@/routes/admin';
 import type { BreadcrumbItem, SharedData } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -52,10 +66,14 @@ import {
     TicketDescriptionEditor,
     type TicketDescriptionValue,
 } from './components/ticket-description-editor';
-
-type TicketStatusKey = 'todo' | 'in_progress' | 'to_review' | 'done';
-type TicketType = 'bug' | 'feature' | 'chore' | 'support';
-type TicketImportance = 'low' | 'normal' | 'high' | 'urgent';
+import {
+    statusColumns,
+    ticketImportanceOptions,
+    ticketTypeOptions,
+    type TicketImportance,
+    type TicketStatusKey,
+    type TicketType,
+} from './constants';
 
 type AdminOption = {
     id: number;
@@ -158,12 +176,6 @@ type TicketsPageProps = {
     initialArchived: Paginated<TicketRecord>;
     filters: Filters;
     admins: AdminOption[];
-    api: {
-        boardIndex: string;
-        store: string;
-        notifications: string;
-        userSearch: string;
-    };
 };
 
 type UserSearchResult = {
@@ -188,38 +200,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const statusColumns: Array<{ key: TicketStatusKey; label: string }> = [
-    { key: 'todo', label: 'Todo' },
-    { key: 'in_progress', label: 'In Progress' },
-    { key: 'to_review', label: 'To Review' },
-    { key: 'done', label: 'Done' },
-];
-
-const ticketTypeOptions: Array<{ value: TicketType; label: string }> = [
-    { value: 'bug', label: 'Bug' },
-    { value: 'feature', label: 'Feature' },
-    { value: 'chore', label: 'Chore' },
-    { value: 'support', label: 'Support' },
-];
-
-const ticketImportanceOptions: Array<{
-    value: TicketImportance;
-    label: string;
-}> = [
-    { value: 'low', label: 'Low' },
-    { value: 'normal', label: 'Normal' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
-];
-
 export default function AdminTickets({
     initialBoard,
     initialArchived,
     filters,
     admins,
-    api,
 }: TicketsPageProps) {
-    const { auth } = usePage<SharedData>().props;
+    const page = usePage<SharedData>();
+    const { auth } = page.props;
     const [activeTab, setActiveTab] = useState<'board' | 'archived'>('board');
     const [board, setBoard] = useState<BoardData>(initialBoard);
     const [archived, setArchived] =
@@ -354,6 +342,27 @@ export default function AdminTickets({
             echo.leave('admin.tickets');
         };
     }, [activeTab, selectedTicket?.id]);
+
+    useEffect(() => {
+        const search = page.url.split('?')[1] ?? '';
+        const ticketQueryValue = new URLSearchParams(search).get('ticket');
+
+        if (ticketQueryValue === null) {
+            return;
+        }
+
+        const ticketId = Number.parseInt(ticketQueryValue, 10);
+
+        if (Number.isNaN(ticketId) || ticketId <= 0) {
+            return;
+        }
+
+        if (selectedTicket?.id === ticketId && ticketDetailOpen) {
+            return;
+        }
+
+        void openTicketDetail(ticketId);
+    }, [page.url]);
 
     useEffect(() => {
         if (selectedTicket === null) {
@@ -560,8 +569,8 @@ export default function AdminTickets({
         setBoardLoading(true);
 
         try {
-            const response = await fetch(
-                `${api.boardIndex}?${buildQueryString({
+            const route = adminTicketIndex({
+                query: {
                     view: 'board',
                     search: nextFilters.search,
                     assignee_admin_id: nextFilters.assignee_admin_id,
@@ -573,15 +582,16 @@ export default function AdminTickets({
                             : nextFilters.importance,
                     sort: nextFilters.sort,
                     direction: nextFilters.direction,
-                })}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
                 },
-            );
+            });
+
+            const response = await fetch(route.url, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
 
             if (!response.ok) {
                 return;
@@ -601,8 +611,8 @@ export default function AdminTickets({
         setArchivedLoading(true);
 
         try {
-            const response = await fetch(
-                `${api.boardIndex}?${buildQueryString({
+            const route = adminTicketIndex({
+                query: {
                     view: 'archived',
                     search: nextFilters.search,
                     assignee_admin_id: nextFilters.assignee_admin_id,
@@ -616,15 +626,16 @@ export default function AdminTickets({
                     direction: nextFilters.direction,
                     page,
                     per_page: archived.meta.per_page,
-                })}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
                 },
-            );
+            });
+
+            const response = await fetch(route.url, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
 
             if (!response.ok) {
                 return;
@@ -654,8 +665,10 @@ export default function AdminTickets({
         setNewTicketFieldErrors({});
 
         try {
-            const response = await fetch(api.store, {
-                method: 'POST',
+            const route = adminTicketStore();
+
+            const response = await fetch(route.url, {
+                method: route.method,
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -720,19 +733,18 @@ export default function AdminTickets({
         ticketId: number,
         nextStatus: TicketStatusKey,
     ): Promise<void> => {
-        const response = await fetch(
-            `/api/admin/tickets/${ticketId}/move-status`,
-            {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
-                body: JSON.stringify({ status: nextStatus }),
+        const route = adminTicketMoveStatus(ticketId);
+
+        const response = await fetch(route.url, {
+            method: route.method,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken(),
             },
-        );
+            body: JSON.stringify({ status: nextStatus }),
+        });
 
         if (!response.ok) {
             return;
@@ -750,8 +762,10 @@ export default function AdminTickets({
     };
 
     const openTicketDetail = async (ticketId: number): Promise<void> => {
-        const response = await fetch(`/api/admin/tickets/${ticketId}`, {
-            method: 'GET',
+        const route = adminTicketShow(ticketId);
+
+        const response = await fetch(route.url, {
+            method: route.method,
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -789,19 +803,18 @@ export default function AdminTickets({
         setTicketSyncMessage('Syncing changes...');
 
         try {
-            const response = await fetch(
-                `/api/admin/tickets/${selectedTicket.id}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken(),
-                    },
-                    body: JSON.stringify(changes),
+            const route = adminTicketUpdate.form.patch(selectedTicket.id);
+
+            const response = await fetch(route.action, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken(),
                 },
-            );
+                body: JSON.stringify(changes),
+            });
 
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
@@ -860,18 +873,17 @@ export default function AdminTickets({
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch(
-                `/api/admin/tickets/${selectedTicket.id}/attachments`,
-                {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken(),
-                    },
-                    body: formData,
+            const route = adminTicketAttachmentStore(selectedTicket.id);
+
+            const response = await fetch(route.url, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken(),
                 },
-            );
+                body: formData,
+            });
 
             if (!response.ok) {
                 return;
@@ -891,17 +903,19 @@ export default function AdminTickets({
             return;
         }
 
-        const response = await fetch(
-            `/api/admin/tickets/${selectedTicket.id}/attachments/${attachmentId}`,
-            {
-                method: 'DELETE',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
+        const route = adminTicketAttachmentDestroy.form.delete({
+            ticket: selectedTicket.id,
+            ticketAttachment: attachmentId,
+        });
+
+        const response = await fetch(route.action, {
+            method: route.method,
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken(),
             },
-        );
+        });
 
         if (!response.ok) {
             return;
@@ -924,19 +938,20 @@ export default function AdminTickets({
         setTicketSyncMessage('Syncing notes...');
 
         try {
-            const response = await fetch(
-                `/api/admin/tickets/${selectedTicket.id}/internal-note`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken(),
-                    },
-                    body: JSON.stringify({ content }),
-                },
+            const route = adminTicketInternalNoteUpsert.form.put(
+                selectedTicket.id,
             );
+
+            const response = await fetch(route.action, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({ content }),
+            });
 
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
@@ -968,16 +983,17 @@ export default function AdminTickets({
         setTicketAuditLoading(true);
 
         try {
-            const response = await fetch(
-                `/api/admin/tickets/${selectedTicket.id}/audit-logs?per_page=50`,
-                {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
+            const route = adminTicketAuditLogs(selectedTicket.id, {
+                query: { per_page: 50 },
+            });
+
+            const response = await fetch(route.url, {
+                method: route.method,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-            );
+            });
 
             if (!response.ok) {
                 return;
@@ -2368,26 +2384,37 @@ export default function AdminTickets({
     );
 
     async function fetchUserSearch(query: string): Promise<UserSearchResult[]> {
-        const response = await fetch(
-            `${api.userSearch}?${buildQueryString({ q: query })}`,
-            {
-                method: 'GET',
+        const normalizedQuery = query.trim();
+
+        if (normalizedQuery.length < 2 || normalizedQuery.length > 120) {
+            return [];
+        }
+
+        try {
+            const route = adminTicketUserSearch({
+                query: { q: normalizedQuery },
+            });
+
+            const response = await fetch(route.url, {
+                method: route.method,
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-            },
-        );
+            });
 
-        if (!response.ok) {
+            if (!response.ok) {
+                return [];
+            }
+
+            const payload = (await response.json()) as {
+                data: UserSearchResult[];
+            };
+
+            return payload.data;
+        } catch {
             return [];
         }
-
-        const payload = (await response.json()) as {
-            data: UserSearchResult[];
-        };
-
-        return payload.data;
     }
 }
 
@@ -2631,20 +2658,6 @@ function initials(value: string): string {
         .map((chunk) => chunk.charAt(0).toUpperCase())
         .slice(0, 2)
         .join('');
-}
-
-function buildQueryString(params: Record<string, string | number>): string {
-    const query = new URLSearchParams();
-
-    Object.entries(params).forEach(([key, value]) => {
-        if (value === '' || value === 0) {
-            return;
-        }
-
-        query.set(key, String(value));
-    });
-
-    return query.toString();
 }
 
 function csrfToken(): string {

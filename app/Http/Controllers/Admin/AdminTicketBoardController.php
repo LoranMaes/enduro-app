@@ -97,12 +97,6 @@ class AdminTicketBoardController extends Controller
             ],
             'filters' => $filters,
             'admins' => $admins,
-            'api' => [
-                'boardIndex' => '/api/admin/tickets',
-                'store' => '/api/admin/tickets',
-                'notifications' => '/api/admin/ticket-notifications',
-                'userSearch' => '/api/admin/ticket-user-search',
-            ],
         ]);
     }
 

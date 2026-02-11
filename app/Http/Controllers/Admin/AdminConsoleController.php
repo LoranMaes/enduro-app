@@ -28,8 +28,8 @@ class AdminConsoleController extends Controller
         $activeAthletes = User::query()
             ->where('role', 'athlete')
             ->count();
-        $activeCoaches = User::query()
-            ->where('role', 'coach')
+        $activeCoaches = CoachApplication::query()
+            ->where('status', 'approved')
             ->count();
         $pendingCoachApplications = CoachApplication::query()
             ->where('status', 'pending')

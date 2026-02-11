@@ -138,7 +138,11 @@ export function TicketDescriptionEditor({
         const suggestionMode = suggestion?.mode;
         const suggestionQuery = suggestion?.query.trim() ?? '';
 
-        if (suggestionMode !== 'user' || suggestionQuery.length < 2) {
+        if (
+            suggestionMode !== 'user' ||
+            suggestionQuery.length < 2 ||
+            suggestionQuery.length > 120
+        ) {
             setUserResults([]);
             setUsersLoading(false);
 
@@ -151,6 +155,9 @@ export function TicketDescriptionEditor({
             void searchUsers(suggestionQuery)
                 .then((results) => {
                     setUserResults(results.slice(0, 6));
+                })
+                .catch(() => {
+                    setUserResults([]);
                 })
                 .finally(() => {
                     setUsersLoading(false);
@@ -924,32 +931,35 @@ function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
 
     const textBeforeCaret = beforeRange.toString();
     const coords = resolveCaretCoordinates(range, root);
+    const textBeforeCaretInNode =
+        range.startContainer.nodeType === Node.TEXT_NODE
+            ? (range.startContainer as Text).data.slice(0, range.startOffset)
+            : '';
+    const safeTail = (textBeforeCaretInNode || textBeforeCaret).slice(-200);
 
-    const userMatch = textBeforeCaret.match(/\/user\s+([^\n]*)$/i);
-
-    if (userMatch !== null) {
-        const query = userMatch[1] ?? '';
-
-        return {
-            mode: 'user',
-            query,
-            ...coords,
-        };
-    }
-
-    const adminMatch = textBeforeCaret.match(/@([\w.-]*)$/);
+    const adminMatch = safeTail.match(/(?:^|[\s\u00a0])@([\w.-]{0,120})$/);
 
     if (adminMatch !== null) {
-        const query = adminMatch[1] ?? '';
-
         return {
             mode: 'admin',
-            query,
+            query: adminMatch[1] ?? '',
             ...coords,
         };
     }
 
-    return null;
+    const userMatch = safeTail.match(
+        /(?:^|[\s\u00a0])\/user(?:\s+([^\n\r]{0,120})?)?$/i,
+    );
+
+    if (userMatch === null) {
+        return null;
+    }
+
+    return {
+        mode: 'user',
+        query: (userMatch[1] ?? '').trim(),
+        ...coords,
+    };
 }
 
 function resolveCaretCoordinates(

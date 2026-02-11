@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Enums\TicketStatus;
 use App\Events\TicketUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\TicketIndexRequest;
 use App\Http\Requests\Admin\TicketStoreRequest;
 use App\Http\Requests\Admin\TicketUpdateRequest;
 use App\Http\Resources\TicketAuditLogResource;
@@ -29,24 +30,13 @@ class TicketController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(TicketIndexRequest $request): JsonResponse
     {
         $admin = $request->user();
         abort_unless($admin instanceof User, 403);
         $this->authorize('viewAny', Ticket::class);
 
-        $validated = $request->validate([
-            'view' => ['nullable', 'in:board,archived'],
-            'search' => ['nullable', 'string', 'max:160'],
-            'assignee_admin_id' => ['nullable', 'integer'],
-            'creator_admin_id' => ['nullable', 'integer'],
-            'type' => ['nullable', 'in:bug,feature,chore,support'],
-            'importance' => ['nullable', 'in:low,normal,high,urgent'],
-            'status' => ['nullable', 'in:todo,in_progress,to_review,done'],
-            'sort' => ['nullable', 'in:title,status,type,importance,created_at,updated_at'],
-            'direction' => ['nullable', 'in:asc,desc'],
-            'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
-        ]);
+        $validated = $request->validated();
 
         $view = (string) ($validated['view'] ?? 'board');
         $sort = (string) ($validated['sort'] ?? 'updated_at');

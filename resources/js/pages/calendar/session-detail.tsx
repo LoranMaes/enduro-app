@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { mapTrainingSession } from '@/lib/training-plans';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
+import { streams as activityStreams } from '@/routes/activities';
 import { dashboard } from '@/routes';
 import { update as updateTrainingSession } from '@/routes/training-sessions';
 import type { BreadcrumbItem, SharedData } from '@/types';
@@ -169,8 +170,10 @@ export default function SessionDetailPage({
         setIsLoadingStreams(true);
         setStreamError(null);
 
-        void fetch(`/api/activities/${linkedActivityId}/streams`, {
-            method: 'GET',
+        const route = activityStreams(linkedActivityId);
+
+        void fetch(route.url, {
+            method: route.method,
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',

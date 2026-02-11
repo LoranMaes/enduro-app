@@ -32,25 +32,12 @@ class TicketUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $ticketStatuses = array_map(
-            static fn (TicketStatus $status): string => $status->value,
-            TicketStatus::cases(),
-        );
-        $ticketTypes = array_map(
-            static fn (TicketType $type): string => $type->value,
-            TicketType::cases(),
-        );
-        $ticketImportance = array_map(
-            static fn (TicketImportance $importance): string => $importance->value,
-            TicketImportance::cases(),
-        );
-
         return [
             'title' => ['sometimes', 'required', 'string', 'max:180'],
             'description' => ['sometimes', 'nullable', 'array'],
-            'status' => ['sometimes', Rule::in($ticketStatuses)],
-            'type' => ['sometimes', Rule::in($ticketTypes)],
-            'importance' => ['sometimes', Rule::in($ticketImportance)],
+            'status' => ['sometimes', Rule::in(TicketStatus::values())],
+            'type' => ['sometimes', Rule::in(TicketType::values())],
+            'importance' => ['sometimes', Rule::in(TicketImportance::values())],
             'assignee_admin_id' => [
                 'sometimes',
                 'nullable',

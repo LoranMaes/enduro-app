@@ -423,3 +423,63 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
     - slash command transforms (`/h1`, `/h2`, `/h3`, `/paragraph`, `/bullet`, `/bold`, `/italic`, `/underline`)
     - bounded editor height to prevent modal growth
 - Ticket detail audit trail now uses constrained dialog layout + scroll-safe containers so long histories no longer break vertical scrolling.
+
+---
+
+## Phase 9 — Global Quality Cleanup (Audit Complete, Refactor Pending Approval)
+
+Scope: full codebase quality pass with behavior stability and slicing parity preservation.
+
+### 9.0 Phase 1 Audit (COMPLETE)
+
+- backend hotspots identified:
+    - oversized controllers (`DashboardController`, `AthleteCalendarController`, `TrainingSessionController`, `Api/Admin/TicketController`, `AdminAnalyticsController`)
+    - duplicated request validation (`Store/UpdateTrainingSessionRequest`, `Store/UpdateTrainingWeekRequest`)
+    - repeated impersonation checks across policies
+    - repeated role-scoped query fallbacks (`whereRaw('1 = 0')`) that should be centralized
+- frontend hotspots identified:
+    - oversized React pages/components with mixed responsibilities (tickets board, session detail, workout builder, session editor)
+    - remaining hardcoded API paths instead of Wayfinder helpers (tickets, notifications, activity streams)
+    - custom UI patterns where shadcn primitives are available and should be preferred
+- styling/accessibility hotspots identified:
+    - heavy fixed-pixel utility usage in critical surfaces
+    - fragile modal viewport ownership in high-content dialogs
+    - semantic/keyboard consistency gaps in complex interactive components
+
+### 9.1 Planned Refactor Waves (PENDING APPROVAL)
+
+1. Safe cleanup wave:
+   - migrate remaining hardcoded frontend API paths to Wayfinder helpers
+   - introduce shared backend query-scope helpers without behavior changes
+   - perform low-risk shadcn primitive alignment where component contracts remain stable
+2. Structural cleanup wave:
+   - split fat controllers and extract duplicated validation/service logic
+   - split oversized frontend components into hooks + presentational units
+3. Hardening wave:
+   - targeted performance pass (analytics caching, index validation, payload trimming)
+   - accessibility/semantic polish and responsive overflow hardening
+   - focused regression test expansion for touched domains
+
+### 9.2 Wave A (COMPLETE)
+
+1. Strict Wayfinder migration
+   - replace remaining hardcoded API fetch URLs with generated route helpers
+   - remove ticket-page API URL props that duplicate route definitions
+2. Ticket filter validation extraction
+   - move API ticket index filter validation out of controller into dedicated FormRequest
+   - keep query behavior and response payload shape unchanged
+3. Shared constants cleanup
+   - de-duplicate ticket status/type/importance string literals across frontend/backend
+4. Verification and docs
+   - run targeted tests + Pint
+   - update progress/state docs with Wave A completion summary
+
+### 9.3 Next Wave
+
+- Wave B is the next approved scope:
+    - calendar payload service extraction
+    - role-scope query centralization
+    - training session controller action-service split
+    - validation duplication consolidation
+    - user index additions
+    - admin analytics 60s caching

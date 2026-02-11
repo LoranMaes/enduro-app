@@ -30,13 +30,8 @@ class TicketMoveStatusRequest extends FormRequest
      */
     public function rules(): array
     {
-        $ticketStatuses = array_map(
-            static fn (TicketStatus $status): string => $status->value,
-            TicketStatus::cases(),
-        );
-
         return [
-            'status' => ['required', Rule::in($ticketStatuses)],
+            'status' => ['required', Rule::in(TicketStatus::values())],
         ];
     }
 }
