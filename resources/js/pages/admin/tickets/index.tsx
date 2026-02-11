@@ -412,7 +412,7 @@ export default function AdminTickets({
         setTicketDetailError(null);
         setTicketSyncState('idle');
         setTicketSyncMessage('All changes saved');
-    }, [selectedTicket]);
+    }, [selectedTicket?.id]);
 
     const ticketDetailPayload = useMemo(() => {
         if (selectedTicket === null) {
@@ -1852,6 +1852,7 @@ export default function AdminTickets({
                 onOpenChange={(next) => {
                     setTicketDetailOpen(next);
                     if (!next) {
+                        setSelectedTicket(null);
                         setTicketDetailTab('overview');
                         setTicketAuditLogs([]);
                         setTicketDetailError(null);

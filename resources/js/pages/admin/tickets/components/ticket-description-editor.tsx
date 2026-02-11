@@ -84,9 +84,11 @@ export function TicketDescriptionEditor({
 }: TicketDescriptionEditorProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<HTMLDivElement | null>(null);
+    const caretRangeRef = useRef<Range | null>(null);
 
     const [isEmpty, setIsEmpty] = useState(true);
     const [suggestion, setSuggestion] = useState<SuggestionState | null>(null);
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
     const [userResults, setUserResults] = useState<MentionableUser[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [activeHeading, setActiveHeading] = useState<HeadingOption>('p');
@@ -133,7 +135,10 @@ export function TicketDescriptionEditor({
     }, [admins, suggestion]);
 
     useEffect(() => {
-        if (suggestion?.mode !== 'user' || suggestion.query.trim().length < 2) {
+        const suggestionMode = suggestion?.mode;
+        const suggestionQuery = suggestion?.query.trim() ?? '';
+
+        if (suggestionMode !== 'user' || suggestionQuery.length < 2) {
             setUserResults([]);
             setUsersLoading(false);
 
@@ -143,7 +148,7 @@ export function TicketDescriptionEditor({
         setUsersLoading(true);
 
         const timeoutId = window.setTimeout(() => {
-            void searchUsers(suggestion.query.trim())
+            void searchUsers(suggestionQuery)
                 .then((results) => {
                     setUserResults(results.slice(0, 6));
                 })
@@ -155,7 +160,7 @@ export function TicketDescriptionEditor({
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [searchUsers, suggestion]);
+    }, [searchUsers, suggestion?.mode, suggestion?.query]);
 
     const updateValue = (): void => {
         if (editorRef.current === null) {
@@ -210,8 +215,64 @@ export function TicketDescriptionEditor({
             return;
         }
 
-        const detected = detectSuggestionAtCaret(editorRef.current);
-        setSuggestion(detected);
+        const selection = window.getSelection();
+
+        if (selection !== null && selection.rangeCount > 0) {
+            const currentRange = selection.getRangeAt(0);
+
+            if (editorRef.current.contains(currentRange.startContainer)) {
+                caretRangeRef.current = currentRange.cloneRange();
+            }
+        }
+
+        const detectedSuggestion = detectSuggestionAtCaret(editorRef.current);
+        setSuggestion(detectedSuggestion);
+    };
+
+    useEffect(() => {
+        setActiveSuggestionIndex(0);
+    }, [suggestion?.mode, suggestion?.query]);
+
+    const currentSuggestionCount = useMemo(() => {
+        if (suggestion === null) {
+            return 0;
+        }
+
+        return suggestion.mode === 'admin'
+            ? adminResults.length
+            : userResults.length;
+    }, [adminResults.length, suggestion, userResults.length]);
+
+    useEffect(() => {
+        setActiveSuggestionIndex((current) => {
+            if (currentSuggestionCount === 0) {
+                return 0;
+            }
+
+            return Math.min(current, currentSuggestionCount - 1);
+        });
+    }, [currentSuggestionCount]);
+
+    const insertSuggestionByIndex = (index: number): void => {
+        if (suggestion === null) {
+            return;
+        }
+
+        if (suggestion.mode === 'admin') {
+            const admin = adminResults[index];
+
+            if (admin !== undefined) {
+                insertAdminMention(admin);
+            }
+
+            return;
+        }
+
+        const user = userResults[index];
+
+        if (user !== undefined) {
+            insertUserReference(user);
+        }
     };
 
     const syncToolbarState = (): void => {
@@ -383,17 +444,47 @@ export function TicketDescriptionEditor({
             return;
         }
 
-        if (event.key === 'Enter' || event.key === 'Tab') {
-            if (suggestion.mode === 'admin' && adminResults.length > 0) {
-                event.preventDefault();
-                insertAdminMention(adminResults[0]);
-                return;
-            }
+        if (currentSuggestionCount === 0) {
+            return;
+        }
 
-            if (suggestion.mode === 'user' && userResults.length > 0) {
-                event.preventDefault();
-                insertUserReference(userResults[0]);
-            }
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setActiveSuggestionIndex((current) => {
+                return (current + 1) % currentSuggestionCount;
+            });
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            setActiveSuggestionIndex((current) => {
+                return (
+                    (current - 1 + currentSuggestionCount) %
+                    currentSuggestionCount
+                );
+            });
+            return;
+        }
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            setActiveSuggestionIndex((current) => {
+                if (event.shiftKey) {
+                    return (
+                        (current - 1 + currentSuggestionCount) %
+                        currentSuggestionCount
+                    );
+                }
+
+                return (current + 1) % currentSuggestionCount;
+            });
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            insertSuggestionByIndex(activeSuggestionIndex);
         }
     };
 
@@ -429,14 +520,30 @@ export function TicketDescriptionEditor({
         }
 
         const selection = window.getSelection();
+        let range: Range | null = null;
 
-        if (selection === null || selection.rangeCount === 0) {
-            return;
+        if (selection !== null && selection.rangeCount > 0) {
+            const currentRange = selection.getRangeAt(0);
+
+            if (editorRef.current.contains(currentRange.startContainer)) {
+                range = currentRange;
+            }
         }
 
-        const range = selection.getRangeAt(0);
+        if (range === null && caretRangeRef.current !== null) {
+            const fallbackRange = caretRangeRef.current.cloneRange();
 
-        if (!editorRef.current.contains(range.startContainer)) {
+            if (editorRef.current.contains(fallbackRange.startContainer)) {
+                range = fallbackRange;
+
+                if (selection !== null) {
+                    selection.removeAllRanges();
+                    selection.addRange(fallbackRange);
+                }
+            }
+        }
+
+        if (range === null || !editorRef.current.contains(range.startContainer)) {
             return;
         }
 
@@ -445,18 +552,15 @@ export function TicketDescriptionEditor({
             const before = textNode.data.slice(0, range.startOffset);
             const matchRegex =
                 payload.kind === 'admin'
-                    ? /(?:^|\s)@[\w.-]*$/
-                    : /(?:^|\s)\/user\s+[^\n]*$/i;
+                    ? /@[\w.-]*$/
+                    : /\/user\s+[^\n]*$/i;
             const match = before.match(matchRegex);
 
             if (match !== null) {
-                const rawMatch = match[0];
-                const trimmedMatch = rawMatch.startsWith(' ')
-                    ? rawMatch.slice(1)
-                    : rawMatch;
+                const matchedToken = match[0];
                 const removeStart = Math.max(
                     0,
-                    range.startOffset - trimmedMatch.length,
+                    range.startOffset - matchedToken.length,
                 );
 
                 textNode.deleteData(
@@ -493,8 +597,11 @@ export function TicketDescriptionEditor({
         const nextRange = document.createRange();
         nextRange.setStartAfter(spacer);
         nextRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(nextRange);
+        if (selection !== null) {
+            selection.removeAllRanges();
+            selection.addRange(nextRange);
+        }
+        caretRangeRef.current = nextRange.cloneRange();
 
         setSuggestion(null);
         setUserResults([]);
@@ -540,16 +647,40 @@ export function TicketDescriptionEditor({
         }
     };
 
-    const suggestionLeft = useMemo(() => {
-        if (suggestion === null) {
-            return 8;
+    const suggestionMenuPosition = useMemo(() => {
+        if (suggestion === null || containerRef.current === null) {
+            return {
+                className: '',
+                left: 8,
+                top: 56,
+            };
         }
 
-        const containerWidth = containerRef.current?.clientWidth ?? 360;
         const menuWidth = 288;
-        const maxLeft = Math.max(8, containerWidth - menuWidth - 8);
+        const estimatedMenuHeight = 220;
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const maxLeft = Math.max(8, containerRect.width - menuWidth - 8);
+        const left = Math.min(
+            Math.max(8, suggestion.left - containerRect.left),
+            maxLeft,
+        );
+        const topBelow = suggestion.top - containerRect.top + 22;
+        const canRenderBelow =
+            topBelow + estimatedMenuHeight <= containerRect.height - 8;
 
-        return Math.min(Math.max(8, suggestion.left), maxLeft);
+        if (canRenderBelow) {
+            return {
+                className: '',
+                left,
+                top: Math.max(56, topBelow),
+            };
+        }
+
+        return {
+            className: '-translate-y-full',
+            left,
+            top: Math.max(56, suggestion.top - containerRect.top - 8),
+        };
     }, [suggestion]);
 
     return (
@@ -558,7 +689,7 @@ export function TicketDescriptionEditor({
 
             <div
                 ref={containerRef}
-                className="relative flex h-full min-h-[220px] flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background"
+                className="relative flex h-full min-h-[220px] flex-1 flex-col overflow-visible rounded-lg border border-border bg-background"
             >
                 <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
                     <ToolbarButton
@@ -637,10 +768,13 @@ export function TicketDescriptionEditor({
 
                 {suggestion !== null ? (
                     <div
-                        className="absolute z-40 w-72 -translate-y-full rounded-lg border border-border bg-surface p-1 shadow-xl"
+                        className={cn(
+                            'absolute z-[220] w-72 rounded-lg border border-border bg-surface p-1 shadow-xl',
+                            suggestionMenuPosition.className,
+                        )}
                         style={{
-                            left: suggestionLeft,
-                            top: Math.max(suggestion.top - 8, 48),
+                            left: suggestionMenuPosition.left,
+                            top: suggestionMenuPosition.top,
                         }}
                     >
                         {suggestion.mode === 'admin' ? (
@@ -649,11 +783,19 @@ export function TicketDescriptionEditor({
                                     No admins found.
                                 </p>
                             ) : (
-                                adminResults.map((admin) => (
+                                adminResults.map((admin, index) => (
                                     <button
                                         key={admin.id}
                                         type="button"
-                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-200 transition-colors hover:bg-zinc-800"
+                                        className={cn(
+                                            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                                            index === activeSuggestionIndex
+                                                ? 'bg-zinc-800 text-zinc-100'
+                                                : 'text-zinc-200 hover:bg-zinc-800',
+                                        )}
+                                        onMouseEnter={() =>
+                                            setActiveSuggestionIndex(index)
+                                        }
                                         onMouseDown={(event) => {
                                             event.preventDefault();
                                             insertAdminMention(admin);
@@ -685,11 +827,19 @@ export function TicketDescriptionEditor({
                                 No users found.
                             </p>
                         ) : (
-                            userResults.map((user) => (
+                            userResults.map((user, index) => (
                                 <button
                                     key={user.id}
                                     type="button"
-                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-200 transition-colors hover:bg-zinc-800"
+                                    className={cn(
+                                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                                        index === activeSuggestionIndex
+                                            ? 'bg-zinc-800 text-zinc-100'
+                                            : 'text-zinc-200 hover:bg-zinc-800',
+                                    )}
+                                    onMouseEnter={() =>
+                                        setActiveSuggestionIndex(index)
+                                    }
                                     onMouseDown={(event) => {
                                         event.preventDefault();
                                         insertUserReference(user);
@@ -761,8 +911,10 @@ function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
     }
 
     const range = selection.getRangeAt(0);
+    const insideEditor = root.contains(range.startContainer);
+    const isCollapsed = range.collapsed;
 
-    if (!range.collapsed || !root.contains(range.startContainer)) {
+    if (!isCollapsed || !insideEditor) {
         return null;
     }
 
@@ -771,8 +923,9 @@ function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
     beforeRange.setEnd(range.endContainer, range.endOffset);
 
     const textBeforeCaret = beforeRange.toString();
+    const coords = resolveCaretCoordinates(range, root);
 
-    const userMatch = textBeforeCaret.match(/(?:^|\s)\/user\s+([^\n]*)$/i);
+    const userMatch = textBeforeCaret.match(/\/user\s+([^\n]*)$/i);
 
     if (userMatch !== null) {
         const query = userMatch[1] ?? '';
@@ -780,11 +933,11 @@ function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
         return {
             mode: 'user',
             query,
-            ...resolveCaretCoordinates(range, root),
+            ...coords,
         };
     }
 
-    const adminMatch = textBeforeCaret.match(/(?:^|\s)@([\w.-]*)$/);
+    const adminMatch = textBeforeCaret.match(/@([\w.-]*)$/);
 
     if (adminMatch !== null) {
         const query = adminMatch[1] ?? '';
@@ -792,7 +945,7 @@ function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
         return {
             mode: 'admin',
             query,
-            ...resolveCaretCoordinates(range, root),
+            ...coords,
         };
     }
 
@@ -806,12 +959,14 @@ function resolveCaretCoordinates(
     left: number;
     top: number;
 } {
-    const containerRect = container.getBoundingClientRect();
     const rangeRect = range.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const left = rangeRect.left === 0 ? containerRect.left + 8 : rangeRect.left;
+    const top = rangeRect.top === 0 ? containerRect.top + 32 : rangeRect.top;
 
     return {
-        left: Math.max(8, rangeRect.left - containerRect.left),
-        top: Math.max(40, rangeRect.top - containerRect.top),
+        left: Math.max(8, left),
+        top: Math.max(40, top),
     };
 }
 
