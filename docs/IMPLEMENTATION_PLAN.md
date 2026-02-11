@@ -259,20 +259,28 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
   - Billing & Plans
 - added athlete account label/sidebar treatment
 
-### 9.3 Tickets Frontend Decomposition (IN PROGRESS)
+### 9.3 Tickets Frontend Decomposition (COMPLETE FOR WAVE C4 SCOPE)
 
 - Objective:
   - split oversized admin tickets page into testable UI units + hooks without API/behavior changes
   - stabilize rich editor suggestion UX in edit mode before deeper extraction
-- Completed in current increment:
+- Completed:
   - extracted `TicketCreateDialog` from `admin/tickets/index.tsx`
   - stabilized mention and `/user` trigger parsing in existing ticket editing
   - stabilized query-driven ticket opening from notification URLs
   - hardened mark-seen/mark-all-seen notification mutations with direct Wayfinder route usage
-- Next:
-  - extract ticket detail dialog/sheet into dedicated component
-  - extract ticket mutation actions into `useTicketMutations`
-  - keep payload and policy behavior unchanged
+  - reduced `admin/tickets/index.tsx` to orchestrator size (395 lines)
+  - extracted ticket detail dialog into dedicated modules:
+    - `TicketDetailSheet`
+    - `TicketDetailOverviewTab`
+    - `TicketDetailAuditTab`
+  - extracted mutation/network operations into `useTicketMutations`
+  - extracted selection/query sync into `useTicketSelection`
+  - extracted ticket detail draft/autosync state into `useTicketDetailState`
+  - filter surface now emits a single payload update contract (`onFiltersChange`)
+- Result:
+  - no backend or API contract changes
+  - behavior preserved for create/edit/autosync/audit/attachments/realtime/query-open
 
 ### 9.4 Tickets Primitive + Semantics Alignment (COMPLETE)
 

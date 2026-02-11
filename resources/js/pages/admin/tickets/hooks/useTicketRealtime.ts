@@ -4,7 +4,6 @@ import { initializeEcho } from '@/lib/echo';
 type UseTicketRealtimeOptions = {
     activeTab: 'board' | 'archived';
     selectedTicketId: number | null;
-    pageUrl: string;
     refreshBoard: () => Promise<void>;
     refreshArchived: () => Promise<void>;
     openTicketDetail: (ticketId: number) => Promise<void>;
@@ -13,7 +12,6 @@ type UseTicketRealtimeOptions = {
 export function useTicketRealtime({
     activeTab,
     selectedTicketId,
-    pageUrl,
     refreshBoard,
     refreshArchived,
     openTicketDetail,
@@ -70,29 +68,4 @@ export function useTicketRealtime({
             echo.leave('admin.tickets');
         };
     }, []);
-
-    useEffect(() => {
-        const pageQuery = pageUrl.split('?')[1] ?? '';
-        const search =
-            typeof window === 'undefined'
-                ? pageQuery
-                : window.location.search.replace(/^\?/, '') || pageQuery;
-        const ticketQueryValue = new URLSearchParams(search).get('ticket');
-
-        if (ticketQueryValue === null) {
-            return;
-        }
-
-        const ticketId = Number.parseInt(ticketQueryValue, 10);
-
-        if (Number.isNaN(ticketId) || ticketId <= 0) {
-            return;
-        }
-
-        if (selectedTicketIdRef.current === ticketId) {
-            return;
-        }
-
-        void openTicketDetailRef.current(ticketId);
-    }, [pageUrl]);
 }

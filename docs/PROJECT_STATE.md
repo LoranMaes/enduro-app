@@ -30,7 +30,7 @@ High — UX validated, backend structure in place
 - Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
 - Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
-- Admin tickets refactor is mid-flight: board/filter extraction is in place, but `resources/js/pages/admin/tickets/index.tsx` is still larger than target and detail-dialog extraction is pending
+- Ticket decomposition remains ongoing for other app surfaces, but admin tickets Wave C4 boundaries are now in place (index orchestration + isolated hooks/components)
 - Ticket semantics/primitives were hardened in Wave C3, but detail-dialog extraction and final size reduction are still pending
 
 ## Cleanup Audit Snapshot (2026-02-11)
@@ -306,10 +306,17 @@ LOCKED for MVP
         - `table.tsx`
         - `scroll-area.tsx`
     - Added reusable admin-ticket modules:
-        - `resources/js/pages/admin/tickets/components/ticket-assignee-combobox.tsx`
-        - `resources/js/pages/admin/tickets/components/ticket-ui.tsx`
-        - `resources/js/pages/admin/tickets/lib/ticket-utils.ts`
+    - `resources/js/pages/admin/tickets/components/ticket-assignee-combobox.tsx`
+    - `resources/js/pages/admin/tickets/components/ticket-ui.tsx`
+    - `resources/js/pages/admin/tickets/lib/ticket-utils.ts`
+    - `resources/js/pages/admin/tickets/components/TicketDetailSheet.tsx`
+    - `resources/js/pages/admin/tickets/components/TicketDetailOverviewTab.tsx`
+    - `resources/js/pages/admin/tickets/components/TicketDetailAuditTab.tsx`
+    - `resources/js/pages/admin/tickets/hooks/useTicketMutations.ts`
+    - `resources/js/pages/admin/tickets/hooks/useTicketSelection.ts`
+    - `resources/js/pages/admin/tickets/hooks/useTicketDetailState.ts`
     - `resources/js/pages/admin/tickets/index.tsx` now delegates shared display + serialization concerns to extracted modules (behavior preserved).
+    - `resources/js/pages/admin/tickets/index.tsx` reduced to 395 lines and now acts as a thin orchestration layer.
     - Ticket description editor (TipTap) integration is now API-accurate for current package versions (typed attributes/setContent contract fixed).
     - Session editor modal tab scaffold is now structurally stable (`Tabs` closure fix) with the shared dialog size contract still intact.
 - Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.

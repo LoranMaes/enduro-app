@@ -1,8 +1,5 @@
 import type { DescriptionUserRef } from '../components/ticket-description-editor';
-import type {
-    TicketImportance,
-    TicketType,
-} from '../types';
+import type { TicketImportance, TicketType } from '../types';
 
 type RequestFieldErrors = Record<string, string[]>;
 
@@ -66,43 +63,15 @@ export function buildTicketUpdatePayload(
 }
 
 export function descriptionHtmlFromPayload(payload: unknown): string {
-    if (!Array.isArray(payload)) {
-        return '';
-    }
-
-    const firstRichText = payload.find(
-        (item): item is Record<string, unknown> => {
-            if (typeof item !== 'object' || item === null) {
-                return false;
-            }
-
-            return 'type' in item && item.type === 'rich_text';
-        },
-    );
-
-    if (firstRichText === undefined) {
-        return '';
-    }
-
-    if (typeof firstRichText.html === 'string') {
-        return firstRichText.html;
-    }
-
-    if (typeof firstRichText.text === 'string') {
-        return escapeHtml(firstRichText.text).replace(/\\n/g, '<br />');
-    }
-
-    return '';
+    return extractDescriptionHtml(payload);
 }
 
 export function descriptionUserRefsFromPayload(
     payload: unknown,
 ): DescriptionUserRef[] {
-    if (!Array.isArray(payload)) {
-        return [];
-    }
+    const descriptionItems = normalizeDescriptionItems(payload);
 
-    const firstRichText = payload.find(
+    const firstRichText = descriptionItems.find(
         (item): item is Record<string, unknown> => {
             if (typeof item !== 'object' || item === null) {
                 return false;
@@ -296,11 +265,111 @@ function stripHtml(value: string): string {
         .trim();
 }
 
+function normalizeDescriptionItems(
+    payload: unknown,
+): Record<string, unknown>[] {
+    if (Array.isArray(payload)) {
+        return payload.filter(
+            (item): item is Record<string, unknown> =>
+                typeof item === 'object' && item !== null,
+        );
+    }
+
+    if (typeof payload === 'object' && payload !== null) {
+        const value = payload as Record<string, unknown>;
+
+        if (Array.isArray(value.blocks)) {
+            return value.blocks.filter(
+                (item): item is Record<string, unknown> =>
+                    typeof item === 'object' && item !== null,
+            );
+        }
+
+        if (
+            'type' in value ||
+            'html' in value ||
+            'text' in value ||
+            'mentions' in value ||
+            'user_refs' in value
+        ) {
+            return [value];
+        }
+    }
+
+    return [];
+}
+
+function extractDescriptionHtml(payload: unknown): string {
+    if (typeof payload === 'string') {
+        if (payload.trim() === '') {
+            return '';
+        }
+
+        if (/<[a-z][\s\S]*>/i.test(payload)) {
+            return payload;
+        }
+
+        return escapeHtml(payload).replace(/\n/g, '<br />');
+    }
+
+    if (Array.isArray(payload)) {
+        for (const item of payload) {
+            const resolved = extractDescriptionHtml(item);
+
+            if (resolved.trim() !== '') {
+                return resolved;
+            }
+        }
+
+        return '';
+    }
+
+    if (typeof payload !== 'object' || payload === null) {
+        return '';
+    }
+
+    const value = payload as Record<string, unknown>;
+
+    if (typeof value.html === 'string') {
+        return value.html;
+    }
+
+    if (typeof value.text === 'string') {
+        return escapeHtml(value.text).replace(/\n/g, '<br />');
+    }
+
+    if (value.blocks !== undefined) {
+        const resolved = extractDescriptionHtml(value.blocks);
+
+        if (resolved.trim() !== '') {
+            return resolved;
+        }
+    }
+
+    if (value.content !== undefined) {
+        const resolved = extractDescriptionHtml(value.content);
+
+        if (resolved.trim() !== '') {
+            return resolved;
+        }
+    }
+
+    if (value.data !== undefined) {
+        const resolved = extractDescriptionHtml(value.data);
+
+        if (resolved.trim() !== '') {
+            return resolved;
+        }
+    }
+
+    return '';
+}
+
 function escapeHtml(value: string): string {
     return value
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }

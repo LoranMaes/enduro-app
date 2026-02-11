@@ -1,7 +1,7 @@
 import type { DragEvent } from 'react';
-import { AssigneeLabel, ImportanceDot, TypeBadge } from './ticket-ui';
 import { formatDuration, formatRelative } from '../lib/ticket-utils';
 import type { TicketRecord } from '../types';
+import { AssigneeLabel, ImportanceDot, TypeBadge } from './ticket-ui';
 
 type TicketCardProps = {
     ticket: TicketRecord;

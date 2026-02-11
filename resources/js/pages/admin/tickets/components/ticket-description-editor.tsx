@@ -1,4 +1,3 @@
-import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import { router } from '@inertiajs/react';
@@ -44,10 +43,7 @@ import {
 } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
-import {
-    AdminMentionNode,
-    UserReferenceNode,
-} from './editor/token-extensions';
+import { AdminMentionNode, UserReferenceNode } from './editor/token-extensions';
 
 export type MentionableAdmin = {
     id: number;
@@ -162,7 +158,10 @@ export function TicketDescriptionEditor({
 
         setSuggestion({
             ...detected,
-            left: Math.min(Math.max(8, detected.left - containerRect.left), maxLeft),
+            left: Math.min(
+                Math.max(8, detected.left - containerRect.left),
+                maxLeft,
+            ),
             top: Math.max(56, detected.top - containerRect.top + 4),
         });
     }, []);
@@ -174,7 +173,10 @@ export function TicketDescriptionEditor({
 
             editor.state.doc.descendants((node) => {
                 if (node.type.name === 'adminMention') {
-                    const id = Number.parseInt(String(node.attrs.id ?? '0'), 10);
+                    const id = Number.parseInt(
+                        String(node.attrs.id ?? '0'),
+                        10,
+                    );
 
                     if (id > 0) {
                         mentionAdminIds.push(id);
@@ -182,7 +184,10 @@ export function TicketDescriptionEditor({
                 }
 
                 if (node.type.name === 'userReference') {
-                    const id = Number.parseInt(String(node.attrs.id ?? '0'), 10);
+                    const id = Number.parseInt(
+                        String(node.attrs.id ?? '0'),
+                        10,
+                    );
 
                     if (id > 0) {
                         userRefs.push({
@@ -196,8 +201,6 @@ export function TicketDescriptionEditor({
             });
 
             const text = editor.getText();
-
-            setIsEmpty(text.trim().length === 0);
 
             onChange({
                 html: editor.getHTML(),
@@ -216,9 +219,6 @@ export function TicketDescriptionEditor({
                     levels: [1, 2, 3],
                 },
             }),
-            Placeholder.configure({
-                placeholder,
-            }),
             AdminMentionNode,
             UserReferenceNode,
         ],
@@ -232,7 +232,6 @@ export function TicketDescriptionEditor({
         onCreate: ({ editor: createdEditor }) => {
             syncToolbarState(createdEditor);
             resolveSuggestion(createdEditor);
-            emitValue(createdEditor);
         },
         onSelectionUpdate: ({ editor: activeEditor }) => {
             syncToolbarState(activeEditor);
@@ -261,13 +260,16 @@ export function TicketDescriptionEditor({
         editor.commands.setContent(html, { emitUpdate: false });
         syncToolbarState(editor);
         resolveSuggestion(editor);
-        emitValue(editor);
-    }, [editor, emitValue, html, resolveSuggestion, syncToolbarState]);
+        setIsEmpty(editor.isEmpty);
+    }, [editor, html, resolveSuggestion, syncToolbarState]);
 
     useEffect(() => {
         setActiveSuggestionIndex(0);
     }, [suggestion?.mode, suggestion?.query]);
 
+    useEffect(() => {
+        console.log(isEmpty);
+    }, [isEmpty]);
     const adminResults = useMemo(() => {
         if (suggestion?.mode !== 'admin') {
             return [];
@@ -437,7 +439,13 @@ export function TicketDescriptionEditor({
                 insertUserReference(user);
             }
         },
-        [adminResults, insertAdminMention, insertUserReference, suggestion, userResults],
+        [
+            adminResults,
+            insertAdminMention,
+            insertUserReference,
+            suggestion,
+            userResults,
+        ],
     );
 
     const executeCommand = (command: () => void): void => {
@@ -521,7 +529,9 @@ export function TicketDescriptionEditor({
         ],
     );
 
-    const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const handleEditorKeyDown = (
+        event: KeyboardEvent<HTMLDivElement>,
+    ): void => {
         if (editor === null) {
             return;
         }
@@ -547,7 +557,10 @@ export function TicketDescriptionEditor({
 
         if (userBadge !== null) {
             event.preventDefault();
-            const userId = Number.parseInt(userBadge.dataset.userRefId ?? '0', 10);
+            const userId = Number.parseInt(
+                userBadge.dataset.userRefId ?? '0',
+                10,
+            );
 
             if (userId > 0) {
                 const route = adminUserShow(userId);
@@ -557,7 +570,9 @@ export function TicketDescriptionEditor({
             return;
         }
 
-        const adminBadge = target.closest<HTMLElement>('[data-mention-admin-id]');
+        const adminBadge = target.closest<HTMLElement>(
+            '[data-mention-admin-id]',
+        );
 
         if (adminBadge === null) {
             return;
@@ -620,7 +635,11 @@ export function TicketDescriptionEditor({
                         isActive={activeInlineState.bulletList}
                         onClick={() => {
                             executeCommand(() => {
-                                editor?.chain().focus().toggleBulletList().run();
+                                editor
+                                    ?.chain()
+                                    .focus()
+                                    .toggleBulletList()
+                                    .run();
                             });
                         }}
                     />
@@ -638,12 +657,16 @@ export function TicketDescriptionEditor({
                                     return;
                                 }
 
-                                const level = Number.parseInt(value.replace('h', ''), 10) as
-                                    | 1
-                                    | 2
-                                    | 3;
+                                const level = Number.parseInt(
+                                    value.replace('h', ''),
+                                    10,
+                                ) as 1 | 2 | 3;
 
-                                editor.chain().focus().toggleHeading({ level }).run();
+                                editor
+                                    .chain()
+                                    .focus()
+                                    .toggleHeading({ level })
+                                    .run();
                             });
                         }}
                     >
@@ -676,11 +699,11 @@ export function TicketDescriptionEditor({
                         onClick={handleEditorClick}
                     />
 
-                    {isEmpty ? (
+                    {isEmpty && (
                         <p className="pointer-events-none absolute top-2 left-3 text-sm text-zinc-600">
                             {placeholder}
                         </p>
-                    ) : null}
+                    )}
                 </div>
 
                 <Popover
@@ -720,51 +743,70 @@ export function TicketDescriptionEditor({
                                 handleSuggestionKeyDown(event);
                             }}
                         >
-                            <CommandList role="listbox" aria-label="Suggestions">
+                            <CommandList
+                                role="listbox"
+                                aria-label="Suggestions"
+                            >
                                 {suggestion?.mode === 'admin' ? (
                                     adminResults.length === 0 ? (
-                                        <CommandEmpty>No admins found.</CommandEmpty>
+                                        <CommandEmpty>
+                                            No admins found.
+                                        </CommandEmpty>
                                     ) : (
                                         <CommandGroup heading="Admins">
-                                            {adminResults.map((admin, index) => (
-                                                <CommandItem
-                                                    key={admin.id}
-                                                    value={`${admin.name} ${admin.email}`}
-                                                    className={cn(
-                                                        index === activeSuggestionIndex
-                                                            ? 'bg-zinc-800 text-zinc-100'
-                                                            : undefined,
-                                                    )}
-                                                    onMouseEnter={() => {
-                                                        setActiveSuggestionIndex(index);
-                                                    }}
-                                                    onMouseDown={(event) => {
-                                                        event.preventDefault();
-                                                        insertAdminMention(admin);
-                                                    }}
-                                                    onSelect={() => {
-                                                        insertAdminMention(admin);
-                                                    }}
-                                                    role="option"
-                                                    aria-selected={
-                                                        index === activeSuggestionIndex
-                                                    }
-                                                >
-                                                    <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
-                                                        <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
-                                                            {initials(admin.name)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block truncate text-zinc-100">
-                                                            {admin.name}
+                                            {adminResults.map(
+                                                (admin, index) => (
+                                                    <CommandItem
+                                                        key={admin.id}
+                                                        value={`${admin.name} ${admin.email}`}
+                                                        className={cn(
+                                                            index ===
+                                                                activeSuggestionIndex
+                                                                ? 'bg-zinc-800 text-zinc-100'
+                                                                : undefined,
+                                                        )}
+                                                        onMouseEnter={() => {
+                                                            setActiveSuggestionIndex(
+                                                                index,
+                                                            );
+                                                        }}
+                                                        onMouseDown={(
+                                                            event,
+                                                        ) => {
+                                                            event.preventDefault();
+                                                            insertAdminMention(
+                                                                admin,
+                                                            );
+                                                        }}
+                                                        onSelect={() => {
+                                                            insertAdminMention(
+                                                                admin,
+                                                            );
+                                                        }}
+                                                        role="option"
+                                                        aria-selected={
+                                                            index ===
+                                                            activeSuggestionIndex
+                                                        }
+                                                    >
+                                                        <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
+                                                            <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
+                                                                {initials(
+                                                                    admin.name,
+                                                                )}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-zinc-100">
+                                                                {admin.name}
+                                                            </span>
+                                                            <span className="block truncate text-zinc-500">
+                                                                {admin.email}
+                                                            </span>
                                                         </span>
-                                                        <span className="block truncate text-zinc-500">
-                                                            {admin.email}
-                                                        </span>
-                                                    </span>
-                                                </CommandItem>
-                                            ))}
+                                                    </CommandItem>
+                                                ),
+                                            )}
                                         </CommandGroup>
                                     )
                                 ) : usersLoading ? (
@@ -781,12 +823,15 @@ export function TicketDescriptionEditor({
                                                 key={user.id}
                                                 value={`${user.name} ${user.email}`}
                                                 className={cn(
-                                                    index === activeSuggestionIndex
+                                                    index ===
+                                                        activeSuggestionIndex
                                                         ? 'bg-zinc-800 text-zinc-100'
                                                         : undefined,
                                                 )}
                                                 onMouseEnter={() => {
-                                                    setActiveSuggestionIndex(index);
+                                                    setActiveSuggestionIndex(
+                                                        index,
+                                                    );
                                                 }}
                                                 onMouseDown={(event) => {
                                                     event.preventDefault();
@@ -797,7 +842,8 @@ export function TicketDescriptionEditor({
                                                 }}
                                                 role="option"
                                                 aria-selected={
-                                                    index === activeSuggestionIndex
+                                                    index ===
+                                                    activeSuggestionIndex
                                                 }
                                             >
                                                 <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">

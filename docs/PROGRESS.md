@@ -1,5 +1,27 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Wave C4: Tickets Full Decomposition + Hook Isolation)
+
+- Completed ticket-page decomposition with behavior preserved:
+    - `resources/js/pages/admin/tickets/index.tsx` reduced to 395 lines (thin orchestrator)
+    - extracted detail dialog into dedicated component:
+        - `TicketDetailSheet`
+        - `TicketDetailOverviewTab`
+        - `TicketDetailAuditTab`
+    - extracted mutation/network boundary into `useTicketMutations`
+    - extracted selection + URL ticket-query synchronization into `useTicketSelection`
+    - extracted detail draft/sync state into `useTicketDetailState`
+- Kept strict Wayfinder route usage in extracted mutation flows (no hardcoded API paths introduced).
+- Moved filter UI to single-payload update contract (`onFiltersChange`) to reduce parent coupling.
+- Preserved ticket UX behavior:
+    - notification/query-driven ticket open still works through selection state
+    - realtime board refresh + selected-ticket refresh remains active
+    - create/edit/auto-sync/audit/attachments flows unchanged from user perspective
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-11 (Wave C3: Tickets ShadCN + Semantics Hardening)
 
 - Hardened ticket UI primitives without API/backend changes:
