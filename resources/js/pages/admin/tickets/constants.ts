@@ -1,14 +1,14 @@
-export const ticketStatuses = ['todo', 'in_progress', 'to_review', 'done'] as const;
+import type {
+    TicketImportance,
+    TicketStatusKey,
+    TicketType,
+} from './types';
 
-export type TicketStatusKey = (typeof ticketStatuses)[number];
+export const ticketStatuses = ['todo', 'in_progress', 'to_review', 'done'] as const;
 
 export const ticketTypes = ['bug', 'feature', 'chore', 'support'] as const;
 
-export type TicketType = (typeof ticketTypes)[number];
-
 export const ticketImportances = ['low', 'normal', 'high', 'urgent'] as const;
-
-export type TicketImportance = (typeof ticketImportances)[number];
 
 export const statusColumns: Array<{ key: TicketStatusKey; label: string }> = [
     { key: 'todo', label: 'Todo' },

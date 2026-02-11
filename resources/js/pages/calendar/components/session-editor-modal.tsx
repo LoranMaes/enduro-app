@@ -32,6 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
     complete as completeTrainingSession,
@@ -689,11 +690,12 @@ export function SessionEditorModal({
             }}
         >
             <DialogContent
+                size="xl"
                 className={cn(
                     'max-h-[calc(100dvh-1rem)] gap-0 overflow-hidden border-border bg-surface p-0 text-zinc-200',
                     isStructureTab
-                        ? 'max-w-[min(98vw,1360px)]'
-                        : 'max-w-[min(96vw,860px)]',
+                        ? 'max-w-[min(98vw,85rem)]'
+                        : 'max-w-[min(96vw,53.75rem)]',
                 )}
                 onEscapeKeyDown={(event) => {
                     if (isBusy) {
@@ -720,555 +722,574 @@ export function SessionEditorModal({
                         aria-busy={isBusy}
                         className="flex h-[calc(100dvh-7.5rem)] min-h-0 flex-col"
                     >
-                        <div className="border-b border-border px-6 py-2.5">
-                            <div className="inline-flex items-center gap-1 rounded-md bg-background/60 p-1">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setActiveEditorTab('details')
-                                    }
-                                    className={cn(
-                                        'rounded px-3 py-1.5 text-xs font-medium',
-                                        activeEditorTab === 'details'
-                                            ? 'bg-zinc-800 text-zinc-100'
-                                            : 'text-zinc-500 hover:text-zinc-300',
-                                    )}
-                                >
-                                    Session Details
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setActiveEditorTab('structure')
-                                    }
-                                    className={cn(
-                                        'rounded px-3 py-1.5 text-xs font-medium',
-                                        activeEditorTab === 'structure'
-                                            ? 'bg-zinc-800 text-zinc-100'
-                                            : 'text-zinc-500 hover:text-zinc-300',
-                                    )}
-                                >
-                                    Workout Structure
-                                </button>
+                        <Tabs
+                            value={activeEditorTab}
+                            onValueChange={(nextTab) => {
+                                setActiveEditorTab(
+                                    nextTab === 'structure'
+                                        ? 'structure'
+                                        : 'details',
+                                );
+                            }}
+                            className="min-h-0 flex-1"
+                        >
+                            <div className="border-b border-border px-6 py-2.5">
+                                <TabsList className="border-border bg-background/60 p-1">
+                                    <TabsTrigger
+                                        value="details"
+                                        className="text-xs font-medium"
+                                    >
+                                        Session Details
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="structure"
+                                        className="text-xs font-medium"
+                                    >
+                                        Workout Structure
+                                    </TabsTrigger>
+                                </TabsList>
                             </div>
-                        </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-4">
-                            {generalError !== null ? (
-                                <p
-                                    role="alert"
-                                    className="mb-4 rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-                                >
-                                    {generalError}
-                                </p>
-                            ) : null}
+                            <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-4">
+                                {generalError !== null ? (
+                                    <p
+                                        role="alert"
+                                        className="mb-4 rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                                    >
+                                        {generalError}
+                                    </p>
+                                ) : null}
 
-                            {statusMessage !== null ? (
-                                <p className="mb-4 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-                                    {statusMessage}
-                                </p>
-                            ) : null}
+                                {statusMessage !== null ? (
+                                    <p className="mb-4 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                                        {statusMessage}
+                                    </p>
+                                ) : null}
 
-                            {activeEditorTab === 'structure' ? (
-                                <div className="space-y-1.5">
-                                    <WorkoutStructureBuilder
-                                        value={plannedStructure}
-                                        sport={sport}
-                                        trainingTargets={athleteTrainingTargets}
-                                        disabled={!canManageSessionWrites}
-                                        onChange={(nextStructure) => {
-                                            setPlannedStructure(nextStructure);
-                                            clearFieldError(
-                                                'planned_structure',
-                                            );
-                                        }}
-                                    />
-                                    <InputError
-                                        message={errors.planned_structure}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="space-y-5">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="rounded-md border border-border bg-background/60 px-3 py-2">
-                                            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
-                                                Date
-                                            </p>
-                                            <p className="mt-1 text-xs text-zinc-200">
-                                                {dateLabel}
-                                            </p>
-                                        </div>
-                                        <div className="rounded-md border border-border bg-background/60 px-3 py-2">
-                                            <p className="text-[10px] tracking-wider text-zinc-500 uppercase">
-                                                Week
-                                            </p>
-                                            <p className="mt-1 font-mono text-xs text-zinc-200">
-                                                {context.trainingWeekId !== null
-                                                    ? `#${context.trainingWeekId}`
-                                                    : 'Unassigned'}
-                                            </p>
-                                        </div>
-                                    </div>
-
+                                {activeEditorTab === 'structure' ? (
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs text-zinc-400">
-                                            Sport
-                                        </Label>
-                                        <div className="grid grid-cols-5 gap-2 rounded-lg bg-background/70 p-1">
-                                            {sportOptions.map((option) => {
-                                                const Icon = option.icon;
+                                        <WorkoutStructureBuilder
+                                            value={plannedStructure}
+                                            sport={sport}
+                                            trainingTargets={
+                                                athleteTrainingTargets
+                                            }
+                                            disabled={!canManageSessionWrites}
+                                            onChange={(nextStructure) => {
+                                                setPlannedStructure(
+                                                    nextStructure,
+                                                );
+                                                clearFieldError(
+                                                    'planned_structure',
+                                                );
+                                            }}
+                                        />
+                                        <InputError
+                                            message={errors.planned_structure}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-5">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="rounded-md border border-border bg-background/60 px-3 py-2">
+                                                <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
+                                                    Date
+                                                </p>
+                                                <p className="mt-1 text-xs text-zinc-200">
+                                                    {dateLabel}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-md border border-border bg-background/60 px-3 py-2">
+                                                <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
+                                                    Week
+                                                </p>
+                                                <p className="mt-1 font-mono text-xs text-zinc-200">
+                                                    {context.trainingWeekId !==
+                                                    null
+                                                        ? `#${context.trainingWeekId}`
+                                                        : 'Unassigned'}
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                                return (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-zinc-400">
+                                                Sport
+                                            </Label>
+                                            <div className="grid grid-cols-5 gap-2 rounded-lg bg-background/70 p-1">
+                                                {sportOptions.map((option) => {
+                                                    const Icon = option.icon;
+
+                                                    return (
+                                                        <button
+                                                            key={option.value}
+                                                            type="button"
+                                                            disabled={
+                                                                !canManageSessionWrites
+                                                            }
+                                                            onClick={() => {
+                                                                if (
+                                                                    !canManageSessionWrites
+                                                                ) {
+                                                                    return;
+                                                                }
+
+                                                                setSport(
+                                                                    option.value,
+                                                                );
+                                                                clearFieldError(
+                                                                    'sport',
+                                                                );
+                                                            }}
+                                                            className={cn(
+                                                                'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
+                                                                sport ===
+                                                                    option.value
+                                                                    ? 'border border-zinc-700 bg-zinc-800 text-white'
+                                                                    : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
+                                                                !canManageSessionWrites &&
+                                                                    'cursor-default opacity-65 hover:bg-transparent hover:text-zinc-500',
+                                                            )}
+                                                        >
+                                                            <Icon className="h-3.5 w-3.5" />
+                                                            <span>
+                                                                {option.label}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <InputError
+                                                message={errors.sport}
+                                            />
+                                        </div>
+
+                                        {hasStructuredPlanning ? (
+                                            <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 px-3 py-2.5">
+                                                <p className="text-[0.6875rem] font-medium tracking-wide text-sky-200 uppercase">
+                                                    Structure-driven targets
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
+                                                        <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
+                                                            Planned Duration
+                                                        </p>
+                                                        <p className="mt-1 font-mono text-xs text-zinc-100">
+                                                            {formatDurationMinutes(
+                                                                derivedStructureDurationMinutes,
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
+                                                        <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
+                                                            Estimated TSS
+                                                        </p>
+                                                        <p className="mt-1 font-mono text-xs text-zinc-100">
+                                                            {formatTssValue(
+                                                                derivedStructureTss,
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[0.6875rem] text-zinc-300">
+                                                    Planned duration and planned
+                                                    TSS are derived from the
+                                                    current workout structure.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="planned-duration-minutes"
+                                                        className="text-xs text-zinc-400"
+                                                    >
+                                                        Planned Duration (min)
+                                                    </Label>
+                                                    <Input
+                                                        id="planned-duration-minutes"
+                                                        ref={
+                                                            plannedDurationInputRef
+                                                        }
+                                                        type="number"
+                                                        min={1}
                                                         disabled={
                                                             !canManageSessionWrites
                                                         }
-                                                        onClick={() => {
-                                                            if (
-                                                                !canManageSessionWrites
-                                                            ) {
-                                                                return;
-                                                            }
-
-                                                            setSport(
-                                                                option.value,
+                                                        value={
+                                                            plannedDurationMinutes
+                                                        }
+                                                        onChange={(event) => {
+                                                            setPlannedDurationMinutes(
+                                                                event.target
+                                                                    .value,
                                                             );
                                                             clearFieldError(
-                                                                'sport',
+                                                                'planned_duration_minutes',
                                                             );
                                                         }}
-                                                        className={cn(
-                                                            'flex items-center justify-center gap-1.5 rounded-md px-1 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
-                                                            sport ===
-                                                                option.value
-                                                                ? 'border border-zinc-700 bg-zinc-800 text-white'
-                                                                : 'text-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-200',
-                                                            !canManageSessionWrites &&
-                                                                'cursor-default opacity-65 hover:bg-transparent hover:text-zinc-500',
-                                                        )}
+                                                        className="border-border bg-background font-mono text-sm text-zinc-200"
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors.planned_duration_minutes
+                                                        }
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="planned-tss"
+                                                        className="text-xs text-zinc-400"
                                                     >
-                                                        <Icon className="h-3.5 w-3.5" />
-                                                        <span>
-                                                            {option.label}
+                                                        Planned TSS
+                                                    </Label>
+                                                    <Input
+                                                        id="planned-tss"
+                                                        type="number"
+                                                        min={0}
+                                                        disabled={
+                                                            !canManageSessionWrites
+                                                        }
+                                                        value={plannedTss}
+                                                        onChange={(event) => {
+                                                            setPlannedTss(
+                                                                event.target
+                                                                    .value,
+                                                            );
+                                                            clearFieldError(
+                                                                'planned_tss',
+                                                            );
+                                                        }}
+                                                        className="border-border bg-background font-mono text-sm text-zinc-200"
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors.planned_tss
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-1.5">
+                                            <Label
+                                                htmlFor="session-notes"
+                                                className="text-xs text-zinc-400"
+                                            >
+                                                Notes
+                                            </Label>
+                                            <Textarea
+                                                id="session-notes"
+                                                rows={4}
+                                                disabled={
+                                                    !canManageSessionWrites
+                                                }
+                                                value={notes}
+                                                onChange={(event) => {
+                                                    setNotes(
+                                                        event.target.value,
+                                                    );
+                                                    clearFieldError('notes');
+                                                }}
+                                                className={cn(
+                                                    'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
+                                                    'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                                                    !canManageSessionWrites &&
+                                                        'cursor-default opacity-65',
+                                                )}
+                                            />
+                                            <InputError
+                                                message={errors.notes}
+                                            />
+                                        </div>
+
+                                        {isEditMode ? (
+                                            <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-[0.6875rem] font-medium tracking-wide text-zinc-300 uppercase">
+                                                        Suggested Activities
+                                                    </p>
+                                                    {isLoadingSessionDetails ? (
+                                                        <span className="text-[0.6875rem] text-zinc-500">
+                                                            Loading...
                                                         </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <InputError message={errors.sport} />
-                                    </div>
-
-                                    {hasStructuredPlanning ? (
-                                        <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 px-3 py-2.5">
-                                            <p className="text-[11px] font-medium tracking-wide text-sky-200 uppercase">
-                                                Structure-driven targets
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
-                                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                        Planned Duration
-                                                    </p>
-                                                    <p className="mt-1 font-mono text-xs text-zinc-100">
-                                                        {formatDurationMinutes(
-                                                            derivedStructureDurationMinutes,
-                                                        )}
-                                                    </p>
+                                                    ) : null}
                                                 </div>
-                                                <div className="rounded-md border border-border/70 bg-background/50 px-2.5 py-2">
-                                                    <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                        Estimated TSS
-                                                    </p>
-                                                    <p className="mt-1 font-mono text-xs text-zinc-100">
-                                                        {formatTssValue(
-                                                            derivedStructureTss,
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="text-[11px] text-zinc-300">
-                                                Planned duration and planned TSS
-                                                are derived from the current
-                                                workout structure.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <Label
-                                                    htmlFor="planned-duration-minutes"
-                                                    className="text-xs text-zinc-400"
-                                                >
-                                                    Planned Duration (min)
-                                                </Label>
-                                                <Input
-                                                    id="planned-duration-minutes"
-                                                    ref={
-                                                        plannedDurationInputRef
-                                                    }
-                                                    type="number"
-                                                    min={1}
-                                                    disabled={
-                                                        !canManageSessionWrites
-                                                    }
-                                                    value={
-                                                        plannedDurationMinutes
-                                                    }
-                                                    onChange={(event) => {
-                                                        setPlannedDurationMinutes(
-                                                            event.target.value,
-                                                        );
-                                                        clearFieldError(
-                                                            'planned_duration_minutes',
-                                                        );
-                                                    }}
-                                                    className="border-border bg-background font-mono text-sm text-zinc-200"
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors.planned_duration_minutes
-                                                    }
-                                                />
-                                            </div>
 
-                                            <div className="space-y-1.5">
-                                                <Label
-                                                    htmlFor="planned-tss"
-                                                    className="text-xs text-zinc-400"
-                                                >
-                                                    Planned TSS
-                                                </Label>
-                                                <Input
-                                                    id="planned-tss"
-                                                    type="number"
-                                                    min={0}
-                                                    disabled={
-                                                        !canManageSessionWrites
-                                                    }
-                                                    value={plannedTss}
-                                                    onChange={(event) => {
-                                                        setPlannedTss(
-                                                            event.target.value,
-                                                        );
-                                                        clearFieldError(
-                                                            'planned_tss',
-                                                        );
-                                                    }}
-                                                    className="border-border bg-background font-mono text-sm text-zinc-200"
-                                                />
-                                                <InputError
-                                                    message={errors.planned_tss}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-1.5">
-                                        <Label
-                                            htmlFor="session-notes"
-                                            className="text-xs text-zinc-400"
-                                        >
-                                            Notes
-                                        </Label>
-                                        <Textarea
-                                            id="session-notes"
-                                            rows={4}
-                                            disabled={!canManageSessionWrites}
-                                            value={notes}
-                                            onChange={(event) => {
-                                                setNotes(event.target.value);
-                                                clearFieldError('notes');
-                                            }}
-                                            className={cn(
-                                                'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-zinc-200',
-                                                'placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                                                !canManageSessionWrites &&
-                                                    'cursor-default opacity-65',
-                                            )}
-                                        />
-                                        <InputError message={errors.notes} />
-                                    </div>
-
-                                    {isEditMode ? (
-                                        <div className="space-y-2 rounded-md border border-border bg-background/50 p-3">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className="text-[11px] font-medium tracking-wide text-zinc-300 uppercase">
-                                                    Suggested Activities
-                                                </p>
-                                                {isLoadingSessionDetails ? (
-                                                    <span className="text-[11px] text-zinc-500">
-                                                        Loading...
-                                                    </span>
-                                                ) : null}
-                                            </div>
-
-                                            {linkedActivitySummary !== null ? (
-                                                <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 p-2.5">
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className="min-w-0">
-                                                            <p className="flex items-center gap-1.5 text-xs text-sky-200">
-                                                                <Link2 className="h-3.5 w-3.5" />
-                                                                Linked activity
-                                                            </p>
-                                                            <p className="mt-1 text-xs text-zinc-300">
-                                                                {formatStartedAt(
-                                                                    linkedActivitySummary.startedAt,
-                                                                )}
-                                                                {' • '}
-                                                                {formatDurationSeconds(
-                                                                    linkedActivitySummary.durationSeconds,
-                                                                )}
-                                                            </p>
-                                                        </div>
-
-                                                        {canManageSessionLinks ? (
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="outline"
-                                                                disabled={
-                                                                    !canPerformLinking
-                                                                }
-                                                                onClick={() => {
-                                                                    void unlinkActivity();
-                                                                }}
-                                                                className="border-red-500/35 text-red-300 hover:text-red-200"
-                                                            >
-                                                                <Unlink className="h-3.5 w-3.5" />
-                                                                {isUnlinkingActivity
-                                                                    ? 'Unlinking...'
-                                                                    : 'Unlink'}
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-
-                                                    {selectedSession !==
-                                                    null ? (
-                                                        <>
-                                                            <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
-                                                                <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-                                                                    Planned vs
-                                                                    Actual
+                                                {linkedActivitySummary !==
+                                                null ? (
+                                                    <div className="space-y-2 rounded-md border border-sky-400/25 bg-sky-500/10 p-2.5">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <p className="flex items-center gap-1.5 text-xs text-sky-200">
+                                                                    <Link2 className="h-3.5 w-3.5" />
+                                                                    Linked
+                                                                    activity
                                                                 </p>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
-                                                                        <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                                            Duration
-                                                                        </p>
-                                                                        <p className="mt-1 text-[11px] text-zinc-300">
-                                                                            Planned:{' '}
-                                                                            <span className="font-mono text-zinc-100">
-                                                                                {
-                                                                                    plannedDurationLabel
-                                                                                }
-                                                                            </span>
-                                                                        </p>
-                                                                        <p className="mt-0.5 text-[11px] text-zinc-300">
-                                                                            Actual:{' '}
-                                                                            <span className="font-mono text-zinc-100">
-                                                                                {
-                                                                                    actualDurationLabel
-                                                                                }
-                                                                            </span>
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
-                                                                        <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
-                                                                            TSS
-                                                                        </p>
-                                                                        <p className="mt-1 text-[11px] text-zinc-300">
-                                                                            Planned:{' '}
-                                                                            <span className="font-mono text-zinc-100">
-                                                                                {
-                                                                                    plannedTssLabel
-                                                                                }
-                                                                            </span>
-                                                                        </p>
-                                                                        <p className="mt-0.5 text-[11px] text-zinc-300">
-                                                                            Actual:{' '}
-                                                                            <span className="font-mono text-zinc-100">
-                                                                                {
-                                                                                    actualTssLabel
-                                                                                }
-                                                                            </span>
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                                <p className="text-[11px] text-zinc-500">
-                                                                    {sessionIsCompleted
-                                                                        ? sessionIsAdjusted
-                                                                            ? 'Actual values differ from planned values.'
-                                                                            : 'Actual values align with planned targets.'
-                                                                        : 'Marking complete copies linked duration and available linked TSS. Missing values remain —.'}
+                                                                <p className="mt-1 text-xs text-zinc-300">
+                                                                    {formatStartedAt(
+                                                                        linkedActivitySummary.startedAt,
+                                                                    )}
+                                                                    {' • '}
+                                                                    {formatDurationSeconds(
+                                                                        linkedActivitySummary.durationSeconds,
+                                                                    )}
                                                                 </p>
                                                             </div>
 
-                                                            <div className="space-y-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
-                                                                <div className="flex items-center justify-between gap-3">
+                                                            {canManageSessionLinks ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={
+                                                                        !canPerformLinking
+                                                                    }
+                                                                    onClick={() => {
+                                                                        void unlinkActivity();
+                                                                    }}
+                                                                    className="border-red-500/35 text-red-300 hover:text-red-200"
+                                                                >
+                                                                    <Unlink className="h-3.5 w-3.5" />
+                                                                    {isUnlinkingActivity
+                                                                        ? 'Unlinking...'
+                                                                        : 'Unlink'}
+                                                                </Button>
+                                                            ) : null}
+                                                        </div>
+
+                                                        {selectedSession !==
+                                                        null ? (
+                                                            <>
+                                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
+                                                                    <p className="text-[0.6875rem] font-medium tracking-wide text-zinc-400 uppercase">
+                                                                        Planned
+                                                                        vs
+                                                                        Actual
+                                                                    </p>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                                            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
+                                                                                Duration
+                                                                            </p>
+                                                                            <p className="mt-1 text-[0.6875rem] text-zinc-300">
+                                                                                Planned:{' '}
+                                                                                <span className="font-mono text-zinc-100">
+                                                                                    {
+                                                                                        plannedDurationLabel
+                                                                                    }
+                                                                                </span>
+                                                                            </p>
+                                                                            <p className="mt-0.5 text-[0.6875rem] text-zinc-300">
+                                                                                Actual:{' '}
+                                                                                <span className="font-mono text-zinc-100">
+                                                                                    {
+                                                                                        actualDurationLabel
+                                                                                    }
+                                                                                </span>
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-border/80 bg-background/50 px-2.5 py-2">
+                                                                            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
+                                                                                TSS
+                                                                            </p>
+                                                                            <p className="mt-1 text-[0.6875rem] text-zinc-300">
+                                                                                Planned:{' '}
+                                                                                <span className="font-mono text-zinc-100">
+                                                                                    {
+                                                                                        plannedTssLabel
+                                                                                    }
+                                                                                </span>
+                                                                            </p>
+                                                                            <p className="mt-0.5 text-[0.6875rem] text-zinc-300">
+                                                                                Actual:{' '}
+                                                                                <span className="font-mono text-zinc-100">
+                                                                                    {
+                                                                                        actualTssLabel
+                                                                                    }
+                                                                                </span>
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p className="text-[0.6875rem] text-zinc-500">
+                                                                        {sessionIsCompleted
+                                                                            ? sessionIsAdjusted
+                                                                                ? 'Actual values differ from planned values.'
+                                                                                : 'Actual values align with planned targets.'
+                                                                            : 'Marking complete copies linked duration and available linked TSS. Missing values remain —.'}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-2">
+                                                                    <div className="flex items-center justify-between gap-3">
+                                                                        <div className="min-w-0">
+                                                                            {sessionIsCompleted ? (
+                                                                                <p className="flex items-center gap-1.5 text-xs text-emerald-300">
+                                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                                    Completed
+                                                                                    {sessionIsAdjusted ? (
+                                                                                        <span className="rounded-full border border-zinc-600/70 bg-zinc-800/70 px-1.5 py-0.5 text-[0.625rem] text-zinc-300">
+                                                                                            Adjusted
+                                                                                        </span>
+                                                                                    ) : null}
+                                                                                </p>
+                                                                            ) : (
+                                                                                <p className="text-xs text-zinc-300">
+                                                                                    Ready
+                                                                                    to
+                                                                                    mark
+                                                                                    as
+                                                                                    completed.
+                                                                                </p>
+                                                                            )}
+                                                                            <p className="mt-0.5 text-[0.6875rem] text-zinc-500">
+                                                                                {sessionIsCompleted
+                                                                                    ? selectedSession.completedAt !==
+                                                                                      null
+                                                                                        ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
+                                                                                        : 'Completed'
+                                                                                    : 'Uses linked activity values only.'}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {canManageSessionLinks ? (
+                                                                            sessionIsCompleted ? (
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    size="sm"
+                                                                                    variant="outline"
+                                                                                    disabled={
+                                                                                        !canPerformCompletion
+                                                                                    }
+                                                                                    onClick={() => {
+                                                                                        void revertSessionCompletion();
+                                                                                    }}
+                                                                                >
+                                                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                                                    {isRevertingCompletion
+                                                                                        ? 'Reverting...'
+                                                                                        : 'Revert to Planned'}
+                                                                                </Button>
+                                                                            ) : (
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    size="sm"
+                                                                                    disabled={
+                                                                                        !canPerformCompletion
+                                                                                    }
+                                                                                    onClick={() => {
+                                                                                        void completeSession();
+                                                                                    }}
+                                                                                >
+                                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                                    {isCompletingSession
+                                                                                        ? 'Completing...'
+                                                                                        : 'Mark as Completed'}
+                                                                                </Button>
+                                                                            )
+                                                                        ) : null}
+                                                                    </div>
+
+                                                                    {sessionIsCompleted ? (
+                                                                        <p className="text-[0.6875rem] text-zinc-500">
+                                                                            Reverting
+                                                                            completion
+                                                                            clears
+                                                                            actual
+                                                                            duration
+                                                                            and
+                                                                            actual
+                                                                            TSS,
+                                                                            while
+                                                                            keeping
+                                                                            this
+                                                                            activity
+                                                                            linked.
+                                                                        </p>
+                                                                    ) : null}
+                                                                </div>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-zinc-500">
+                                                        No linked activity yet.
+                                                    </p>
+                                                )}
+
+                                                {suggestedActivities.length >
+                                                0 ? (
+                                                    <div className="space-y-2">
+                                                        {suggestedActivities.map(
+                                                            (activity) => (
+                                                                <div
+                                                                    key={
+                                                                        activity.id
+                                                                    }
+                                                                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
+                                                                >
                                                                     <div className="min-w-0">
-                                                                        {sessionIsCompleted ? (
-                                                                            <p className="flex items-center gap-1.5 text-xs text-emerald-300">
-                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                                Completed
-                                                                                {sessionIsAdjusted ? (
-                                                                                    <span className="rounded-full border border-zinc-600/70 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
-                                                                                        Adjusted
-                                                                                    </span>
-                                                                                ) : null}
-                                                                            </p>
-                                                                        ) : (
-                                                                            <p className="text-xs text-zinc-300">
-                                                                                Ready
-                                                                                to
-                                                                                mark
-                                                                                as
-                                                                                completed.
-                                                                            </p>
-                                                                        )}
-                                                                        <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                                            {sessionIsCompleted
-                                                                                ? selectedSession.completedAt !==
-                                                                                  null
-                                                                                    ? `Completed ${formatCompletedAt(selectedSession.completedAt)}`
-                                                                                    : 'Completed'
-                                                                                : 'Uses linked activity values only.'}
+                                                                        <p className="text-xs text-zinc-300">
+                                                                            {formatStartedAt(
+                                                                                activity.startedAt,
+                                                                            )}
+                                                                        </p>
+                                                                        <p className="mt-0.5 text-[0.6875rem] text-zinc-500">
+                                                                            {activity.sport ??
+                                                                                'other'}
+                                                                            {
+                                                                                ' • '
+                                                                            }
+                                                                            {formatDurationSeconds(
+                                                                                activity.durationSeconds,
+                                                                            )}
                                                                         </p>
                                                                     </div>
 
                                                                     {canManageSessionLinks ? (
-                                                                        sessionIsCompleted ? (
-                                                                            <Button
-                                                                                type="button"
-                                                                                size="sm"
-                                                                                variant="outline"
-                                                                                disabled={
-                                                                                    !canPerformCompletion
-                                                                                }
-                                                                                onClick={() => {
-                                                                                    void revertSessionCompletion();
-                                                                                }}
-                                                                            >
-                                                                                <RotateCcw className="h-3.5 w-3.5" />
-                                                                                {isRevertingCompletion
-                                                                                    ? 'Reverting...'
-                                                                                    : 'Revert to Planned'}
-                                                                            </Button>
-                                                                        ) : (
-                                                                            <Button
-                                                                                type="button"
-                                                                                size="sm"
-                                                                                disabled={
-                                                                                    !canPerformCompletion
-                                                                                }
-                                                                                onClick={() => {
-                                                                                    void completeSession();
-                                                                                }}
-                                                                            >
-                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                                {isCompletingSession
-                                                                                    ? 'Completing...'
-                                                                                    : 'Mark as Completed'}
-                                                                            </Button>
-                                                                        )
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            disabled={
+                                                                                !canPerformLinking
+                                                                            }
+                                                                            onClick={() => {
+                                                                                void linkActivity(
+                                                                                    activity.id,
+                                                                                );
+                                                                            }}
+                                                                        >
+                                                                            <Link2 className="h-3.5 w-3.5" />
+                                                                            {isLinkingActivity
+                                                                                ? 'Linking...'
+                                                                                : 'Link'}
+                                                                        </Button>
                                                                     ) : null}
                                                                 </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                ) : !isLoadingSessionDetails ? (
+                                                    <p className="text-xs text-zinc-500">
+                                                        No suggested activities
+                                                        found.
+                                                    </p>
+                                                ) : null}
 
-                                                                {sessionIsCompleted ? (
-                                                                    <p className="text-[11px] text-zinc-500">
-                                                                        Reverting
-                                                                        completion
-                                                                        clears
-                                                                        actual
-                                                                        duration
-                                                                        and
-                                                                        actual
-                                                                        TSS,
-                                                                        while
-                                                                        keeping
-                                                                        this
-                                                                        activity
-                                                                        linked.
-                                                                    </p>
-                                                                ) : null}
-                                                            </div>
-                                                        </>
-                                                    ) : null}
-                                                </div>
-                                            ) : (
-                                                <p className="text-xs text-zinc-500">
-                                                    No linked activity yet.
-                                                </p>
-                                            )}
-
-                                            {suggestedActivities.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {suggestedActivities.map(
-                                                        (activity) => (
-                                                            <div
-                                                                key={
-                                                                    activity.id
-                                                                }
-                                                                className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface/70 px-2.5 py-2"
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <p className="text-xs text-zinc-300">
-                                                                        {formatStartedAt(
-                                                                            activity.startedAt,
-                                                                        )}
-                                                                    </p>
-                                                                    <p className="mt-0.5 text-[11px] text-zinc-500">
-                                                                        {activity.sport ??
-                                                                            'other'}
-                                                                        {' • '}
-                                                                        {formatDurationSeconds(
-                                                                            activity.durationSeconds,
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-
-                                                                {canManageSessionLinks ? (
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        disabled={
-                                                                            !canPerformLinking
-                                                                        }
-                                                                        onClick={() => {
-                                                                            void linkActivity(
-                                                                                activity.id,
-                                                                            );
-                                                                        }}
-                                                                    >
-                                                                        <Link2 className="h-3.5 w-3.5" />
-                                                                        {isLinkingActivity
-                                                                            ? 'Linking...'
-                                                                            : 'Link'}
-                                                                    </Button>
-                                                                ) : null}
-                                                            </div>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            ) : !isLoadingSessionDetails ? (
-                                                <p className="text-xs text-zinc-500">
-                                                    No suggested activities
-                                                    found.
-                                                </p>
-                                            ) : null}
-
-                                            <InputError
-                                                message={errors.activity_id}
-                                            />
-                                            <InputError
-                                                message={errors.session}
-                                            />
-                                        </div>
-                                    ) : null}
-                                </div>
-                            )}
-                        </div>
+                                                <InputError
+                                                    message={errors.activity_id}
+                                                />
+                                                <InputError
+                                                    message={errors.session}
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
+                        </Tabs>
 
                         <div className="border-t border-border px-6 py-4">
                             <DialogFooter className="gap-2 sm:justify-between">
@@ -1342,12 +1363,12 @@ export function SessionEditorModal({
                             </DialogFooter>
 
                             {!canManageSessionWrites ? (
-                                <p className="mt-2 text-right text-[11px] text-zinc-500">
+                                <p className="mt-2 text-right text-[0.6875rem] text-zinc-500">
                                     Session fields are read-only in this
                                     context.
                                 </p>
                             ) : (
-                                <p className="mt-2 text-right text-[11px] text-zinc-500">
+                                <p className="mt-2 text-right text-[0.6875rem] text-zinc-500">
                                     Press Enter to save, Esc to close.
                                 </p>
                             )}
@@ -1355,7 +1376,7 @@ export function SessionEditorModal({
                             {isBusy ? (
                                 <p
                                     aria-live="polite"
-                                    className="mt-2 text-right text-[11px] text-zinc-500"
+                                    className="mt-2 text-right text-[0.6875rem] text-zinc-500"
                                 >
                                     {isDeleting
                                         ? 'Deleting session...'

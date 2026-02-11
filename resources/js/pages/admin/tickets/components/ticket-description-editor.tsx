@@ -1,3 +1,6 @@
+import Placeholder from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
+import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import { router } from '@inertiajs/react';
 import {
     AtSign,
@@ -5,19 +8,33 @@ import {
     Italic,
     List,
     LoaderCircle,
-    Underline,
     UserRound,
+    Underline as UnderlineIcon,
 } from 'lucide-react';
 import {
     type KeyboardEvent,
     type MouseEvent,
     type ReactNode,
+    useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react';
+import { show as adminUserShow } from '@/routes/admin/users';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverAnchor,
+    PopoverContent,
+} from '@/components/ui/popover';
 import {
     Select,
     SelectContent,
@@ -26,6 +43,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import {
+    AdminMentionNode,
+    UserReferenceNode,
+} from './editor/token-extensions';
 
 export type MentionableAdmin = {
     id: number;
@@ -54,14 +75,16 @@ export type TicketDescriptionValue = {
     userRefs: DescriptionUserRef[];
 };
 
+type HeadingOption = 'p' | 'h1' | 'h2' | 'h3';
+
 type SuggestionState = {
     mode: 'admin' | 'user';
     query: string;
+    from: number;
+    to: number;
     left: number;
     top: number;
 };
-
-type HeadingOption = 'p' | 'h1' | 'h2' | 'h3';
 
 type TicketDescriptionEditorProps = {
     label: string;
@@ -73,6 +96,8 @@ type TicketDescriptionEditorProps = {
     searchUsers: (query: string) => Promise<MentionableUser[]>;
 };
 
+const SUGGESTION_MENU_WIDTH = 288;
+
 export function TicketDescriptionEditor({
     label,
     html,
@@ -83,9 +108,6 @@ export function TicketDescriptionEditor({
     searchUsers,
 }: TicketDescriptionEditorProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const editorRef = useRef<HTMLDivElement | null>(null);
-    const caretRangeRef = useRef<Range | null>(null);
-
     const [isEmpty, setIsEmpty] = useState(true);
     const [suggestion, setSuggestion] = useState<SuggestionState | null>(null);
     const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
@@ -98,20 +120,150 @@ export function TicketDescriptionEditor({
         underline: false,
         bulletList: false,
     });
+    const searchUsersRef = useRef(searchUsers);
+    const latestUserSearchRequestId = useRef(0);
 
     useEffect(() => {
-        if (editorRef.current === null) {
+        searchUsersRef.current = searchUsers;
+    }, [searchUsers]);
+
+    const syncToolbarState = useCallback((editor: Editor): void => {
+        if (editor.isActive('heading', { level: 1 })) {
+            setActiveHeading('h1');
+        } else if (editor.isActive('heading', { level: 2 })) {
+            setActiveHeading('h2');
+        } else if (editor.isActive('heading', { level: 3 })) {
+            setActiveHeading('h3');
+        } else {
+            setActiveHeading('p');
+        }
+
+        setActiveInlineState({
+            bold: editor.isActive('bold'),
+            italic: editor.isActive('italic'),
+            underline: editor.isActive('underline'),
+            bulletList: editor.isActive('bulletList'),
+        });
+    }, []);
+
+    const resolveSuggestion = useCallback((editor: Editor): void => {
+        const detected = detectSuggestionAtCaret(editor);
+
+        if (detected === null || containerRef.current === null) {
+            setSuggestion(null);
             return;
         }
 
-        if (editorRef.current.innerHTML !== html) {
-            editorRef.current.innerHTML = html;
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const maxLeft = Math.max(8, containerRect.width - SUGGESTION_MENU_WIDTH - 8);
+
+        setSuggestion({
+            ...detected,
+            left: Math.min(Math.max(8, detected.left - containerRect.left), maxLeft),
+            top: Math.max(56, detected.top - containerRect.top + 4),
+        });
+    }, []);
+
+    const emitValue = useCallback(
+        (editor: Editor): void => {
+            const mentionAdminIds: number[] = [];
+            const userRefs: DescriptionUserRef[] = [];
+
+            editor.state.doc.descendants((node) => {
+                if (node.type.name === 'adminMention') {
+                    const id = Number.parseInt(String(node.attrs.id ?? '0'), 10);
+
+                    if (id > 0) {
+                        mentionAdminIds.push(id);
+                    }
+                }
+
+                if (node.type.name === 'userReference') {
+                    const id = Number.parseInt(String(node.attrs.id ?? '0'), 10);
+
+                    if (id > 0) {
+                        userRefs.push({
+                            id,
+                            name: String(node.attrs.name ?? ''),
+                            email: String(node.attrs.email ?? ''),
+                            role: String(node.attrs.role ?? ''),
+                        });
+                    }
+                }
+            });
+
+            const text = editor.getText();
+
+            setIsEmpty(text.trim().length === 0);
+
+            onChange({
+                html: editor.getHTML(),
+                text,
+                mentionAdminIds: Array.from(new Set(mentionAdminIds)),
+                userRefs,
+            });
+        },
+        [onChange],
+    );
+
+    const editor = useEditor({
+        extensions: [
+            StarterKit.configure({
+                heading: {
+                    levels: [1, 2, 3],
+                },
+            }),
+            Placeholder.configure({
+                placeholder,
+            }),
+            AdminMentionNode,
+            UserReferenceNode,
+        ],
+        content: html,
+        autofocus: false,
+        editorProps: {
+            attributes: {
+                class: 'min-h-full w-full break-words whitespace-pre-wrap text-sm leading-6 text-zinc-200 outline-none [&_.ProseMirror]:min-h-full [&_.ProseMirror]:w-full [&_.ProseMirror_h1]:mb-1 [&_.ProseMirror_h1]:text-xl [&_.ProseMirror_h1]:font-semibold [&_.ProseMirror_h2]:mb-1 [&_.ProseMirror_h2]:text-lg [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:mb-1 [&_.ProseMirror_h3]:text-base [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:my-1 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ol]:my-1 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5',
+            },
+        },
+        onCreate: ({ editor: createdEditor }) => {
+            syncToolbarState(createdEditor);
+            resolveSuggestion(createdEditor);
+            emitValue(createdEditor);
+        },
+        onSelectionUpdate: ({ editor: activeEditor }) => {
+            syncToolbarState(activeEditor);
+            resolveSuggestion(activeEditor);
+        },
+        onUpdate: ({ editor: activeEditor }) => {
+            if (consumeSlashCommand(activeEditor)) {
+                return;
+            }
+
+            emitValue(activeEditor);
+            syncToolbarState(activeEditor);
+            resolveSuggestion(activeEditor);
+        },
+    });
+
+    useEffect(() => {
+        if (editor === null) {
+            return;
         }
 
-        const textContent = editorRef.current.textContent?.trim() ?? '';
-        setIsEmpty(textContent === '');
-        syncToolbarState();
-    }, [html]);
+        if (editor.getHTML() === html) {
+            return;
+        }
+
+        editor.commands.setContent(html, { emitUpdate: false });
+        syncToolbarState(editor);
+        resolveSuggestion(editor);
+        emitValue(editor);
+    }, [editor, emitValue, html, resolveSuggestion, syncToolbarState]);
+
+    useEffect(() => {
+        setActiveSuggestionIndex(0);
+    }, [suggestion?.mode, suggestion?.query]);
 
     const adminResults = useMemo(() => {
         if (suggestion?.mode !== 'admin') {
@@ -120,7 +272,7 @@ export function TicketDescriptionEditor({
 
         const query = suggestion.query.trim().toLowerCase();
 
-        if (query === '') {
+        if (query.length === 0) {
             return admins.slice(0, 6);
         }
 
@@ -135,124 +287,61 @@ export function TicketDescriptionEditor({
     }, [admins, suggestion]);
 
     useEffect(() => {
-        const suggestionMode = suggestion?.mode;
-        const suggestionQuery = suggestion?.query.trim() ?? '';
+        const mode = suggestion?.mode;
+        const query = suggestion?.query.trim() ?? '';
 
-        if (
-            suggestionMode !== 'user' ||
-            suggestionQuery.length < 2 ||
-            suggestionQuery.length > 120
-        ) {
-            setUserResults([]);
+        if (mode !== 'user' || query.length < 1 || query.length > 120) {
+            latestUserSearchRequestId.current += 1;
             setUsersLoading(false);
-
+            setUserResults([]);
             return;
         }
 
+        const requestId = latestUserSearchRequestId.current + 1;
+        latestUserSearchRequestId.current = requestId;
         setUsersLoading(true);
 
         const timeoutId = window.setTimeout(() => {
-            void searchUsers(suggestionQuery)
+            void searchUsersRef
+                .current(query)
                 .then((results) => {
+                    if (latestUserSearchRequestId.current !== requestId) {
+                        return;
+                    }
+
                     setUserResults(results.slice(0, 6));
                 })
                 .catch(() => {
+                    if (latestUserSearchRequestId.current !== requestId) {
+                        return;
+                    }
+
                     setUserResults([]);
                 })
                 .finally(() => {
+                    if (latestUserSearchRequestId.current !== requestId) {
+                        return;
+                    }
+
                     setUsersLoading(false);
                 });
-        }, 220);
+        }, 180);
 
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [searchUsers, suggestion?.mode, suggestion?.query]);
-
-    const updateValue = (): void => {
-        if (editorRef.current === null) {
-            return;
-        }
-
-        const root = editorRef.current;
-        const nextHtml = root.innerHTML;
-        const nextText = root.innerText;
-        const mentionAdminIds = Array.from(
-            root.querySelectorAll<HTMLElement>('[data-mention-admin-id]'),
-        )
-            .map((element) =>
-                Number.parseInt(element.dataset.mentionAdminId ?? '0', 10),
-            )
-            .filter((id) => id > 0);
-
-        const userRefs = Array.from(
-            root.querySelectorAll<HTMLElement>('[data-user-ref-id]'),
-        )
-            .map((element) => {
-                const id = Number.parseInt(
-                    element.dataset.userRefId ?? '0',
-                    10,
-                );
-
-                if (id <= 0) {
-                    return null;
-                }
-
-                return {
-                    id,
-                    name: element.dataset.userRefName ?? '',
-                    email: element.dataset.userRefEmail ?? '',
-                    role: element.dataset.userRefRole ?? '',
-                } satisfies DescriptionUserRef;
-            })
-            .filter((ref): ref is DescriptionUserRef => ref !== null);
-
-        setIsEmpty(nextText.trim() === '');
-
-        onChange({
-            html: nextHtml,
-            text: nextText,
-            mentionAdminIds: Array.from(new Set(mentionAdminIds)),
-            userRefs,
-        });
-    };
-
-    const resolveSuggestion = (): void => {
-        if (editorRef.current === null) {
-            return;
-        }
-
-        const selection = window.getSelection();
-
-        if (selection !== null && selection.rangeCount > 0) {
-            const currentRange = selection.getRangeAt(0);
-
-            if (editorRef.current.contains(currentRange.startContainer)) {
-                caretRangeRef.current = currentRange.cloneRange();
-            }
-        }
-
-        const detectedSuggestion = detectSuggestionAtCaret(editorRef.current);
-        setSuggestion(detectedSuggestion);
-    };
-
-    useEffect(() => {
-        setActiveSuggestionIndex(0);
     }, [suggestion?.mode, suggestion?.query]);
 
-    const currentSuggestionCount = useMemo(() => {
-        if (suggestion === null) {
-            return 0;
-        }
-
-        return suggestion.mode === 'admin'
-            ? adminResults.length
-            : userResults.length;
-    }, [adminResults.length, suggestion, userResults.length]);
+    const currentSuggestionCount =
+        suggestion === null
+            ? 0
+            : suggestion.mode === 'admin'
+              ? adminResults.length
+              : userResults.length;
 
     useEffect(() => {
         setActiveSuggestionIndex((current) => {
-            if (currentSuggestionCount === 0) {
+            if (currentSuggestionCount <= 0) {
                 return 0;
             }
 
@@ -260,384 +349,212 @@ export function TicketDescriptionEditor({
         });
     }, [currentSuggestionCount]);
 
-    const insertSuggestionByIndex = (index: number): void => {
-        if (suggestion === null) {
-            return;
-        }
-
-        if (suggestion.mode === 'admin') {
-            const admin = adminResults[index];
-
-            if (admin !== undefined) {
-                insertAdminMention(admin);
+    const insertAdminMention = useCallback(
+        (admin: MentionableAdmin): void => {
+            if (editor === null || suggestion?.mode !== 'admin') {
+                return;
             }
 
-            return;
-        }
+            editor
+                .chain()
+                .focus()
+                .deleteRange({ from: suggestion.from, to: suggestion.to })
+                .insertContent([
+                    {
+                        type: 'adminMention',
+                        attrs: {
+                            id: admin.id,
+                            name: admin.name,
+                            email: admin.email,
+                        },
+                    },
+                    { type: 'text', text: ' ' },
+                ])
+                .run();
 
-        const user = userResults[index];
-
-        if (user !== undefined) {
-            insertUserReference(user);
-        }
-    };
-
-    const syncToolbarState = (): void => {
-        if (editorRef.current === null) {
-            return;
-        }
-
-        const selection = window.getSelection();
-
-        if (
-            selection === null ||
-            selection.rangeCount === 0 ||
-            !editorRef.current.contains(selection.anchorNode)
-        ) {
-            setActiveHeading('p');
-            setActiveInlineState({
-                bold: false,
-                italic: false,
-                underline: false,
-                bulletList: false,
-            });
-
-            return;
-        }
-
-        const headingValue = normalizeHeadingValue(
-            String(document.queryCommandValue('formatBlock') ?? ''),
-        );
-
-        setActiveHeading(headingValue);
-        setActiveInlineState({
-            bold: document.queryCommandState('bold'),
-            italic: document.queryCommandState('italic'),
-            underline: document.queryCommandState('underline'),
-            bulletList: document.queryCommandState('insertUnorderedList'),
-        });
-    };
-
-    const executeCommand = (command: string, value?: string): void => {
-        editorRef.current?.focus();
-        document.execCommand(command, false, value);
-        updateValue();
-        resolveSuggestion();
-        syncToolbarState();
-    };
-
-    const consumeSlashCommand = (): boolean => {
-        if (editorRef.current === null) {
-            return false;
-        }
-
-        const selection = window.getSelection();
-
-        if (selection === null || selection.rangeCount === 0) {
-            return false;
-        }
-
-        const range = selection.getRangeAt(0);
-
-        if (
-            !range.collapsed ||
-            !editorRef.current.contains(range.startContainer) ||
-            range.startContainer.nodeType !== Node.TEXT_NODE
-        ) {
-            return false;
-        }
-
-        const textNode = range.startContainer as Text;
-        const beforeCaret = textNode.data.slice(0, range.startOffset);
-        const commandMatch = beforeCaret.match(
-            /(?:^|\s)\/(h1|h2|h3|paragraph|p|bullet|list|ul|bold|italic|underline)\s$/i,
-        );
-
-        if (commandMatch === null) {
-            return false;
-        }
-
-        const rawCommand = commandMatch[0] ?? '';
-        const commandToken = rawCommand.startsWith(' ')
-            ? rawCommand.slice(1)
-            : rawCommand;
-        const removeStart = Math.max(
-            0,
-            range.startOffset - commandToken.length,
-        );
-
-        textNode.deleteData(removeStart, range.startOffset - removeStart);
-        range.setStart(textNode, removeStart);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-
-        const normalizedCommand = (commandMatch[1] ?? '').toLowerCase();
-
-        if (normalizedCommand === 'h1') {
-            executeCommand('formatBlock', 'h1');
-            return true;
-        }
-
-        if (normalizedCommand === 'h2') {
-            executeCommand('formatBlock', 'h2');
-            return true;
-        }
-
-        if (normalizedCommand === 'h3') {
-            executeCommand('formatBlock', 'h3');
-            return true;
-        }
-
-        if (normalizedCommand === 'paragraph' || normalizedCommand === 'p') {
-            executeCommand('formatBlock', 'p');
-            return true;
-        }
-
-        if (
-            normalizedCommand === 'bullet' ||
-            normalizedCommand === 'list' ||
-            normalizedCommand === 'ul'
-        ) {
-            executeCommand('insertUnorderedList');
-            return true;
-        }
-
-        if (normalizedCommand === 'bold') {
-            executeCommand('bold');
-            return true;
-        }
-
-        if (normalizedCommand === 'italic') {
-            executeCommand('italic');
-            return true;
-        }
-
-        if (normalizedCommand === 'underline') {
-            executeCommand('underline');
-            return true;
-        }
-
-        return false;
-    };
-
-    const handleEditorInput = (): void => {
-        if (consumeSlashCommand()) {
-            return;
-        }
-
-        updateValue();
-        resolveSuggestion();
-        syncToolbarState();
-    };
-
-    const handleEditorKeyUp = (): void => {
-        resolveSuggestion();
-        syncToolbarState();
-    };
-
-    const handleEditorKeyDown = (
-        event: KeyboardEvent<HTMLDivElement>,
-    ): void => {
-        if (suggestion === null) {
-            return;
-        }
-
-        if (event.key === 'Escape') {
-            event.preventDefault();
             setSuggestion(null);
             setUserResults([]);
             setUsersLoading(false);
+            editor.commands.focus();
+        },
+        [editor, suggestion],
+    );
+
+    const insertUserReference = useCallback(
+        (user: MentionableUser): void => {
+            if (editor === null || suggestion?.mode !== 'user') {
+                return;
+            }
+
+            editor
+                .chain()
+                .focus()
+                .deleteRange({ from: suggestion.from, to: suggestion.to })
+                .insertContent([
+                    {
+                        type: 'userReference',
+                        attrs: {
+                            id: user.id,
+                            name: user.name,
+                            email: user.email,
+                            role: user.role,
+                        },
+                    },
+                    { type: 'text', text: ' ' },
+                ])
+                .run();
+
+            setSuggestion(null);
+            setUserResults([]);
+            setUsersLoading(false);
+            editor.commands.focus();
+        },
+        [editor, suggestion],
+    );
+
+    const insertSuggestionByIndex = useCallback(
+        (index: number): void => {
+            if (suggestion === null) {
+                return;
+            }
+
+            if (suggestion.mode === 'admin') {
+                const admin = adminResults[index];
+
+                if (admin !== undefined) {
+                    insertAdminMention(admin);
+                }
+
+                return;
+            }
+
+            const user = userResults[index];
+
+            if (user !== undefined) {
+                insertUserReference(user);
+            }
+        },
+        [adminResults, insertAdminMention, insertUserReference, suggestion, userResults],
+    );
+
+    const executeCommand = (command: () => void): void => {
+        if (editor === null) {
             return;
         }
 
-        if (currentSuggestionCount === 0) {
-            return;
-        }
+        command();
+        editor.commands.focus();
+        syncToolbarState(editor);
+        resolveSuggestion(editor);
+    };
 
-        if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            setActiveSuggestionIndex((current) => {
-                return (current + 1) % currentSuggestionCount;
-            });
-            return;
-        }
+    const handleSuggestionKeyDown = useCallback(
+        (event: KeyboardEvent<HTMLElement>): boolean => {
+            if (editor === null || suggestion === null) {
+                return false;
+            }
 
-        if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            setActiveSuggestionIndex((current) => {
-                return (
-                    (current - 1 + currentSuggestionCount) %
-                    currentSuggestionCount
-                );
-            });
-            return;
-        }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSuggestion(null);
+                setUsersLoading(false);
+                setUserResults([]);
+                editor.commands.focus();
+                return true;
+            }
 
-        if (event.key === 'Tab') {
-            event.preventDefault();
-            setActiveSuggestionIndex((current) => {
-                if (event.shiftKey) {
+            if (currentSuggestionCount <= 0) {
+                return false;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveSuggestionIndex((current) => {
+                    return (current + 1) % currentSuggestionCount;
+                });
+                return true;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveSuggestionIndex((current) => {
                     return (
                         (current - 1 + currentSuggestionCount) %
                         currentSuggestionCount
                     );
-                }
+                });
+                return true;
+            }
 
-                return (current + 1) % currentSuggestionCount;
-            });
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                setActiveSuggestionIndex((current) => {
+                    if (event.shiftKey) {
+                        return (
+                            (current - 1 + currentSuggestionCount) %
+                            currentSuggestionCount
+                        );
+                    }
+
+                    return (current + 1) % currentSuggestionCount;
+                });
+                return true;
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                insertSuggestionByIndex(activeSuggestionIndex);
+                return true;
+            }
+
+            return false;
+        },
+        [
+            activeSuggestionIndex,
+            currentSuggestionCount,
+            editor,
+            insertSuggestionByIndex,
+            suggestion,
+        ],
+    );
+
+    const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+        if (editor === null) {
             return;
         }
 
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            insertSuggestionByIndex(activeSuggestionIndex);
-        }
-    };
-
-    const insertAdminMention = (admin: MentionableAdmin): void => {
-        insertReferenceBadge({
-            kind: 'admin',
-            id: admin.id,
-            name: admin.name,
-            email: admin.email,
-            role: 'admin',
-        });
-    };
-
-    const insertUserReference = (user: MentionableUser): void => {
-        insertReferenceBadge({
-            kind: 'user',
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-        });
-    };
-
-    const insertReferenceBadge = (payload: {
-        kind: 'admin' | 'user';
-        id: number;
-        name: string;
-        email: string;
-        role: string;
-    }): void => {
-        if (editorRef.current === null) {
+        if (handleSuggestionKeyDown(event)) {
             return;
         }
 
-        const selection = window.getSelection();
-        let range: Range | null = null;
-
-        if (selection !== null && selection.rangeCount > 0) {
-            const currentRange = selection.getRangeAt(0);
-
-            if (editorRef.current.contains(currentRange.startContainer)) {
-                range = currentRange;
-            }
-        }
-
-        if (range === null && caretRangeRef.current !== null) {
-            const fallbackRange = caretRangeRef.current.cloneRange();
-
-            if (editorRef.current.contains(fallbackRange.startContainer)) {
-                range = fallbackRange;
-
-                if (selection !== null) {
-                    selection.removeAllRanges();
-                    selection.addRange(fallbackRange);
-                }
-            }
-        }
-
-        if (range === null || !editorRef.current.contains(range.startContainer)) {
+        if (suggestion !== null) {
             return;
         }
 
-        if (range.startContainer.nodeType === Node.TEXT_NODE) {
-            const textNode = range.startContainer as Text;
-            const before = textNode.data.slice(0, range.startOffset);
-            const matchRegex =
-                payload.kind === 'admin'
-                    ? /@[\w.-]*$/
-                    : /\/user\s+[^\n]*$/i;
-            const match = before.match(matchRegex);
-
-            if (match !== null) {
-                const matchedToken = match[0];
-                const removeStart = Math.max(
-                    0,
-                    range.startOffset - matchedToken.length,
-                );
-
-                textNode.deleteData(
-                    removeStart,
-                    range.startOffset - removeStart,
-                );
-                range.setStart(textNode, removeStart);
-                range.collapse(true);
-            }
+        if (event.key === 'Escape') {
+            setSuggestion(null);
+            setUsersLoading(false);
+            setUserResults([]);
         }
-
-        const badge = document.createElement('button');
-        badge.type = 'button';
-        badge.setAttribute('contenteditable', 'false');
-        badge.className =
-            'mx-0.5 inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800/90 px-1.5 py-0.5 text-[11px] font-medium text-zinc-200 hover:border-zinc-500';
-
-        if (payload.kind === 'admin') {
-            badge.dataset.mentionAdminId = String(payload.id);
-            badge.textContent = `@${payload.name}`;
-        } else {
-            badge.dataset.userRefId = String(payload.id);
-            badge.dataset.userRefName = payload.name;
-            badge.dataset.userRefEmail = payload.email;
-            badge.dataset.userRefRole = payload.role;
-            badge.textContent = `${payload.name} [${payload.email}]`;
-        }
-
-        range.insertNode(badge);
-
-        const spacer = document.createTextNode(' ');
-        badge.after(spacer);
-
-        const nextRange = document.createRange();
-        nextRange.setStartAfter(spacer);
-        nextRange.collapse(true);
-        if (selection !== null) {
-            selection.removeAllRanges();
-            selection.addRange(nextRange);
-        }
-        caretRangeRef.current = nextRange.cloneRange();
-
-        setSuggestion(null);
-        setUserResults([]);
-        setUsersLoading(false);
-        updateValue();
-        syncToolbarState();
     };
 
-    const openUserFromBadge = (event: MouseEvent<HTMLDivElement>): void => {
+    const handleEditorClick = (event: MouseEvent<HTMLDivElement>): void => {
         const target = event.target as HTMLElement;
         const userBadge = target.closest<HTMLElement>('[data-user-ref-id]');
 
         if (userBadge !== null) {
             event.preventDefault();
-            const userId = Number.parseInt(
-                userBadge.dataset.userRefId ?? '0',
-                10,
-            );
+            const userId = Number.parseInt(userBadge.dataset.userRefId ?? '0', 10);
 
             if (userId > 0) {
-                router.visit(`/admin/users/${userId}`);
+                const route = adminUserShow(userId);
+                router.visit(route.url);
             }
 
             return;
         }
 
-        const adminBadge = target.closest<HTMLElement>(
-            '[data-mention-admin-id]',
-        );
+        const adminBadge = target.closest<HTMLElement>('[data-mention-admin-id]');
 
         if (adminBadge === null) {
             return;
@@ -650,45 +567,10 @@ export function TicketDescriptionEditor({
         );
 
         if (adminId > 0) {
-            router.visit(`/admin/users/${adminId}`);
+            const route = adminUserShow(adminId);
+            router.visit(route.url);
         }
     };
-
-    const suggestionMenuPosition = useMemo(() => {
-        if (suggestion === null || containerRef.current === null) {
-            return {
-                className: '',
-                left: 8,
-                top: 56,
-            };
-        }
-
-        const menuWidth = 288;
-        const estimatedMenuHeight = 220;
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const maxLeft = Math.max(8, containerRect.width - menuWidth - 8);
-        const left = Math.min(
-            Math.max(8, suggestion.left - containerRect.left),
-            maxLeft,
-        );
-        const topBelow = suggestion.top - containerRect.top + 22;
-        const canRenderBelow =
-            topBelow + estimatedMenuHeight <= containerRect.height - 8;
-
-        if (canRenderBelow) {
-            return {
-                className: '',
-                left,
-                top: Math.max(56, topBelow),
-            };
-        }
-
-        return {
-            className: '-translate-y-full',
-            left,
-            top: Math.max(56, suggestion.top - containerRect.top - 8),
-        };
-    }, [suggestion]);
 
     return (
         <div className={cn('flex min-h-0 flex-col space-y-1.5', className)}>
@@ -696,41 +578,73 @@ export function TicketDescriptionEditor({
 
             <div
                 ref={containerRef}
-                className="relative flex h-full min-h-[220px] flex-1 flex-col overflow-visible rounded-lg border border-border bg-background"
+                className="relative flex h-full min-h-[13.75rem] flex-1 flex-col overflow-visible rounded-lg border border-border bg-background"
             >
                 <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
                     <ToolbarButton
                         label="Bold"
-                        icon={<Bold className="h-3.5 w-3.5" />}
+                        icon={<Bold className="size-3.5" />}
                         isActive={activeInlineState.bold}
-                        onClick={() => executeCommand('bold')}
+                        onClick={() => {
+                            executeCommand(() => {
+                                editor?.chain().focus().toggleBold().run();
+                            });
+                        }}
                     />
                     <ToolbarButton
                         label="Italic"
-                        icon={<Italic className="h-3.5 w-3.5" />}
+                        icon={<Italic className="size-3.5" />}
                         isActive={activeInlineState.italic}
-                        onClick={() => executeCommand('italic')}
+                        onClick={() => {
+                            executeCommand(() => {
+                                editor?.chain().focus().toggleItalic().run();
+                            });
+                        }}
                     />
                     <ToolbarButton
                         label="Underline"
-                        icon={<Underline className="h-3.5 w-3.5" />}
+                        icon={<UnderlineIcon className="size-3.5" />}
                         isActive={activeInlineState.underline}
-                        onClick={() => executeCommand('underline')}
+                        onClick={() => {
+                            executeCommand(() => {
+                                editor?.chain().focus().toggleUnderline().run();
+                            });
+                        }}
                     />
                     <ToolbarButton
                         label="Bullet list"
-                        icon={<List className="h-3.5 w-3.5" />}
+                        icon={<List className="size-3.5" />}
                         isActive={activeInlineState.bulletList}
-                        onClick={() => executeCommand('insertUnorderedList')}
+                        onClick={() => {
+                            executeCommand(() => {
+                                editor?.chain().focus().toggleBulletList().run();
+                            });
+                        }}
                     />
 
                     <Select
                         value={activeHeading}
                         onValueChange={(value) => {
-                            executeCommand('formatBlock', value);
+                            executeCommand(() => {
+                                if (editor === null) {
+                                    return;
+                                }
+
+                                if (value === 'p') {
+                                    editor.chain().focus().setParagraph().run();
+                                    return;
+                                }
+
+                                const level = Number.parseInt(value.replace('h', ''), 10) as
+                                    | 1
+                                    | 2
+                                    | 3;
+
+                                editor.chain().focus().toggleHeading({ level }).run();
+                            });
                         }}
                     >
-                        <SelectTrigger className="h-7 w-[138px] border-zinc-800 bg-zinc-900/70 px-2 text-xs text-zinc-300">
+                        <SelectTrigger className="h-7 w-[8.625rem] border-zinc-800 bg-zinc-900/70 px-2 text-xs text-zinc-300">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="border-zinc-700 bg-zinc-900">
@@ -741,29 +655,22 @@ export function TicketDescriptionEditor({
                         </SelectContent>
                     </Select>
 
-                    <div className="ml-auto inline-flex items-center gap-2 text-[11px] text-zinc-500">
+                    <div className="ml-auto inline-flex items-center gap-2 text-[0.6875rem] text-zinc-500">
                         <span className="inline-flex items-center gap-1">
-                            <AtSign className="h-3 w-3" /> Mention admin
+                            <AtSign className="size-3" /> Mention admin
                         </span>
                         <span className="inline-flex items-center gap-1">
-                            <UserRound className="h-3 w-3" /> /user
-                            athlete|coach
+                            <UserRound className="size-3" /> /user athlete|coach
                         </span>
                     </div>
                 </div>
 
-                <div className="relative flex min-h-0 flex-1 overflow-y-auto px-3 py-2 text-sm leading-6 text-zinc-200">
-                    <div
-                        ref={editorRef}
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="min-h-full w-full break-words whitespace-pre-wrap outline-none [&_h1]:mb-1 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mb-1 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-                        onInput={handleEditorInput}
-                        onKeyUp={handleEditorKeyUp}
-                        onKeyDown={handleEditorKeyDown}
-                        onMouseUp={syncToolbarState}
-                        onFocus={syncToolbarState}
-                        onClick={openUserFromBadge}
+                <div className="relative flex min-h-0 flex-1 overflow-y-auto px-3 py-2">
+                    <EditorContent
+                        editor={editor}
+                        className="min-h-full w-full"
+                        onKeyDownCapture={handleEditorKeyDown}
+                        onClick={handleEditorClick}
                     />
 
                     {isEmpty ? (
@@ -773,106 +680,133 @@ export function TicketDescriptionEditor({
                     ) : null}
                 </div>
 
-                {suggestion !== null ? (
-                    <div
-                        className={cn(
-                            'absolute z-[220] w-72 rounded-lg border border-border bg-surface p-1 shadow-xl',
-                            suggestionMenuPosition.className,
-                        )}
-                        style={{
-                            left: suggestionMenuPosition.left,
-                            top: suggestionMenuPosition.top,
+                <Popover
+                    open={suggestion !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setSuggestion(null);
+                        }
+                    }}
+                    modal={false}
+                >
+                    <PopoverAnchor asChild>
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute z-30 h-0.5 w-0.5"
+                            style={{
+                                left: `${suggestion?.left ?? 0}px`,
+                                top: `${suggestion?.top ?? 0}px`,
+                            }}
+                        />
+                    </PopoverAnchor>
+                    <PopoverContent
+                        side="bottom"
+                        align="start"
+                        sideOffset={8}
+                        className="w-72 border-border bg-surface p-1"
+                        onOpenAutoFocus={(event) => {
+                            event.preventDefault();
+                        }}
+                        onCloseAutoFocus={(event) => {
+                            event.preventDefault();
                         }}
                     >
-                        {suggestion.mode === 'admin' ? (
-                            adminResults.length === 0 ? (
-                                <p className="px-2 py-2 text-xs text-zinc-500">
-                                    No admins found.
-                                </p>
-                            ) : (
-                                adminResults.map((admin, index) => (
-                                    <button
-                                        key={admin.id}
-                                        type="button"
-                                        className={cn(
-                                            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                                            index === activeSuggestionIndex
-                                                ? 'bg-zinc-800 text-zinc-100'
-                                                : 'text-zinc-200 hover:bg-zinc-800',
-                                        )}
-                                        onMouseEnter={() =>
-                                            setActiveSuggestionIndex(index)
-                                        }
-                                        onMouseDown={(event) => {
-                                            event.preventDefault();
-                                            insertAdminMention(admin);
-                                        }}
-                                    >
-                                        <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
-                                            <AvatarFallback className="bg-zinc-900 text-[10px] text-zinc-300">
-                                                {initials(admin.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-zinc-100">
-                                                {admin.name}
-                                            </span>
-                                            <span className="block truncate text-zinc-500">
-                                                {admin.email}
-                                            </span>
-                                        </span>
-                                    </button>
-                                ))
-                            )
-                        ) : usersLoading ? (
-                            <p className="flex items-center gap-2 px-2 py-2 text-xs text-zinc-500">
-                                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                                Searching users...
-                            </p>
-                        ) : userResults.length === 0 ? (
-                            <p className="px-2 py-2 text-xs text-zinc-500">
-                                No users found.
-                            </p>
-                        ) : (
-                            userResults.map((user, index) => (
-                                <button
-                                    key={user.id}
-                                    type="button"
-                                    className={cn(
-                                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                                        index === activeSuggestionIndex
-                                            ? 'bg-zinc-800 text-zinc-100'
-                                            : 'text-zinc-200 hover:bg-zinc-800',
-                                    )}
-                                    onMouseEnter={() =>
-                                        setActiveSuggestionIndex(index)
-                                    }
-                                    onMouseDown={(event) => {
-                                        event.preventDefault();
-                                        insertUserReference(user);
-                                    }}
-                                >
-                                    <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
-                                        <AvatarFallback className="bg-zinc-900 text-[10px] text-zinc-300">
-                                            {initials(user.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-zinc-100">
-                                            {user.name}
-                                        </span>
-                                        <span className="block truncate text-zinc-500">
-                                            {user.email}
-                                        </span>
-                                    </span>
-                                    <span className="rounded border border-zinc-700 px-1 py-0 text-[10px] text-zinc-500 capitalize">
-                                        {user.role}
-                                    </span>
-                                </button>
-                            ))
-                        )}
-                    </div>
-                ) : null}
+                        <Command
+                            className="bg-transparent"
+                            onKeyDown={(event) => {
+                                handleSuggestionKeyDown(event);
+                            }}
+                        >
+                            <CommandList>
+                                {suggestion?.mode === 'admin' ? (
+                                    adminResults.length === 0 ? (
+                                        <CommandEmpty>No admins found.</CommandEmpty>
+                                    ) : (
+                                        <CommandGroup heading="Admins">
+                                            {adminResults.map((admin, index) => (
+                                                <CommandItem
+                                                    key={admin.id}
+                                                    value={`${admin.name} ${admin.email}`}
+                                                    className={cn(
+                                                        index === activeSuggestionIndex
+                                                            ? 'bg-zinc-800 text-zinc-100'
+                                                            : undefined,
+                                                    )}
+                                                    onMouseEnter={() => {
+                                                        setActiveSuggestionIndex(index);
+                                                    }}
+                                                    onMouseDown={(event) => {
+                                                        event.preventDefault();
+                                                        insertAdminMention(admin);
+                                                    }}
+                                                >
+                                                    <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
+                                                        <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
+                                                            {initials(admin.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-zinc-100">
+                                                            {admin.name}
+                                                        </span>
+                                                        <span className="block truncate text-zinc-500">
+                                                            {admin.email}
+                                                        </span>
+                                                    </span>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    )
+                                ) : usersLoading ? (
+                                    <div className="flex items-center gap-2 px-2 py-2 text-xs text-zinc-500">
+                                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                                        Searching users...
+                                    </div>
+                                ) : userResults.length === 0 ? (
+                                    <CommandEmpty>No users found.</CommandEmpty>
+                                ) : (
+                                    <CommandGroup heading="Users">
+                                        {userResults.map((user, index) => (
+                                            <CommandItem
+                                                key={user.id}
+                                                value={`${user.name} ${user.email}`}
+                                                className={cn(
+                                                    index === activeSuggestionIndex
+                                                        ? 'bg-zinc-800 text-zinc-100'
+                                                        : undefined,
+                                                )}
+                                                onMouseEnter={() => {
+                                                    setActiveSuggestionIndex(index);
+                                                }}
+                                                onMouseDown={(event) => {
+                                                    event.preventDefault();
+                                                    insertUserReference(user);
+                                                }}
+                                            >
+                                                <Avatar className="h-6 w-6 border border-zinc-700 bg-zinc-900">
+                                                    <AvatarFallback className="bg-zinc-900 text-[0.625rem] text-zinc-300">
+                                                        {initials(user.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-zinc-100">
+                                                        {user.name}
+                                                    </span>
+                                                    <span className="block truncate text-zinc-500">
+                                                        {user.email}
+                                                    </span>
+                                                </span>
+                                                <span className="rounded border border-zinc-700 px-1 py-0 text-[0.625rem] text-zinc-500 capitalize">
+                                                    {user.role}
+                                                </span>
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                )}
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
         </div>
     );
@@ -910,92 +844,146 @@ function ToolbarButton({
     );
 }
 
-function detectSuggestionAtCaret(root: HTMLElement): SuggestionState | null {
-    const selection = window.getSelection();
+function detectSuggestionAtCaret(editor: Editor): SuggestionState | null {
+    const selection = editor.state.selection;
 
-    if (selection === null || selection.rangeCount === 0) {
+    if (!selection.empty) {
         return null;
     }
 
-    const range = selection.getRangeAt(0);
-    const insideEditor = root.contains(range.startContainer);
-    const isCollapsed = range.collapsed;
+    const from = selection.from;
+    const beforeText = editor.state.doc.textBetween(
+        Math.max(0, from - 220),
+        from,
+        '\n',
+        '\u0000',
+    );
 
-    if (!isCollapsed || !insideEditor) {
-        return null;
-    }
-
-    const beforeRange = range.cloneRange();
-    beforeRange.selectNodeContents(root);
-    beforeRange.setEnd(range.endContainer, range.endOffset);
-
-    const textBeforeCaret = beforeRange.toString();
-    const coords = resolveCaretCoordinates(range, root);
-    const textBeforeCaretInNode =
-        range.startContainer.nodeType === Node.TEXT_NODE
-            ? (range.startContainer as Text).data.slice(0, range.startOffset)
-            : '';
-    const safeTail = (textBeforeCaretInNode || textBeforeCaret).slice(-200);
-
-    const adminMatch = safeTail.match(/(?:^|[\s\u00a0])@([\w.-]{0,120})$/);
+    const adminMatch = /(?:^|[^\p{L}\p{N}_])(@([\w.-]{0,120}))$/u.exec(
+        beforeText,
+    );
 
     if (adminMatch !== null) {
-        return {
-            mode: 'admin',
-            query: adminMatch[1] ?? '',
-            ...coords,
-        };
+        const token = adminMatch[1] ?? '';
+        const query = adminMatch[2] ?? '';
+        const start = from - token.length;
+
+        if (start >= 0) {
+            const cursorPosition = editor.view.coordsAtPos(from);
+
+            return {
+                mode: 'admin',
+                query,
+                from: start,
+                to: from,
+                left: cursorPosition.left,
+                top: cursorPosition.bottom,
+            };
+        }
     }
 
-    const userMatch = safeTail.match(
-        /(?:^|[\s\u00a0])\/user(?:\s+([^\n\r]{0,120})?)?$/i,
-    );
+    const userMatch =
+        /(?:^|[^\p{L}\p{N}_])(\/user(?:\s+([^\n\r]{0,120})?)?)$/iu.exec(
+            beforeText,
+        );
 
     if (userMatch === null) {
         return null;
     }
 
+    const token = userMatch[1] ?? '';
+    const start = from - token.length;
+
+    if (start < 0) {
+        return null;
+    }
+
+    const cursorPosition = editor.view.coordsAtPos(from);
+
     return {
         mode: 'user',
-        query: (userMatch[1] ?? '').trim(),
-        ...coords,
+        query: (userMatch[2] ?? '').trimStart(),
+        from: start,
+        to: from,
+        left: cursorPosition.left,
+        top: cursorPosition.bottom,
     };
 }
 
-function resolveCaretCoordinates(
-    range: Range,
-    container: HTMLElement,
-): {
-    left: number;
-    top: number;
-} {
-    const rangeRect = range.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    const left = rangeRect.left === 0 ? containerRect.left + 8 : rangeRect.left;
-    const top = rangeRect.top === 0 ? containerRect.top + 32 : rangeRect.top;
+function consumeSlashCommand(editor: Editor): boolean {
+    const selection = editor.state.selection;
 
-    return {
-        left: Math.max(8, left),
-        top: Math.max(40, top),
-    };
-}
-
-function normalizeHeadingValue(value: string): HeadingOption {
-    const normalized = value.toLowerCase().replace(/[<>]/g, '');
-
-    if (normalized === 'h1') {
-        return 'h1';
+    if (!selection.empty) {
+        return false;
     }
 
-    if (normalized === 'h2') {
-        return 'h2';
+    const from = selection.from;
+    const beforeText = editor.state.doc.textBetween(
+        Math.max(0, from - 48),
+        from,
+        '\n',
+        '\u0000',
+    );
+    const match = beforeText.match(
+        /(?:^|\s)\/(h1|h2|h3|paragraph|p|bullet|list|ul|bold|italic|underline)\s$/i,
+    );
+
+    if (match === null) {
+        return false;
     }
 
-    if (normalized === 'h3') {
-        return 'h3';
+    const token = (match[0] ?? '').trimStart();
+    const rangeFrom = from - token.length;
+
+    if (rangeFrom < 0) {
+        return false;
     }
 
-    return 'p';
+    editor.chain().focus().deleteRange({ from: rangeFrom, to: from }).run();
+
+    const command = (match[1] ?? '').toLowerCase();
+
+    if (command === 'h1') {
+        editor.chain().focus().toggleHeading({ level: 1 }).run();
+        return true;
+    }
+
+    if (command === 'h2') {
+        editor.chain().focus().toggleHeading({ level: 2 }).run();
+        return true;
+    }
+
+    if (command === 'h3') {
+        editor.chain().focus().toggleHeading({ level: 3 }).run();
+        return true;
+    }
+
+    if (command === 'paragraph' || command === 'p') {
+        editor.chain().focus().setParagraph().run();
+        return true;
+    }
+
+    if (command === 'bullet' || command === 'list' || command === 'ul') {
+        editor.chain().focus().toggleBulletList().run();
+        return true;
+    }
+
+    if (command === 'bold') {
+        editor.chain().focus().toggleBold().run();
+        return true;
+    }
+
+    if (command === 'italic') {
+        editor.chain().focus().toggleItalic().run();
+        return true;
+    }
+
+    if (command === 'underline') {
+        editor.chain().focus().toggleUnderline().run();
+        return true;
+    }
+
+    return false;
 }
 
 function initials(value: string): string {

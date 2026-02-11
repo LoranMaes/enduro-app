@@ -258,6 +258,21 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
   - Integrations
   - Billing & Plans
 - added athlete account label/sidebar treatment
+
+### 9.3 Tickets Frontend Decomposition (IN PROGRESS)
+
+- Objective:
+  - split oversized admin tickets page into testable UI units + hooks without API/behavior changes
+  - stabilize rich editor suggestion UX in edit mode before deeper extraction
+- Completed in current increment:
+  - extracted `TicketCreateDialog` from `admin/tickets/index.tsx`
+  - stabilized mention and `/user` trigger parsing in existing ticket editing
+  - stabilized query-driven ticket opening from notification URLs
+  - hardened mark-seen/mark-all-seen notification mutations with direct Wayfinder route usage
+- Next:
+  - extract ticket detail dialog/sheet into dedicated component
+  - extract ticket mutation actions into `useTicketMutations`
+  - keep payload and policy behavior unchanged
 - integrations tab now reflects real provider state; static Garmin copy removed
 - added backend persistence endpoints/validation for profile + training preferences
 
@@ -507,3 +522,38 @@ Scope: full codebase quality pass with behavior stability and slicing parity pre
     - frontend decomposition of oversized components
     - stronger shadcn primitive alignment
     - dialog/layout responsiveness and semantic cleanup
+    - TipTap-based ticket description editor migration with preserved mention/user-ref payload contract
+
+### 9.5 Wave C (IN PROGRESS)
+
+1. Decompose oversized frontend modules
+   - admin tickets board/detail
+   - session detail
+   - workout structure builder
+   - session editor modal
+2. ShadCN alignment
+   - add missing command/popover/tabs/scroll primitives and migrate custom suggestion/menu implementations
+3. Editor migration
+   - replace fragile `contentEditable` with TipTap foundation while preserving backend payload shape
+4. Styling + a11y hardening
+   - reduce fixed-pixel layout usage in touched components
+   - standardize dialog viewport-safe behavior and semantic roles
+
+### 9.6 Wave C Slice Update (CURRENT)
+
+1. Completed in this slice
+   - shadcn primitive availability added for wave usage:
+     - command / popover / tabs / table / scroll-area
+   - admin tickets decomposition:
+     - extracted shared ticket helpers to `lib/ticket-utils.ts`
+     - extracted shared UI atoms to `components/ticket-ui.tsx`
+     - extracted assignee combobox (`Popover + Command`) to `components/ticket-assignee-combobox.tsx`
+   - tickets page now uses extracted modules and no longer owns the custom assignee suggestion dropdown implementation
+   - TipTap editor migration hardening:
+     - fixed editorProps typing + `setContent` options for current API
+     - fixed suggestion-state typing for slash/mention menu stability
+   - session editor modal tab container was stabilized (missing Tabs closure fixed) and retains viewport-safe layout behavior
+2. Remaining for Wave C completion
+   - further decomposition of oversized calendar surfaces (`session-detail`, `workout-structure-builder`, deeper `session-editor-modal` internals)
+   - broader semantic/a11y pass on remaining clickable non-button patterns
+   - additional rem-based cleanup in untouched large files where fixed px text sizing remains

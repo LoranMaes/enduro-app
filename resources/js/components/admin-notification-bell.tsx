@@ -131,17 +131,19 @@ export function AdminNotificationBell({ className }: { className?: string }) {
 
     const markSeen = async (notificationId: string): Promise<void> => {
         try {
-            const route = ticketNotificationsMarkSeen.form.patch({
+            const route = ticketNotificationsMarkSeen({
                 notification: notificationId,
             });
 
-            const response = await fetch(route.action, {
+            const response = await fetch(route.url, {
                 method: route.method,
                 headers: {
                     Accept: 'application/json',
+                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken(),
                 },
+                body: JSON.stringify({}),
                 credentials: 'same-origin',
             });
 
@@ -172,15 +174,17 @@ export function AdminNotificationBell({ className }: { className?: string }) {
 
     const markAllSeen = async (): Promise<void> => {
         try {
-            const route = ticketNotificationsMarkAllSeen.form.patch();
+            const route = ticketNotificationsMarkAllSeen();
 
-            const response = await fetch(route.action, {
+            const response = await fetch(route.url, {
                 method: route.method,
                 headers: {
                     Accept: 'application/json',
+                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken(),
                 },
+                body: JSON.stringify({}),
                 credentials: 'same-origin',
             });
 
@@ -208,7 +212,10 @@ export function AdminNotificationBell({ className }: { className?: string }) {
         const destination = notification.data.url;
 
         if (typeof destination === 'string' && destination !== '') {
-            router.visit(destination);
+            router.visit(destination, {
+                preserveScroll: true,
+                preserveState: false,
+            });
         }
     };
 

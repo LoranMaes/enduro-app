@@ -6,7 +6,7 @@ Backend spine + athlete operational flows are complete, including activity sync/
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
-Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is the next approved scope.
+Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is now in progress.
 
 ## Confidence Level
 
@@ -30,6 +30,7 @@ High — UX validated, backend structure in place
 - Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
 - Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
+- Admin tickets refactor is mid-flight: board/filter extraction is in place, but `resources/js/pages/admin/tickets/index.tsx` is still larger than target and detail-dialog extraction is pending
 
 ## Cleanup Audit Snapshot (2026-02-11)
 
@@ -295,6 +296,20 @@ LOCKED for MVP
     - inline validation feedback for create/edit flows
     - bounded editor region + improved WYSIWYG active states
     - audit-trail tab now has guaranteed y-scroll inside constrained dialog viewport
+- Wave C decomposition/alignment slice landed for frontend foundations:
+    - Added reusable shadcn-derivative primitives under `resources/js/components/ui`:
+        - `command.tsx`
+        - `popover.tsx`
+        - `tabs.tsx`
+        - `table.tsx`
+        - `scroll-area.tsx`
+    - Added reusable admin-ticket modules:
+        - `resources/js/pages/admin/tickets/components/ticket-assignee-combobox.tsx`
+        - `resources/js/pages/admin/tickets/components/ticket-ui.tsx`
+        - `resources/js/pages/admin/tickets/lib/ticket-utils.ts`
+    - `resources/js/pages/admin/tickets/index.tsx` now delegates shared display + serialization concerns to extracted modules (behavior preserved).
+    - Ticket description editor (TipTap) integration is now API-accurate for current package versions (typed attributes/setContent contract fixed).
+    - Session editor modal tab scaffold is now structurally stable (`Tabs` closure fix) with the shared dialog size contract still intact.
 - Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.
 
 ## Auth & Approval Status

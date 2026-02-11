@@ -1,5 +1,50 @@
 # Endure — Progress Log
 
+## 2026-02-11 (Ticket Editor Stabilization + Tickets Decomposition Increment)
+
+- Follow-up fixes applied:
+    - removed duplicate TipTap underline extension registration to eliminate duplicate-extension warning noise
+    - suggestion `Enter` handling now runs in capture phase so active mention/user suggestions are selected before editor newline handling
+- Stabilized admin ticket editor trigger behavior in existing-ticket edit mode:
+    - mention and slash-user trigger detection now supports non-whitespace boundaries (for example `...text@name` and `...text/user name`)
+    - reduced stale suggestion churn by keeping async user-search request guards in place
+    - maintained focus after suggestion insertions
+- Hardened ticket query-driven open behavior from notifications:
+    - stabilized `openTicketDetail` callback identity to prevent repeated URL-effect re-open loops
+    - improved query parsing in realtime hook and skip re-open when selected ticket is already open
+- Hardened admin notification actions:
+    - mark-seen/mark-all-seen calls now use direct Wayfinder route definitions (PATCH with JSON body) for consistency
+    - notification navigation now uses explicit Inertia visit options (`preserveState: false`) to ensure query transitions are applied
+- Decomposition increment:
+    - extracted large New Ticket modal into `TicketCreateDialog` component
+    - kept behavior, field validation rendering, and payload format unchanged
+- Verification completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Phase 9 Wave C Start: Frontend Decomposition + ShadCN Alignment)
+
+- Wave C execution started with behavior-preserving frontend-only constraints.
+- Scope locked to:
+    - decomposition of oversized frontend pages/components into hooks + presentational units
+    - strict ShadCN/Radix primitive alignment for suggestion lists, popovers, tabs, table/scroll containers, and dialog structure
+    - ticket rich-text editor migration from fragile `contentEditable` to TipTap foundation while preserving payload format
+    - pixel cleanup + semantic/a11y hardening in touched surfaces
+- Added frontend dependencies via Sail for this wave:
+    - `@radix-ui/react-popover`
+    - `@radix-ui/react-tabs`
+    - `@radix-ui/react-scroll-area`
+    - `cmdk`
+    - `@tiptap/react`
+    - `@tiptap/starter-kit`
+    - `@tiptap/extension-placeholder`
+    - `@tiptap/extension-underline`
+- Guardrails:
+    - no backend, route, policy, or API contract changes
+    - no behavioral regressions
+    - slicing-aligned UI preserved
+
 ## 2026-02-11 (Phase 9 Wave B Complete: Backend Boundary Extraction)
 
 - Extracted shared calendar payload orchestration:
@@ -1169,3 +1214,28 @@ Next milestone:
     - `vendor/bin/sail bin pint --dirty --format agent`
     - `vendor/bin/sail npm run types`
     - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php tests/Feature/AdminImpersonationTest.php` (19 passed)
+
+- Wave C frontend decomposition + ShadCN alignment slice (tickets/session editor):
+    - added reusable ShadCN primitive wrappers:
+        - `command`
+        - `popover`
+        - `tabs`
+        - `table`
+        - `scroll-area`
+    - added reusable ticket UI modules:
+        - `components/ticket-assignee-combobox.tsx` (`Popover + Command`, keyboard-safe assignee selection)
+        - `components/ticket-ui.tsx` (shared badges/labels/table header controls/search highlighting)
+        - `lib/ticket-utils.ts` (payload parsing/serialization + formatting + request error helpers)
+    - refactored `admin/tickets/index.tsx` to consume shared ticket modules (reduced inline helper surface and removed custom assignee dropdown implementation)
+    - stabilized TipTap editor integration:
+        - corrected editor attribute typing for current TipTap API
+        - corrected `setContent` options typing
+        - fixed suggestion state typing to keep mention command menu behavior intact
+    - standardized session editor modal structure:
+        - fixed missing `Tabs` closure after tab migration
+        - modal remains viewport-safe with dialog size contract
+    - converted remaining hardcoded pixel text sizes in session editor to rem-based equivalents in touched areas
+- Validation completed for this Wave C slice:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php` (6 passed)
