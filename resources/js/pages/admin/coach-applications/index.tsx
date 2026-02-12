@@ -8,7 +8,7 @@ import {
     ShieldCheck,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
+import { index as adminCoachApplicationsIndex } from '@/routes/admin/coach-applications';
 import type { BreadcrumbItem } from '@/types';
 
 type CoachApplicationFileItem = {
@@ -74,7 +75,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Coach Applications',
-        href: '/admin/coach-applications',
+        href: adminCoachApplicationsIndex().url,
     },
 ];
 
@@ -83,12 +84,9 @@ export default function CoachApplicationsIndex({
     metrics,
     applications,
 }: CoachApplicationsPageProps) {
-    const firstPending = applications.find((application) => {
-        return application.status === 'pending';
-    });
-    const [activeApplicationId, setActiveApplicationId] = useState<
+    const [selectedApplicationId, setSelectedApplicationId] = useState<
         number | null
-    >(firstPending?.id ?? applications[0]?.id ?? null);
+    >(null);
     const [fileIndexByApplication, setFileIndexByApplication] = useState<
         Record<number, number>
     >({});
@@ -99,26 +97,26 @@ export default function CoachApplicationsIndex({
         number | null
     >(null);
 
-    useEffect(() => {
-        setActiveApplicationId((current) => {
-            if (applications.length === 0) {
-                return null;
-            }
+    const activeApplicationId = useMemo(() => {
+        if (applications.length === 0) {
+            return null;
+        }
 
-            if (
-                current !== null &&
-                applications.some((application) => application.id === current)
-            ) {
-                return current;
-            }
+        if (
+            selectedApplicationId !== null &&
+            applications.some(
+                (application) => application.id === selectedApplicationId,
+            )
+        ) {
+            return selectedApplicationId;
+        }
 
-            const nextPending = applications.find(
-                (application) => application.status === 'pending',
-            );
+        const nextPending = applications.find(
+            (application) => application.status === 'pending',
+        );
 
-            return nextPending?.id ?? applications[0].id;
-        });
-    }, [applications]);
+        return nextPending?.id ?? applications[0].id;
+    }, [applications, selectedApplicationId]);
 
     const activeApplication = useMemo(() => {
         return (
@@ -205,7 +203,7 @@ export default function CoachApplicationsIndex({
                                 }
 
                                 router.get(
-                                    '/admin/coach-applications',
+                                    adminCoachApplicationsIndex().url,
                                     { status: value },
                                     {
                                         preserveScroll: true,
@@ -260,7 +258,7 @@ export default function CoachApplicationsIndex({
                                             <button
                                                 type="button"
                                                 onClick={() =>
-                                                    setActiveApplicationId(
+                                                    setSelectedApplicationId(
                                                         application.id,
                                                     )
                                                 }
@@ -297,7 +295,6 @@ export default function CoachApplicationsIndex({
                                                           ).toLocaleString()}
                                                 </p>
                                             </button>
-
                                             {isActive ? (
                                                 <div className="space-y-2 border-t border-border px-4 py-3">
                                                     <AnswerRow

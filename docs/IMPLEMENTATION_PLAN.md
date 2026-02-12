@@ -4,6 +4,158 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 9.13 — Final Smoke + Full Quality Gates (COMPLETE)
+
+- Scope:
+  - run final quality gates across frontend/backend
+  - verify no regressions in recent wave fixes
+  - close refactor wave with behavior-preserving validation
+- Guardrails:
+  - no behavior/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - executed full quality gate suite after Waves 6 and 7
+  - verified no regressions across provider/policy/ticket/admin/auth surfaces touched in this pass
+  - kept backend/frontend contracts and UX behavior unchanged
+
+---
+
+## Phase 9.12 — Security + Content Hardening Pass (COMPLETE)
+
+- Scope:
+  - review and harden `dangerouslySetInnerHTML` render boundaries
+  - keep rich-text rendering explicit and sanitized at trust boundaries
+  - preserve payloads and current UX behavior
+- Guardrails:
+  - no backend/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - removed `dangerouslySetInnerHTML` usage for pagination labels in admin users/logs tables using safe label decoding helper (`resources/js/lib/pagination.ts`)
+  - tightened 2FA QR render trust boundary by adding explicit SVG sanitization in `two-factor-setup-modal.tsx`
+  - preserved rendering behavior and payload contracts
+
+---
+
+## Phase 9.11 — Backend Hardening Pass (COMPLETE)
+
+- Scope:
+  - replace `whereRaw('1 = 0')` query fallbacks with explicit expressive empty-result constraints
+  - consolidate repeated impersonation checks in policies via shared helper
+  - split Strava provider concerns (HTTP client/mapping/token lifecycle) into maintainable boundaries
+- Guardrails:
+  - no behavior/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - replaced raw fallback scopes (`whereRaw('1 = 0')`) with explicit empty-key constraints in `TrainingScope`
+  - consolidated policy impersonation checks into shared trait `App\Policies\Concerns\DetectsImpersonation`
+  - split Strava provider responsibilities:
+    - `StravaApiClient` for HTTP/token/request concerns
+    - `StravaActivityMapper` for payload mapping concerns
+    - `StravaActivityProvider` retained as orchestration boundary only
+
+---
+
+## Phase 9.10 — Session Analysis Chart Decomposition (COMPLETE)
+
+- Scope:
+  - split `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+  - isolate rendering/state helpers without changing chart behavior
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no math/interaction changes
+- Completed:
+  - decomposed `SessionAnalysisChart.tsx` by extracting:
+    - `session-analysis-chart/InteractiveStreamChart.tsx`
+    - `session-analysis-chart/SelectionStatLine.tsx`
+  - reduced parent chart component to orchestration-only rendering while preserving interactions and chart math
+
+---
+
+## Phase 9.9 — Admin + Session Analysis Decomposition (COMPLETE)
+
+- Scope:
+  - decompose remaining oversized admin surfaces:
+    - `resources/js/pages/admin/analytics.tsx`
+    - `resources/js/pages/admin/users/show.tsx`
+  - decompose `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+  - preserve behavior and API contracts exactly
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no UX redesign
+- Completed:
+  - decomposed `resources/js/pages/admin/analytics.tsx` into feature modules:
+    - `analytics/types.ts`
+    - `analytics/utils.ts`
+    - `analytics/hooks/useAdminAnalyticsChart.ts`
+    - `analytics/components/*`
+  - decomposed `resources/js/pages/admin/users/show.tsx` into feature modules:
+    - `show/types.ts`
+    - `show/utils.ts`
+    - `show/components/*`
+  - preserved all route/API contracts and page behavior
+
+---
+
+## Phase 9.8 — Legacy Surface Cleanup + Auth/Register Decomposition (COMPLETE)
+
+- Scope:
+  - remove or formally retire unused legacy calendar monolith (`plan-section.tsx`) if it is confirmed unused
+  - split oversized auth registration page into isolated steps/hooks/components
+  - preserve onboarding behavior and request payloads exactly
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no UX redesign
+- Completed:
+  - confirmed no active references to `resources/js/pages/calendar/components/plan-section.tsx` and removed the file
+  - replaced monolithic `resources/js/pages/auth/register.tsx` step rendering with extracted step components:
+    - `AccountStep`
+    - `AthletePreferencesStep`
+    - `AthleteZonesStep`
+    - `AthleteIntegrationsStep`
+    - `CoachProfileStep`
+    - `CoachApplicationStep`
+  - preserved registration payload contract and form behavior while migrating constants/types/helpers to feature-local files
+
+---
+
+## Phase 9.7 — Ticket Editor Decomposition (COMPLETE)
+
+- Scope:
+  - split `resources/js/pages/admin/tickets/components/ticket-description-editor.tsx`
+  - extract editor-specific hooks/components/utilities while preserving behavior
+  - keep mention and `/user` interactions stable in both create + edit flows
+- Guardrails:
+  - no backend/API changes
+  - no route shape changes
+  - no payload format changes
+- Completed:
+  - decomposed editor into orchestrator + dedicated hook + toolbar + suggestion popover + shared utils/types
+  - preserved mention/slash token insertion behavior and keyboard accessibility
+  - maintained export path compatibility for existing imports
+
+---
+
+## Phase 9.6 — Refactor Hardening Wave 1 (COMPLETE)
+
+- Scope:
+  - ticket notification + ticket query-state smoke/stability checks
+  - React lint/stability blocker cleanup in targeted files
+  - strict Wayfinder completion for remaining hardcoded route usage in targeted pages
+- Guardrails:
+  - no API contract changes
+  - no route shape changes
+  - no backend behavior changes
+  - no UX redesign
+- Completed:
+  - removed effect-driven state sync patterns in ticket selection and coach applications
+  - finished strict Wayfinder migration in targeted athlete/coach/plan/session files
+  - validated ticket notification mark-seen flows through feature coverage
+
+---
+
 ## Phase 9.5 — Global Hardening (COMPLETE)
 
 - Frontend hardening wave executed with strict no-backend-change constraints.

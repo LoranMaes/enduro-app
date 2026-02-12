@@ -70,6 +70,79 @@ it('creates ticket mentions and sends admin notifications', function () {
         ->toBe('Investigate failed sync worker');
 });
 
+it('allows admins to mark a single ticket notification as seen', function () {
+    $creator = User::factory()->admin()->create();
+    $mentioned = User::factory()->admin()->create();
+
+    $this->actingAs($creator)
+        ->postJson('/api/admin/tickets', [
+            'title' => 'Single notification read',
+            'description' => [
+                [
+                    'type' => 'rich_text',
+                    'text' => 'Mark seen check.',
+                ],
+            ],
+            'type' => 'bug',
+            'importance' => 'normal',
+            'mention_admin_ids' => [$mentioned->id],
+        ])
+        ->assertCreated();
+
+    $notificationId = (string) $mentioned->fresh()->notifications()->firstOrFail()->getKey();
+
+    $this->actingAs($mentioned)
+        ->patchJson("/api/admin/ticket-notifications/{$notificationId}/mark-seen")
+        ->assertOk()
+        ->assertJsonPath('unread_count', 0);
+
+    expect($mentioned->fresh()->unreadNotifications()->count())->toBe(0);
+});
+
+it('allows admins to mark all ticket notifications as seen', function () {
+    $creator = User::factory()->admin()->create();
+    $mentioned = User::factory()->admin()->create();
+
+    $this->actingAs($creator)
+        ->postJson('/api/admin/tickets', [
+            'title' => 'Bulk notification read A',
+            'description' => [
+                [
+                    'type' => 'rich_text',
+                    'text' => 'Bulk mark seen A.',
+                ],
+            ],
+            'type' => 'feature',
+            'importance' => 'normal',
+            'mention_admin_ids' => [$mentioned->id],
+        ])
+        ->assertCreated();
+
+    $this->actingAs($creator)
+        ->postJson('/api/admin/tickets', [
+            'title' => 'Bulk notification read B',
+            'description' => [
+                [
+                    'type' => 'rich_text',
+                    'text' => 'Bulk mark seen B.',
+                ],
+            ],
+            'type' => 'support',
+            'importance' => 'high',
+            'mention_admin_ids' => [$mentioned->id],
+        ])
+        ->assertCreated();
+
+    expect($mentioned->fresh()->unreadNotifications()->count())->toBe(2);
+
+    $this->actingAs($mentioned)
+        ->patchJson('/api/admin/ticket-notifications/mark-all-seen')
+        ->assertOk()
+        ->assertJsonPath('unread_count', 0);
+
+    expect($mentioned->fresh()->unreadNotifications()->count())->toBe(0);
+});
+
 it('searches internal notes only for the current admin', function () {
     $adminA = User::factory()->admin()->create();
     $adminB = User::factory()->admin()->create();

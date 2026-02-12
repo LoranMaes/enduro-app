@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { mapTrainingSession } from '@/lib/training-plans';
 import { dashboard } from '@/routes';
+import { show as showSession } from '@/routes/sessions';
 import { update as updateTrainingSession } from '@/routes/training-sessions';
 import type { BreadcrumbItem, SharedData } from '@/types';
 import { SessionAnalysisChart } from './session-detail/components/SessionAnalysisChart';
@@ -22,17 +23,6 @@ import {
     formatDate,
     serializePlannedStructureForRequest,
 } from './session-detail/utils';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Calendar',
-        href: dashboard().url,
-    },
-    {
-        title: 'Session Detail',
-        href: '/sessions',
-    },
-];
 
 export default function SessionDetailPage({
     session,
@@ -154,6 +144,16 @@ export default function SessionDetailPage({
     }, [resetZoomSelection, setHoverSampleIndex, streamData]);
 
     const hasNotesChanged = internalNotes.trim() !== savedNotes.trim();
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Calendar',
+            href: dashboard().url,
+        },
+        {
+            title: 'Session Detail',
+            href: showSession(sessionView.id).url,
+        },
+    ];
 
     const saveInternalNotes = async (): Promise<void> => {
         if (!canEditNotes || isSavingNotes || !hasNotesChanged) {

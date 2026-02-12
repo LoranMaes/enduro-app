@@ -29,7 +29,7 @@ class TrainingScope
             );
         }
 
-        return TrainingPlan::query()->whereRaw('1 = 0');
+        return TrainingPlan::query()->whereKey([]);
     }
 
     public static function forVisibleWeeks(User $user): Builder
@@ -50,7 +50,7 @@ class TrainingScope
             });
         }
 
-        return TrainingWeek::query()->whereRaw('1 = 0');
+        return TrainingWeek::query()->whereKey([]);
     }
 
     public static function forVisibleSessions(User $user): Builder
@@ -70,7 +70,7 @@ class TrainingScope
             );
         }
 
-        return TrainingSession::query()->whereRaw('1 = 0');
+        return TrainingSession::query()->whereKey([]);
     }
 
     public static function forVisibleActivities(User $user): Builder
@@ -90,7 +90,7 @@ class TrainingScope
             );
         }
 
-        return Activity::query()->whereRaw('1 = 0');
+        return Activity::query()->whereKey([]);
     }
 
     private static function coachedAthleteIds(User $user): BelongsToMany

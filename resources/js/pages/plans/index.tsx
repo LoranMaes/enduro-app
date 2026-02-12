@@ -1,11 +1,12 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { index as plansIndex } from '@/routes/plans';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Training Plans',
-        href: '/plans',
+        href: plansIndex().url,
     },
 ];
 

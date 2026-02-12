@@ -7,6 +7,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { index as coachesIndex } from '@/routes/coaches';
 import { show as showAthlete } from '@/routes/athletes';
 import type { BreadcrumbItem } from '@/types';
 import type { SharedData } from '@/types';
@@ -25,7 +26,7 @@ type CoachesIndexProps = {
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Coaches',
-        href: '/coaches',
+        href: coachesIndex().url,
     },
 ];
 

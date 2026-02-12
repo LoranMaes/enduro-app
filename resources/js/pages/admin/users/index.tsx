@@ -18,6 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import { decodePaginationLabel } from '@/lib/pagination';
 import { index as adminIndex } from '@/routes/admin';
 import { start as startImpersonation } from '@/routes/admin/impersonate';
 import {
@@ -478,10 +479,9 @@ export default function AdminUsersIndex({
                                             replace: true,
                                         });
                                     }}
-                                    dangerouslySetInnerHTML={{
-                                        __html: link.label,
-                                    }}
-                                />
+                                >
+                                    {decodePaginationLabel(link.label)}
+                                </button>
                             ))}
                         </div>
                     </div>

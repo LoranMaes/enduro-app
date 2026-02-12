@@ -2,6 +2,16 @@
 
 ## Current Phase
 
+Refactor hardening Waves 6-8 are complete (backend boundaries, security/content hardening, and final quality gates).
+
+## Current Wave Focus
+
+- Maintain behavior-preserving state after Waves 6-8 completion.
+- Continue incremental decomposition/hardening in future waves without contract drift.
+- Preserve existing contracts (API, routes, payloads) and slicing-aligned visuals.
+
+## Previous Phase Snapshot
+
 Backend spine + athlete operational flows are complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.

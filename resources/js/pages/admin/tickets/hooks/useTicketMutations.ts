@@ -175,8 +175,8 @@ export function useTicketMutations({
             ticketId: number,
             changes: TicketUpdatePayload,
         ): Promise<TicketMutationResult<TicketRecord>> => {
-            const route = adminTicketUpdate.form.patch(ticketId);
-            const response = await fetch(route.action, {
+            const route = adminTicketUpdate(ticketId);
+            const response = await fetch(route.url, {
                 method: route.method,
                 headers: {
                     ...defaultHeaders,
@@ -226,8 +226,8 @@ export function useTicketMutations({
             ticketId: number,
             content: string,
         ): Promise<TicketMutationResult<TicketRecord>> => {
-            const route = adminTicketInternalNoteUpsert.form.put(ticketId);
-            const response = await fetch(route.action, {
+            const route = adminTicketInternalNoteUpsert(ticketId);
+            const response = await fetch(route.url, {
                 method: route.method,
                 headers: {
                     ...defaultHeaders,
@@ -296,12 +296,12 @@ export function useTicketMutations({
             ticketId: number,
             attachmentId: number,
         ): Promise<TicketRecord | null> => {
-            const route = adminTicketAttachmentDestroy.form.delete({
+            const route = adminTicketAttachmentDestroy({
                 ticket: ticketId,
                 ticketAttachment: attachmentId,
             });
 
-            const response = await fetch(route.action, {
+            const response = await fetch(route.url, {
                 method: route.method,
                 headers: {
                     ...defaultHeaders,
@@ -347,9 +347,9 @@ export function useTicketMutations({
 
     const fetchUserSearch = useCallback(
         async (query: string): Promise<UserSearchResult[]> => {
-            const normalizedQuery = query.trim();
+            const normalizedQuery = query.trim().slice(0, 120);
 
-            if (normalizedQuery.length < 2 || normalizedQuery.length > 120) {
+            if (normalizedQuery.length < 1) {
                 return [];
             }
 

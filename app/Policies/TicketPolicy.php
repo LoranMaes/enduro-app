@@ -4,9 +4,12 @@ namespace App\Policies;
 
 use App\Models\Ticket;
 use App\Models\User;
+use App\Policies\Concerns\DetectsImpersonation;
 
 class TicketPolicy
 {
+    use DetectsImpersonation;
+
     public function before(User $user, string $ability): ?bool
     {
         if (! $user->isAdmin()) {
@@ -58,17 +61,5 @@ class TicketPolicy
     public function manageInternalNote(User $user, Ticket $ticket): bool
     {
         return $user->isAdmin();
-    }
-
-    private function isImpersonating(): bool
-    {
-        $request = request();
-
-        if ($request === null || ! $request->hasSession()) {
-            return false;
-        }
-
-        return $request->session()->has('impersonation.original_user_id')
-            && $request->session()->has('impersonation.impersonated_user_id');
     }
 }

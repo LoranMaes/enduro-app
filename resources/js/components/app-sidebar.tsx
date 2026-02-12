@@ -15,9 +15,14 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useImpersonationVisualState } from '@/hooks/use-impersonation-visual-state';
 import { dashboard, logout } from '@/routes';
-import { index as adminIndex } from '@/routes/admin';
+import { analytics as adminAnalytics, index as adminIndex } from '@/routes/admin';
+import { index as adminCoachApplicationsIndex } from '@/routes/admin/coach-applications';
+import { show as adminSettingsShow } from '@/routes/admin/settings';
+import { index as adminTicketsIndex } from '@/routes/admin/tickets';
 import { index as adminUsersIndex } from '@/routes/admin/users';
 import { index as coachesIndex } from '@/routes/coaches';
+import { index as plansIndex } from '@/routes/plans';
+import { index as progressIndex } from '@/routes/progress';
 import { overview as settingsOverview } from '@/routes/settings';
 import type { SharedData } from '@/types';
 
@@ -57,26 +62,26 @@ export function AppSidebar() {
               },
               {
                   title: 'Analytics',
-                  href: '/admin/analytics',
+                  href: adminAnalytics().url,
                   icon: BarChart3,
                   isActive: (path: string) => path.startsWith('/admin/analytics'),
               },
               {
                   title: 'Tickets',
-                  href: '/admin/tickets',
+                  href: adminTicketsIndex().url,
                   icon: KanbanSquare,
                   isActive: (path: string) => path.startsWith('/admin/tickets'),
               },
               {
                   title: 'Coach Applications',
-                  href: '/admin/coach-applications',
+                  href: adminCoachApplicationsIndex().url,
                   icon: ClipboardCheck,
                   isActive: (path: string) =>
                       path.startsWith('/admin/coach-applications'),
               },
               {
                   title: 'Settings',
-                  href: '/admin/settings',
+                  href: adminSettingsShow().url,
                   icon: Settings,
                   isActive: (path: string) => path.startsWith('/admin/settings'),
               },
@@ -94,14 +99,14 @@ export function AppSidebar() {
                   ? [
                         {
                             title: 'Training Progress',
-                            href: '/progress',
+                            href: progressIndex().url,
                             icon: TrendingUp,
                             isActive: (path: string) =>
                                 path.startsWith('/progress'),
                         } satisfies SidebarItem,
                         {
                             title: 'Training Plans',
-                            href: '/plans',
+                            href: plansIndex().url,
                             icon: FileText,
                             isActive: (path: string) =>
                                 path.startsWith('/plans'),

@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
+import {
+    show as adminSettingsShow,
+    update as adminSettingsUpdate,
+} from '@/routes/admin/settings';
 import type { BreadcrumbItem } from '@/types';
 
 type AdminSettingsProps = {
@@ -20,7 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Settings',
-        href: '/admin/settings',
+        href: adminSettingsShow().url,
     },
 ];
 
@@ -41,8 +45,10 @@ export default function AdminSettings({
 
         setSaving(true);
 
+        const route = adminSettingsUpdate();
+
         router.patch(
-            '/admin/settings',
+            route.url,
             {
                 ticket_archive_delay_hours: archiveDelayHours,
             },

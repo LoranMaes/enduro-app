@@ -1,76 +1,17 @@
 import { Head, router } from '@inertiajs/react';
 import { Activity, BarChart3, Shield } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { index as adminIndex } from '@/routes/admin';
+import { analytics as adminAnalytics, index as adminIndex } from '@/routes/admin';
 import type { BreadcrumbItem } from '@/types';
-
-type AnalyticsRange = {
-    selected: string;
-    options: string[];
-    weeks: number;
-    start: string;
-    end: string;
-};
-
-type UserGrowth = {
-    labels: string[];
-    totals: number[];
-    athletes: number[];
-    coaches: number[];
-    current: {
-        total: number;
-        athletes: number;
-        coaches: number;
-    };
-};
-
-type AdminAnalyticsPageProps = {
-    range: AnalyticsRange;
-    userGrowth: UserGrowth;
-    coachPipeline: {
-        pending: number;
-        approved: number;
-        rejected: number;
-        submitted_in_range: number;
-        reviewed_in_range: number;
-    };
-    platformUsage: {
-        planned_sessions: number;
-        completed_sessions: number;
-        linked_sessions: number;
-        synced_activities: number;
-        active_athletes: number;
-        completion_rate: number;
-    };
-    syncHealth: {
-        connected_accounts: number;
-        queued_or_running: number;
-        success_runs: number;
-        failed_runs: number;
-        rate_limited_runs: number;
-        success_rate: number;
-    };
-    moderation: {
-        suspended_total: number;
-        suspended_in_range: number;
-        pending_coach_applications: number;
-        recent_suspensions: Array<{
-            id: number;
-            name: string;
-            email: string;
-            suspended_at: string | null;
-            reason: string | null;
-        }>;
-    };
-    systemOps: {
-        queue_backlog: number;
-        failed_jobs_24h: number;
-        webhook_events_24h: number;
-        webhook_failed_24h: number;
-        mutating_requests_24h: number;
-    };
-};
+import { MetricCard } from './analytics/components/MetricCard';
+import { MiniMetric } from './analytics/components/MiniMetric';
+import { StatLine } from './analytics/components/StatLine';
+import { StatsCard } from './analytics/components/StatsCard';
+import { UserGrowthSection } from './analytics/components/UserGrowthSection';
+import { useAdminAnalyticsChart } from './analytics/hooks/useAdminAnalyticsChart';
+import type { AdminAnalyticsPageProps } from './analytics/types';
+import { formatDateTime } from './analytics/utils';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -79,7 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Analytics',
-        href: '/admin/analytics',
+        href: adminAnalytics().url,
     },
 ];
 
@@ -92,79 +33,8 @@ export default function AdminAnalytics({
     moderation,
     systemOps,
 }: AdminAnalyticsPageProps) {
-    const [enabledSeries, setEnabledSeries] = useState({
-        totals: true,
-        athletes: true,
-        coaches: true,
-    });
     const [isSwitchingRange, setIsSwitchingRange] = useState(false);
-    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-    const chart = useMemo(() => {
-        const series = [
-            enabledSeries.totals ? userGrowth.totals : [],
-            enabledSeries.athletes ? userGrowth.athletes : [],
-            enabledSeries.coaches ? userGrowth.coaches : [],
-        ].flat();
-
-        const maxValue = Math.max(1, ...series);
-        const width = 980;
-        const height = 280;
-        const paddingX = 42;
-        const paddingY = 26;
-        const innerWidth = width - paddingX * 2;
-        const innerHeight = height - paddingY * 2;
-        const stepX =
-            userGrowth.labels.length > 1
-                ? innerWidth / (userGrowth.labels.length - 1)
-                : innerWidth;
-
-        const buildPath = (values: number[]): string => {
-            return values
-                .map((value, index) => {
-                    const x = paddingX + index * stepX;
-                    const y = paddingY + innerHeight - (value / maxValue) * innerHeight;
-
-                    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                })
-                .join(' ');
-        };
-
-        const buildPoints = (values: number[]): Array<{ x: number; y: number }> => {
-            return values.map((value, index) => ({
-                x: paddingX + index * stepX,
-                y: paddingY + innerHeight - (value / maxValue) * innerHeight,
-            }));
-        };
-
-        const totalPoints = buildPoints(userGrowth.totals);
-        const athletePoints = buildPoints(userGrowth.athletes);
-        const coachPoints = buildPoints(userGrowth.coaches);
-
-        return {
-            width,
-            height,
-            paddingX,
-            paddingY,
-            stepX,
-            innerHeight,
-            maxValue,
-            totalPoints,
-            athletePoints,
-            coachPoints,
-            buildPath,
-            buildPoints,
-        };
-    }, [enabledSeries, userGrowth]);
-
-    const activePointIndex =
-        hoveredIndex === null
-            ? Math.max(0, userGrowth.labels.length - 1)
-            : hoveredIndex;
-    const activeLabel = userGrowth.labels[activePointIndex] ?? '—';
-    const activeTotal = userGrowth.totals[activePointIndex] ?? 0;
-    const activeAthletes = userGrowth.athletes[activePointIndex] ?? 0;
-    const activeCoaches = userGrowth.coaches[activePointIndex] ?? 0;
+    const chartState = useAdminAnalyticsChart(userGrowth);
 
     const switchRange = (nextRange: string): void => {
         if (nextRange === range.selected || isSwitchingRange) {
@@ -173,8 +43,10 @@ export default function AdminAnalytics({
 
         setIsSwitchingRange(true);
 
+        const route = adminAnalytics();
+
         router.get(
-            '/admin/analytics',
+            route.url,
             { range: nextRange },
             {
                 preserveState: true,
@@ -185,13 +57,6 @@ export default function AdminAnalytics({
                 },
             },
         );
-    };
-
-    const toggleSeries = (seriesKey: 'totals' | 'athletes' | 'coaches'): void => {
-        setEnabledSeries((current) => ({
-            ...current,
-            [seriesKey]: !current[seriesKey],
-        }));
     };
 
     return (
@@ -256,275 +121,10 @@ export default function AdminAnalytics({
                             />
                         </section>
 
-                        <section className="rounded-xl border border-border bg-surface p-5">
-                            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                <h2 className="text-lg font-medium text-zinc-100">
-                                    User Growth
-                                </h2>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <SeriesToggle
-                                        label="Total"
-                                        enabled={enabledSeries.totals}
-                                        onClick={() => toggleSeries('totals')}
-                                        colorClass="border-zinc-500 bg-zinc-300"
-                                    />
-                                    <SeriesToggle
-                                        label="Athletes"
-                                        enabled={enabledSeries.athletes}
-                                        onClick={() => toggleSeries('athletes')}
-                                        colorClass="border-sky-400 bg-sky-400"
-                                    />
-                                    <SeriesToggle
-                                        label="Coaches"
-                                        enabled={enabledSeries.coaches}
-                                        onClick={() => toggleSeries('coaches')}
-                                        colorClass="border-violet-400 bg-violet-400"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="relative h-72 overflow-hidden rounded-lg border border-border/70 bg-background/70">
-                                <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[0.6875rem]">
-                                    <p className="text-zinc-400">{activeLabel}</p>
-                                    <div className="mt-1 flex items-center gap-2 text-zinc-300">
-                                        <span className="text-zinc-500">T</span>
-                                        <span className="font-mono">{activeTotal}</span>
-                                        <span className="text-sky-300">A</span>
-                                        <span className="font-mono text-sky-200">
-                                            {activeAthletes}
-                                        </span>
-                                        <span className="text-violet-300">C</span>
-                                        <span className="font-mono text-violet-200">
-                                            {activeCoaches}
-                                        </span>
-                                    </div>
-                                </div>
-                                <svg
-                                    viewBox={`0 0 ${chart.width} ${chart.height}`}
-                                    className="h-full w-full"
-                                    preserveAspectRatio="xMidYMid meet"
-                                    role="img"
-                                    aria-label="User growth chart"
-                                    onMouseLeave={() => setHoveredIndex(null)}
-                                >
-                                    {Array.from({ length: 5 }, (_, index) => {
-                                        const y =
-                                            chart.paddingY +
-                                            (chart.innerHeight / 4) * index;
-
-                                        return (
-                                            <line
-                                                key={`grid-${index}`}
-                                                x1={chart.paddingX}
-                                                y1={y}
-                                                x2={chart.width - chart.paddingX}
-                                                y2={y}
-                                                stroke="rgba(39,39,42,0.7)"
-                                                strokeWidth={1}
-                                            />
-                                        );
-                                    })}
-
-                                    {userGrowth.labels.map((label, index) => {
-                                        const point = chart.totalPoints[index];
-
-                                        if (point === undefined) {
-                                            return null;
-                                        }
-
-                                        const hitWidth =
-                                            userGrowth.labels.length > 1
-                                                ? Math.max(16, chart.stepX)
-                                                : chart.width - chart.paddingX * 2;
-                                        const startX = Math.max(
-                                            chart.paddingX,
-                                            point.x - hitWidth / 2,
-                                        );
-                                        const maxStartX =
-                                            chart.width - chart.paddingX - hitWidth;
-
-                                        return (
-                                            <rect
-                                                key={`hover-hit-${label}`}
-                                                x={Math.min(startX, maxStartX)}
-                                                y={chart.paddingY}
-                                                width={hitWidth}
-                                                height={chart.innerHeight}
-                                                fill="transparent"
-                                                onMouseEnter={() =>
-                                                    setHoveredIndex(index)
-                                                }
-                                            />
-                                        );
-                                    })}
-
-                                    {enabledSeries.totals ? (
-                                        <>
-                                            <path
-                                                d={chart.buildPath(userGrowth.totals)}
-                                                fill="none"
-                                                stroke="rgb(212,212,216)"
-                                                strokeWidth={2}
-                                            />
-                                            {chart
-                                                .buildPoints(userGrowth.totals)
-                                                .map((point, index) => (
-                                                    <circle
-                                                        key={`total-${index}`}
-                                                        cx={point.x}
-                                                        cy={point.y}
-                                                        r={2.5}
-                                                        fill="rgb(212,212,216)"
-                                                    />
-                                                ))}
-                                        </>
-                                    ) : null}
-
-                                    {enabledSeries.athletes ? (
-                                        <path
-                                            d={chart.buildPath(userGrowth.athletes)}
-                                            fill="none"
-                                            stroke="rgb(56,189,248)"
-                                            strokeWidth={2}
-                                        />
-                                    ) : null}
-
-                                    {enabledSeries.coaches ? (
-                                        <path
-                                            d={chart.buildPath(userGrowth.coaches)}
-                                            fill="none"
-                                            stroke="rgb(167,139,250)"
-                                            strokeWidth={2}
-                                            />
-                                    ) : null}
-
-                                    {(() => {
-                                        const focusPoint =
-                                            chart.totalPoints[activePointIndex];
-
-                                        if (focusPoint === undefined) {
-                                            return null;
-                                        }
-
-                                        return (
-                                            <line
-                                                x1={focusPoint.x}
-                                                y1={chart.paddingY}
-                                                x2={focusPoint.x}
-                                                y2={
-                                                    chart.paddingY +
-                                                    chart.innerHeight
-                                                }
-                                                stroke="rgba(113,113,122,0.6)"
-                                                strokeWidth={1}
-                                                strokeDasharray="3 3"
-                                            />
-                                        );
-                                    })()}
-
-                                    {enabledSeries.totals &&
-                                    chart.totalPoints[activePointIndex] !==
-                                        undefined ? (
-                                        <circle
-                                            cx={
-                                                chart.totalPoints[activePointIndex]
-                                                    .x
-                                            }
-                                            cy={
-                                                chart.totalPoints[activePointIndex]
-                                                    .y
-                                            }
-                                            r={4}
-                                            fill="rgb(212,212,216)"
-                                            stroke="rgb(9,9,11)"
-                                            strokeWidth={1.5}
-                                        />
-                                    ) : null}
-
-                                    {enabledSeries.athletes &&
-                                    chart.athletePoints[activePointIndex] !==
-                                        undefined ? (
-                                        <circle
-                                            cx={
-                                                chart.athletePoints[
-                                                    activePointIndex
-                                                ].x
-                                            }
-                                            cy={
-                                                chart.athletePoints[
-                                                    activePointIndex
-                                                ].y
-                                            }
-                                            r={4}
-                                            fill="rgb(56,189,248)"
-                                            stroke="rgb(9,9,11)"
-                                            strokeWidth={1.5}
-                                        />
-                                    ) : null}
-
-                                    {enabledSeries.coaches &&
-                                    chart.coachPoints[activePointIndex] !==
-                                        undefined ? (
-                                        <circle
-                                            cx={
-                                                chart.coachPoints[
-                                                    activePointIndex
-                                                ].x
-                                            }
-                                            cy={
-                                                chart.coachPoints[
-                                                    activePointIndex
-                                                ].y
-                                            }
-                                            r={4}
-                                            fill="rgb(167,139,250)"
-                                            stroke="rgb(9,9,11)"
-                                            strokeWidth={1.5}
-                                        />
-                                    ) : null}
-
-                                    <text
-                                        x={chart.paddingX}
-                                        y={chart.paddingY - 8}
-                                        fill="rgb(113,113,122)"
-                                        fontSize={11}
-                                    >
-                                        {chart.maxValue}
-                                    </text>
-
-                                    {userGrowth.labels.map((label, index) => {
-                                        const x =
-                                            chart.paddingX +
-                                            index *
-                                                (userGrowth.labels.length > 1
-                                                    ? (chart.width - chart.paddingX * 2) /
-                                                      (userGrowth.labels.length - 1)
-                                                    : 0);
-                                        const shouldShow =
-                                            userGrowth.labels.length <= 8 ||
-                                            index % Math.ceil(userGrowth.labels.length / 6) === 0 ||
-                                            index === userGrowth.labels.length - 1;
-
-                                        if (!shouldShow) {
-                                            return null;
-                                        }
-
-                                        return (
-                                            <text
-                                                key={label}
-                                                x={x}
-                                                y={chart.height - 8}
-                                                textAnchor="middle"
-                                                fill="rgb(113,113,122)"
-                                                fontSize={10}
-                                            >
-                                                {label}
-                                            </text>
-                                        );
-                                    })}
-                                </svg>
-                            </div>
-                        </section>
+                        <UserGrowthSection
+                            userGrowth={userGrowth}
+                            chartState={chartState}
+                        />
 
                         <section className="grid gap-4 xl:grid-cols-3">
                             <StatsCard title="Coach Pipeline">
@@ -685,91 +285,4 @@ export default function AdminAnalytics({
             </div>
         </AppLayout>
     );
-}
-
-function MetricCard({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: string;
-    accent: string;
-}) {
-    return (
-        <div className="rounded-xl border border-border bg-surface px-4 py-4">
-            <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">{label}</p>
-            <p className={`mt-2 font-mono text-3xl ${accent}`}>{value}</p>
-        </div>
-    );
-}
-
-function SeriesToggle({
-    label,
-    enabled,
-    onClick,
-    colorClass,
-}: {
-    label: string;
-    enabled: boolean;
-    onClick: () => void;
-    colorClass: string;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-[0.6875rem] transition-colors ${
-                enabled
-                    ? 'border-zinc-700 bg-zinc-800 text-zinc-100'
-                    : 'border-border text-zinc-500 hover:bg-zinc-900/60'
-            }`}
-        >
-            <span className={`h-2 w-2 rounded-full ${colorClass}`} />
-            {label}
-        </button>
-    );
-}
-
-function StatsCard({
-    title,
-    children,
-}: {
-    title: string;
-    children: ReactNode;
-}) {
-    return (
-        <div className="rounded-xl border border-border bg-surface p-5">
-            <h3 className="mb-3 text-base font-medium text-zinc-100">{title}</h3>
-            <div className="space-y-2">{children}</div>
-        </div>
-    );
-}
-
-function StatLine({ label, value }: { label: string; value: number | string }) {
-    return (
-        <div className="flex items-center justify-between border-b border-border/70 py-1.5 last:border-b-0">
-            <span className="text-xs text-zinc-500">{label}</span>
-            <span className="font-mono text-xs text-zinc-200">{value}</span>
-        </div>
-    );
-}
-
-function MiniMetric({ label, value }: { label: string; value: number }) {
-    return (
-        <div className="rounded-md border border-border bg-background/50 px-3 py-2">
-            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">{label}</p>
-            <p className="mt-1 font-mono text-lg text-zinc-100">{value}</p>
-        </div>
-    );
-}
-
-function formatDateTime(value: string): string {
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return '—';
-    }
-
-    return date.toLocaleDateString();
 }

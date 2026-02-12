@@ -10,7 +10,8 @@ import {
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
-import { index as adminIndex } from '@/routes/admin';
+import { analytics as adminAnalytics, index as adminIndex } from '@/routes/admin';
+import { index as adminCoachApplicationsIndex } from '@/routes/admin/coach-applications';
 import { start as startImpersonation } from '@/routes/admin/impersonate';
 import {
     index as adminUsersIndex,
@@ -154,7 +155,7 @@ export default function AdminIndex({
                             </Link>
 
                             <Link
-                                href="/admin/analytics"
+                                href={adminAnalytics().url}
                                 className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -172,7 +173,7 @@ export default function AdminIndex({
                             </Link>
 
                             <Link
-                                href="/admin/coach-applications"
+                                href={adminCoachApplicationsIndex().url}
                                 className="rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-zinc-700 hover:bg-zinc-800/30"
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -211,7 +212,7 @@ export default function AdminIndex({
                                     Pending Coach Applications
                                 </h2>
                                 <Link
-                                    href="/admin/coach-applications"
+                                    href={adminCoachApplicationsIndex().url}
                                     className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
                                 >
                                     Open queue

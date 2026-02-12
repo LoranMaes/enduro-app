@@ -1,5 +1,179 @@
 # Endure — Progress Log
 
+## 2026-02-12 (Refactor Wave 8 Complete: Final Smoke + Full Quality Gates)
+
+- Completed final validation sweep:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npx eslint resources/js/components/two-factor-setup-modal.tsx resources/js/pages/admin/users/index.tsx resources/js/pages/admin/users/show/components/LogsTab.tsx resources/js/lib/pagination.ts`
+- Result:
+    - no API/backend/route contract regressions detected
+    - no behavior drift detected in touched surfaces
+
+## 2026-02-12 (Refactor Wave 8 Start: Final Smoke + Full Quality Gates)
+
+- Wave 8 started with behavior-preserving scope:
+    - run final full quality gates after Waves 6 and 7
+    - verify no regressions in notifications/ticket selection and policy/provider behavior
+
+## 2026-02-12 (Refactor Wave 7 Complete: Security + Content Hardening)
+
+- Completed Wave 7 with behavior preserved:
+    - removed `dangerouslySetInnerHTML` pagination rendering in admin user/log tables via safe label decoder
+    - added explicit QR SVG sanitization boundary in two-factor setup modal before HTML injection
+    - kept existing UX and payload behavior unchanged
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminUserManagementTest.php tests/Feature/Auth/AuthenticationTest.php tests/Feature/Auth/TwoFactorChallengeTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 7 Start: Security + Content Hardening)
+
+- Wave 7 started with behavior-preserving scope:
+    - harden rich-text rendering boundaries that use `dangerouslySetInnerHTML`
+    - preserve existing payload shapes and UI behavior while making trust boundaries explicit
+
+## 2026-02-12 (Refactor Wave 6 Complete: Backend Hardening Pass)
+
+- Completed Wave 6 with behavior preserved:
+    - replaced `whereRaw('1 = 0')` fallbacks in `TrainingScope` with explicit empty-key constraints
+    - consolidated duplicated impersonation checks into shared policy trait:
+        - `app/Policies/Concerns/DetectsImpersonation.php`
+    - split Strava provider responsibilities without contract changes:
+        - `StravaApiClient` (HTTP/token/request)
+        - `StravaActivityMapper` (payload mapping)
+        - `StravaActivityProvider` (orchestration)
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/AdminTicketsTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 6 Start: Backend Hardening Pass)
+
+- Wave 6 started with behavior-preserving scope:
+    - remove `whereRaw('1 = 0')` style fallbacks in favor of expressive empty-result constraints
+    - centralize impersonation checks used repeatedly in policies
+    - split Strava provider responsibilities for maintainability boundaries
+
+## 2026-02-12 (Refactor Wave 5 Complete: Session Analysis Chart Decomposition)
+
+- Completed Wave 5 with behavior preserved:
+    - decomposed `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - extracted:
+        - `session-analysis-chart/InteractiveStreamChart.tsx`
+        - `session-analysis-chart/SelectionStatLine.tsx`
+    - preserved zoom drag, hover behavior, axis behavior, stream rendering, and selection summary output
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 5 Start: Session Analysis Chart Decomposition)
+
+- Wave 5 started with behavior-preserving scope:
+    - split `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - isolate chart UI/state helpers without changing math, zoom, hover, or map-sync behavior
+
+## 2026-02-12 (Refactor Wave 4 Complete: Admin Page Decomposition)
+
+- Completed Wave 4 with behavior preserved:
+    - decomposed `resources/js/pages/admin/analytics.tsx` into feature-scoped types/utils/hook/components
+    - decomposed `resources/js/pages/admin/users/show.tsx` into feature-scoped types/utils/components
+    - preserved all route contracts, payload shapes, and interaction flows
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=AdminUserManagementTest`
+    - `vendor/bin/sail artisan test --compact --filter=AdminAnalytics` (no tests matched)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 4 Start: Admin + Session Analysis Decomposition)
+
+- Wave 4 started with behavior-preserving scope:
+    - decompose remaining oversized admin pages:
+        - `resources/js/pages/admin/analytics.tsx`
+        - `resources/js/pages/admin/users/show.tsx`
+    - decompose `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - preserve API contracts, route contracts, and visual behavior
+
+## 2026-02-12 (Refactor Wave 3 Complete: Legacy Surface Cleanup + Auth/Register Decomposition)
+
+- Completed Wave 3 with behavior preserved:
+    - removed unused legacy `resources/js/pages/calendar/components/plan-section.tsx`
+    - rewired `resources/js/pages/auth/register.tsx` into a modular orchestrator
+    - extracted and integrated missing coach application step component:
+        - `resources/js/pages/auth/register/components/CoachApplicationStep.tsx`
+    - retained existing registration flow, payload shape, and validation/error-step behavior
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Auth`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 2 Complete: Ticket Description Editor Decomposition)
+
+- Decomposed `resources/js/pages/admin/tickets/components/ticket-description-editor.tsx` into isolated modules while preserving behavior:
+    - new orchestrator:
+        - `ticket-description-editor.tsx`
+    - extracted hook:
+        - `ticket-description-editor/useTicketDescriptionEditor.ts`
+    - extracted UI modules:
+        - `ticket-description-editor/TicketDescriptionToolbar.tsx`
+        - `ticket-description-editor/TicketSuggestionPopover.tsx`
+    - extracted shared types/utilities:
+        - `ticket-description-editor/types.ts`
+        - `ticket-description-editor/utils.ts`
+- Preserved mention/slash UX:
+    - `@admin` suggestions
+    - `/user ...` suggestions
+    - keyboard selection (`ArrowUp/ArrowDown/Tab/Enter/Escape`)
+    - click selection and token insertion
+    - payload output shape (`html`, `text`, `mentionAdminIds`, `userRefs`)
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail npx eslint resources/js/pages/admin/tickets/components/ticket-description-editor.tsx resources/js/pages/admin/tickets/components/ticket-description-editor/useTicketDescriptionEditor.ts resources/js/pages/admin/tickets/components/ticket-description-editor/TicketDescriptionToolbar.tsx resources/js/pages/admin/tickets/components/ticket-description-editor/TicketSuggestionPopover.tsx`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 3 Start: Legacy Surface Cleanup + Auth/Register Decomposition)
+
+- Wave 3 started with behavior-preserving scope:
+    - resolve legacy `plan-section.tsx` dead-weight risk (remove if unused)
+    - decompose oversized auth register page into stable step components/hooks
+    - keep existing onboarding flow and payload behavior identical
+
+## 2026-02-12 (Refactor Wave 1 Complete: Stability + Wayfinder Completion)
+
+- Completed behavior-preserving Wave 1 batch:
+    - stabilized ticket selection state without `set-state-in-effect` patterns
+    - stabilized coach-application active selection derivation without effect-driven state writes
+    - finished strict Wayfinder migration in remaining targeted pages:
+        - `plans/index`
+        - `coaches/index`
+        - `athletes/index`
+        - `athletes/show`
+        - `calendar/session-detail`
+    - added/validated admin ticket notification mark-seen feature coverage
+- Validation completed:
+    - `vendor/bin/sail npx eslint resources/js/pages/admin/tickets/hooks/useTicketSelection.ts resources/js/pages/admin/coach-applications/index.tsx`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=AdminTicketsTest`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 2 Start: Ticket Description Editor Decomposition)
+
+- Wave 2 started for highest frontend maintainability risk:
+    - decompose `ticket-description-editor.tsx` into smaller hooks/components/utilities
+    - preserve exact mention/slash command behavior, keyboard selection, and payload format
+    - no backend/API/route changes
+
+## 2026-02-12 (Refactor Wave 1 Start: Stability + Wayfinder Completion)
+
+- Wave 1 started for full hardening request:
+    - smoke-test and stabilize ticket notification actions + ticket query selection
+    - fix remaining React stability blockers
+    - complete strict Wayfinder migration on targeted remaining frontend pages
+- Scope is behavior-preserving only (no backend contract or UX flow change).
+
 ## 2026-02-12 (Wave D: Global Frontend Hardening Pass)
 
 - Completed a behavior-preserving frontend hardening pass across `resources/js` with no backend/API/route/policy changes.

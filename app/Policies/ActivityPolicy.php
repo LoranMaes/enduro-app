@@ -4,9 +4,12 @@ namespace App\Policies;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Policies\Concerns\DetectsImpersonation;
 
 class ActivityPolicy
 {
+    use DetectsImpersonation;
+
     public function before(User $user, string $ability): ?bool
     {
         if ($user->isAdmin()) {
@@ -132,17 +135,5 @@ class ActivityPolicy
             ->coachedAthletes()
             ->whereKey($athlete->id)
             ->exists();
-    }
-
-    private function isImpersonating(): bool
-    {
-        $request = request();
-
-        if ($request === null || ! $request->hasSession()) {
-            return false;
-        }
-
-        return $request->session()->has('impersonation.original_user_id')
-            && $request->session()->has('impersonation.impersonated_user_id');
     }
 }

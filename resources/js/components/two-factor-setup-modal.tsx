@@ -23,6 +23,29 @@ import { confirm } from '@/routes/two-factor';
 import AlertError from './alert-error';
 import { Spinner } from './ui/spinner';
 
+const BLOCKED_QR_SVG_PATTERN = /<script|<\/script|on\w+\s*=|javascript:/i;
+
+function sanitizeQrCodeSvg(qrCodeSvg: string | null): string | null {
+    if (qrCodeSvg === null) {
+        return null;
+    }
+
+    const trimmedSvg = qrCodeSvg.trim();
+
+    if (
+        trimmedSvg === ''
+        || !/^(\s*<\?xml[^>]*>\s*)?<svg[\s>]/i.test(trimmedSvg)
+    ) {
+        return null;
+    }
+
+    if (BLOCKED_QR_SVG_PATTERN.test(trimmedSvg)) {
+        return null;
+    }
+
+    return trimmedSvg;
+}
+
 function GridScanIcon() {
     return (
         <div className="mb-3 rounded-full border border-border bg-card p-0.5 shadow-sm">
@@ -65,6 +88,7 @@ function TwoFactorSetupStep({
     const { resolvedAppearance } = useAppearance();
     const [copiedText, copy] = useClipboard();
     const IconComponent = copiedText === manualSetupKey ? Check : Copy;
+    const safeQrCodeSvg = useMemo(() => sanitizeQrCodeSvg(qrCodeSvg), [qrCodeSvg]);
 
     return (
         <>
@@ -75,11 +99,11 @@ function TwoFactorSetupStep({
                     <div className="mx-auto flex max-w-md overflow-hidden">
                         <div className="mx-auto aspect-square w-64 rounded-lg border border-border">
                             <div className="z-10 flex h-full w-full items-center justify-center p-5">
-                                {qrCodeSvg ? (
+                                {safeQrCodeSvg ? (
                                     <div
                                         className="aspect-square w-full rounded-lg bg-white p-2 [&_svg]:size-full"
                                         dangerouslySetInnerHTML={{
-                                            __html: qrCodeSvg,
+                                            __html: safeQrCodeSvg,
                                         }}
                                         style={{
                                             filter:
