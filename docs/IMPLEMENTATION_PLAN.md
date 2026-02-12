@@ -4,6 +4,39 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 10 — Unified Completion + Calendar Entry Types (COMPLETE)
+
+- Goals:
+  - unify activity/session reconciliation into a single post-sync flow
+  - ensure linked workouts render as one calendar card
+  - auto-complete matched sessions during provider sync
+  - create plan-less completed sessions for unplanned synced workouts
+  - add first-step calendar entry creation (`Workout` vs `Other`)
+  - add admin-managed entitlement gating for entry types
+- Boundaries:
+  - no training-science derivations beyond existing conservative metrics
+  - no backend/provider contract redesign
+  - no role/policy broadening (coach stays read-only, admin impersonation context preserved)
+- Completed:
+  - new `calendar_entries` domain + API (`index/store/show/update/destroy`)
+  - subscription entitlement persistence via `entry_type_entitlements`
+  - athlete write gating via entitlement checks for:
+    - workout types (`TrainingSessionController`)
+    - other entry types (`CalendarEntryController`)
+  - reconciliation orchestrator added:
+    - `ActivityToSessionReconciler`
+    - integrated into provider sync pipeline (`ActivitySyncService`)
+  - planning/completion provenance fields added to sessions:
+    - `planning_source`
+    - `completion_source`
+    - `auto_completed_at`
+  - calendar first-step creation UX added:
+    - `Workout`/`Other` selector modal
+    - dedicated calendar-entry modal for non-workout entries
+  - compliance denominator/numerator aligned to planned sessions only in week summary UI
+
+---
+
 ## Phase 9.13 — Final Smoke + Full Quality Gates (COMPLETE)
 
 - Scope:

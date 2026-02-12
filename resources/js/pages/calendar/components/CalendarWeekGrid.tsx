@@ -1,6 +1,10 @@
 import type { MutableRefObject } from 'react';
 import { cn } from '@/lib/utils';
-import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
+import type {
+    ActivityView,
+    CalendarEntryView,
+    TrainingSessionView,
+} from '@/types/training-plans';
 import { SUMMARY_RAIL_WIDTH } from '../constants';
 import { CalendarEmptyState } from './CalendarEmptyState';
 import { CalendarWeekRow } from './CalendarWeekRow';
@@ -13,6 +17,7 @@ type CalendarWeekGridProps = {
         endsAt: string;
     }>;
     weekActivities: Map<string, ActivityView[]>;
+    weekCalendarEntries: Map<string, CalendarEntryView[]>;
     activeDayDates: string[] | null;
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
@@ -20,6 +25,7 @@ type CalendarWeekGridProps = {
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
     weekElementsRef: MutableRefObject<Record<string, HTMLDivElement | null>>;
     topSentinelRef: MutableRefObject<HTMLDivElement | null>;
     bottomSentinelRef: MutableRefObject<HTMLDivElement | null>;
@@ -31,6 +37,7 @@ type CalendarWeekGridProps = {
 export function CalendarWeekGrid({
     visibleWeeks,
     weekActivities,
+    weekCalendarEntries,
     activeDayDates,
     canManageSessions,
     canManageSessionLinks,
@@ -38,6 +45,7 @@ export function CalendarWeekGrid({
     onCreateSession,
     onEditSession,
     onOpenActivity,
+    onOpenCalendarEntry,
     weekElementsRef,
     topSentinelRef,
     bottomSentinelRef,
@@ -64,6 +72,9 @@ export function CalendarWeekGrid({
                     <CalendarWeekRow
                         week={week}
                         activities={weekActivities.get(week.startsAt) ?? []}
+                        calendarEntries={
+                            weekCalendarEntries.get(week.startsAt) ?? []
+                        }
                         visibleDayDates={activeDayDates}
                         summaryRailWidth={SUMMARY_RAIL_WIDTH}
                         canManageSessions={canManageSessions}
@@ -72,6 +83,7 @@ export function CalendarWeekGrid({
                         onCreateSession={onCreateSession}
                         onEditSession={onEditSession}
                         onOpenActivity={onOpenActivity}
+                        onOpenCalendarEntry={onOpenCalendarEntry}
                     />
                 </div>
             ))}

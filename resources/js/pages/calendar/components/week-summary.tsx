@@ -23,17 +23,20 @@ export function WeekSummary({
     isCurrentWeek = false,
 }: WeekSummaryProps) {
     const compliance =
-        plannedTss > 0 ? Math.round((totalTss / plannedTss) * 100) : 0;
-    const hasData = totalDuration > 0 || totalTss > 0 || plannedTss > 0;
+        plannedSessions > 0
+            ? Math.round((completedSessions / plannedSessions) * 100)
+            : 0;
+    const hasData =
+        totalDuration > 0 ||
+        totalTss > 0 ||
+        plannedTss > 0 ||
+        plannedSessions > 0;
 
     let statusColor = 'text-zinc-500';
     let barColor = 'bg-zinc-700';
 
-    if (plannedTss > 0) {
-        if (compliance > 115) {
-            statusColor = 'text-status-warning';
-            barColor = 'bg-status-warning';
-        } else if (compliance < 80) {
+    if (plannedSessions > 0) {
+        if (compliance < 80) {
             statusColor = 'text-zinc-400';
             barColor = 'bg-zinc-600';
         } else {
@@ -114,7 +117,7 @@ export function WeekSummary({
                     </span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/50">
-                    {plannedTss > 0 ? (
+                    {plannedSessions > 0 ? (
                         <div
                             className={cn(
                                 'h-full rounded-full transition-all duration-500',

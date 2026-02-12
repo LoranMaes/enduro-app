@@ -4,6 +4,7 @@ import { initializeEcho } from '@/lib/echo';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
 import type {
     ActivityView,
+    CalendarEntryView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import {
@@ -13,14 +14,17 @@ import {
 import type { CalendarWindow } from '../lib/calendar-weeks';
 import type { ProviderStatus } from '../types';
 import {
+    fetchWindowCalendarEntries as fetchWindowCalendarEntriesRequest,
     fetchWindowActivities as fetchWindowActivitiesRequest,
     fetchWindowSessions as fetchWindowSessionsRequest,
     mergeActivities as mergeActivitiesState,
+    mergeCalendarEntries as mergeCalendarEntriesState,
     mergeSessions as mergeSessionsState,
 } from '../utils';
 export function useCalendarSessions({
     initialSessions,
     initialActivities,
+    initialEntries,
     initialWindow,
     providerStatus,
     authUserId,
@@ -28,6 +32,7 @@ export function useCalendarSessions({
 }: {
     initialSessions: TrainingSessionView[];
     initialActivities: ActivityView[];
+    initialEntries: CalendarEntryView[];
     initialWindow: CalendarWindow;
     providerStatus: ProviderStatus;
     authUserId: number;
@@ -41,6 +46,8 @@ export function useCalendarSessions({
         useState<TrainingSessionView[]>(initialSessions);
     const [activities, setActivities] =
         useState<ActivityView[]>(initialActivities);
+    const [calendarEntries, setCalendarEntries] =
+        useState<CalendarEntryView[]>(initialEntries);
     const [providerStatusState, setProviderStatusState] =
         useState(providerStatus);
     const [isSyncDispatching, setIsSyncDispatching] = useState(false);
@@ -81,6 +88,7 @@ export function useCalendarSessions({
     const mergeSessions = useCallback(mergeSessionsState, []);
 
     const mergeActivities = useCallback(mergeActivitiesState, []);
+    const mergeCalendarEntries = useCallback(mergeCalendarEntriesState, []);
 
     const fetchWindowSessions = useCallback(
         async (from: string, to: string): Promise<TrainingSessionView[]> => {
@@ -92,6 +100,13 @@ export function useCalendarSessions({
     const fetchWindowActivities = useCallback(
         async (from: string, to: string): Promise<ActivityView[]> => {
             return fetchWindowActivitiesRequest(from, to);
+        },
+        [],
+    );
+
+    const fetchWindowCalendarEntries = useCallback(
+        async (from: string, to: string): Promise<CalendarEntryView[]> => {
+            return fetchWindowCalendarEntriesRequest(from, to);
         },
         [],
     );
@@ -109,10 +124,15 @@ export function useCalendarSessions({
                     calendarWindow.starts_at,
                     calendarWindow.ends_at,
                 ),
+                fetchWindowCalendarEntries(
+                    calendarWindow.starts_at,
+                    calendarWindow.ends_at,
+                ),
             ])
-                .then(([freshSessions, freshActivities]) => {
+                .then(([freshSessions, freshActivities, freshEntries]) => {
                     setSessions(freshSessions);
                     setActivities(freshActivities);
+                    setCalendarEntries(freshEntries);
                 })
                 .catch((error) => {
                     console.error(error);
@@ -121,7 +141,11 @@ export function useCalendarSessions({
                     setIsRefreshing(false);
                 });
         },
-        [fetchWindowActivities, fetchWindowSessions],
+        [
+            fetchWindowActivities,
+            fetchWindowCalendarEntries,
+            fetchWindowSessions,
+        ],
     );
 
     const triggerProviderSync = useCallback(async (): Promise<void> => {
@@ -180,7 +204,9 @@ export function useCalendarSessions({
         hydratedWindowRef.current = nextSignature;
         setSessions(initialSessions);
         setActivities(initialActivities);
+        setCalendarEntries(initialEntries);
     }, [
+        initialEntries,
         initialActivities,
         initialSessions,
         initialWindow.ends_at,
@@ -281,6 +307,8 @@ export function useCalendarSessions({
         setSessions,
         activities,
         setActivities,
+        calendarEntries,
+        setCalendarEntries,
         providerStatusState,
         setProviderStatusState,
         isSyncDispatching,
@@ -292,8 +320,10 @@ export function useCalendarSessions({
         integrationDotClass,
         mergeSessions,
         mergeActivities,
+        mergeCalendarEntries,
         fetchWindowSessions,
         fetchWindowActivities,
+        fetchWindowCalendarEntries,
         refreshCalendarData,
         triggerProviderSync,
     };

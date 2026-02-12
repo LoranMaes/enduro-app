@@ -25,6 +25,7 @@ type UseSessionEditorActionsParams = {
     canManageSessionWrites: boolean;
     isBusy: boolean;
     sport: Sport;
+    title: string;
     plannedDurationMinutes: string;
     plannedTss: string;
     notes: string;
@@ -50,6 +51,7 @@ export function useSessionEditorActions({
     canManageSessionWrites,
     isBusy,
     sport,
+    title,
     plannedDurationMinutes,
     plannedTss,
     notes,
@@ -110,6 +112,7 @@ export function useSessionEditorActions({
                 trainingWeekId: context.trainingWeekId,
                 date: context.date,
                 sport,
+                title,
                 plannedDurationMinutes,
                 plannedTss,
                 notes,
@@ -159,6 +162,7 @@ export function useSessionEditorActions({
             setErrors,
             setGeneralError,
             sport,
+            title,
             submitSession,
         ],
     );

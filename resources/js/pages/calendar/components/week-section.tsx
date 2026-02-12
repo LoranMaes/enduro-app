@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import type {
     ActivityView,
+    CalendarEntryView,
     TrainingSessionView,
     TrainingWeekView,
 } from '@/types/training-plans';
@@ -10,6 +11,7 @@ import { WeekSummary } from './week-summary';
 type WeekSectionProps = {
     week: TrainingWeekView;
     activities: ActivityView[];
+    calendarEntries: CalendarEntryView[];
     visibleDayDates: string[] | null;
     summaryRailWidth: number;
     canManageSessions: boolean;
@@ -18,6 +20,7 @@ type WeekSectionProps = {
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
 };
 
 const dateKey = (date: Date): string => {
@@ -43,6 +46,7 @@ const dayToken = (date: Date): string => {
 export function WeekSection({
     week,
     activities,
+    calendarEntries,
     visibleDayDates,
     summaryRailWidth,
     canManageSessions,
@@ -51,6 +55,7 @@ export function WeekSection({
     onCreateSession,
     onEditSession,
     onOpenActivity,
+    onOpenCalendarEntry,
 }: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
     const todayKey = dateKey(new Date());
@@ -87,6 +92,10 @@ export function WeekSection({
                 return carry;
             }
 
+            if (activity.linkedSessionId !== null) {
+                return carry;
+            }
+
             if (!carry[activity.startedDate]) {
                 carry[activity.startedDate] = [];
             }
@@ -97,12 +106,26 @@ export function WeekSection({
         },
         {},
     );
+    const calendarEntriesByDay = calendarEntries.reduce<
+        Record<string, CalendarEntryView[]>
+    >((carry, entry) => {
+        if (!carry[entry.scheduledDate]) {
+            carry[entry.scheduledDate] = [];
+        }
 
+        carry[entry.scheduledDate].push(entry);
+
+        return carry;
+    }, {});
+
+    const plannedSessionsForCompliance = week.sessions.filter((session) => {
+        return session.planningSource === 'planned';
+    });
     const durationMinutes = week.sessions.reduce(
         (total, session) => total + session.durationMinutes,
         0,
     );
-    const plannedLoad = week.sessions.reduce(
+    const plannedLoad = plannedSessionsForCompliance.reduce(
         (total, session) => total + (session.plannedTss ?? 0),
         0,
     );
@@ -184,10 +207,10 @@ export function WeekSection({
     const actualLoad = activityLoad + sessionFallbackLoad;
     const summaryDuration =
         actualDurationMinutes > 0 ? actualDurationMinutes : durationMinutes;
-    const completedSessions = week.sessions.filter(
+    const completedSessions = plannedSessionsForCompliance.filter(
         (session) => session.status === 'completed',
     ).length;
-    const hasPlannedSessions = week.sessions.length > 0;
+    const hasPlannedSessions = plannedSessionsForCompliance.length > 0;
     const isCurrentWeek = isDateInWeek(weekStart, new Date());
     const gridTemplateColumns = `repeat(${Math.max(1, dayDates.length)}, minmax(0, 1fr)) ${summaryRailWidth}px`;
 
@@ -226,6 +249,8 @@ export function WeekSection({
                     const currentDay = new Date(`${currentDayKey}T00:00:00`);
                     const daySessions = sessionsByDay[currentDayKey] ?? [];
                     const dayActivities = activitiesByDay[currentDayKey] ?? [];
+                    const dayCalendarEntries =
+                        calendarEntriesByDay[currentDayKey] ?? [];
 
                     return (
                         <div
@@ -242,12 +267,14 @@ export function WeekSection({
                                 }
                                 sessions={daySessions}
                                 activities={dayActivities}
+                                calendarEntries={dayCalendarEntries}
                                 canManageSessions={canManageSessions}
                                 canManageSessionLinks={canManageSessionLinks}
                                 canOpenActivityDetails={canOpenActivityDetails}
                                 onCreateSession={onCreateSession}
                                 onEditSession={onEditSession}
                                 onOpenActivity={onOpenActivity}
+                                onOpenCalendarEntry={onOpenCalendarEntry}
                             />
                         </div>
                     );
@@ -259,7 +286,7 @@ export function WeekSection({
                         totalTss={actualLoad}
                         plannedTss={plannedLoad}
                         completedSessions={completedSessions}
-                        plannedSessions={week.sessions.length}
+                        plannedSessions={plannedSessionsForCompliance.length}
                         activityVolumeBySport={activityVolumeBySport}
                         isCurrentWeek={isCurrentWeek}
                     />

@@ -1,5 +1,41 @@
 # Endure — Progress Log
 
+## 2026-02-12 (Unified Completion + Calendar Entry Types Pass Complete)
+
+- Completed feature pass for unified completion and calendar entry types:
+    - linked activities now collapse to a single calendar card (session card only)
+    - provider sync now reconciles activities into sessions automatically:
+        - planned match -> auto-link + auto-complete
+        - no planned match -> create plan-less `Free Workout` session + auto-complete
+    - introduced first-step calendar creation flow:
+        - `Workout` -> existing session editor flow
+        - `Other` -> dedicated calendar entry editor (`event` / `goal` / `note`)
+    - introduced subscription-gated entry/workout types with admin-managed entitlement flags
+    - updated calendar compliance logic to:
+        - `Completed Planned Sessions / Planned Sessions`
+    - kept manual completion/linking flows available
+- Added backend and feature coverage:
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+    - `tests/Feature/Api/CalendarEntryApiTest.php`
+    - `tests/Feature/AdminEntitlementsTest.php`
+    - updated `tests/Feature/AdminImpersonationTest.php` for impersonated-athlete write expectations
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Activities/ActivityToSessionReconcilerTest.php tests/Feature/Api/CalendarEntryApiTest.php tests/Feature/AdminEntitlementsTest.php tests/Feature/AdminImpersonationTest.php`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Unified Completion + Calendar Entry Types Pass Start)
+
+- Started feature pass for:
+    - unified session/activity completion flow (auto-link + auto-complete)
+    - first-step calendar entry creation flow (`Workout` vs `Other`)
+    - subscription-gated entry types with admin-configured entitlements
+    - single-card calendar rendering for linked workout activity/session pairs
+- Scope guardrails:
+    - no training-science/load-modeling expansion
+    - keep provider and API boundaries explicit
+    - preserve role/impersonation rules
+
 ## 2026-02-12 (Refactor Wave 8 Complete: Final Smoke + Full Quality Gates)
 
 - Completed final validation sweep:

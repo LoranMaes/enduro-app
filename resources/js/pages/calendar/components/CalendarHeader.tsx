@@ -81,13 +81,17 @@ export function CalendarHeader({
                                     'animate-pulse',
                             )}
                         />
-                        <span className="text-zinc-400">{integrationLabel}</span>
+                        <span className="text-zinc-400">
+                            {integrationLabel}
+                        </span>
                     </div>
                     {canShowSyncButton ? (
                         <button
                             type="button"
                             onClick={onSync}
-                            disabled={isSyncDispatching || isStravaSyncInProgress}
+                            disabled={
+                                isSyncDispatching || isStravaSyncInProgress
+                            }
                             className={cn(
                                 'inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-zinc-300 transition-colors',
                                 isSyncDispatching || isStravaSyncInProgress
@@ -115,7 +119,7 @@ export function CalendarHeader({
             </header>
 
             <div
-                className="sticky z-[35] flex h-10 items-center justify-between border-b border-border bg-background px-6"
+                className="sticky z-[35] flex h-10 items-center justify-between border-b border-border bg-background px-6 py-1"
                 style={{ top: 'var(--calendar-header-height)' }}
             >
                 <div className="inline-flex items-center rounded-lg border border-border bg-surface/40 p-1">

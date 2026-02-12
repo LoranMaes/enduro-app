@@ -1,10 +1,15 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { mapActivityCollection, mapTrainingSessionCollection } from '@/lib/training-plans';
+import {
+    mapActivityCollection,
+    mapCalendarEntryCollection,
+    mapTrainingSessionCollection,
+} from '@/lib/training-plans';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type {
     ActivityView,
+    CalendarEntryView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import CalendarPageContent from './CalendarPage';
@@ -21,8 +26,11 @@ export default function CalendarIndex({
     trainingPlans: _trainingPlans,
     trainingSessions,
     activities,
+    calendarEntries,
     calendarWindow,
     providerStatus,
+    entryTypeEntitlements,
+    isSubscribed,
     athleteTrainingTargets,
     viewingAthlete = null,
     headTitle = 'Calendar',
@@ -31,6 +39,8 @@ export default function CalendarIndex({
     const initialSessions: TrainingSessionView[] =
         mapTrainingSessionCollection(trainingSessions);
     const initialActivities: ActivityView[] = mapActivityCollection(activities);
+    const initialEntries: CalendarEntryView[] =
+        mapCalendarEntryCollection(calendarEntries);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -41,8 +51,11 @@ export default function CalendarIndex({
                     <CalendarPageContent
                         initialSessions={initialSessions}
                         initialActivities={initialActivities}
+                        initialEntries={initialEntries}
                         initialWindow={calendarWindow}
                         providerStatus={providerStatus}
+                        entryTypeEntitlements={entryTypeEntitlements}
+                        isSubscribed={isSubscribed}
                         athleteTrainingTargets={athleteTrainingTargets}
                         viewingAthleteId={viewingAthlete?.id ?? null}
                         viewingAthleteName={viewingAthlete?.name ?? null}

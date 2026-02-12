@@ -1,7 +1,12 @@
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
+import type {
+    ActivityView,
+    CalendarEntryView,
+    TrainingSessionView,
+} from '@/types/training-plans';
 import { ActivityRow } from './activity-row';
+import { CalendarEntryRow } from './calendar-entry-row';
 import { SessionRow } from './session-row';
 
 type DayColumnProps = {
@@ -11,12 +16,14 @@ type DayColumnProps = {
     isPast: boolean;
     sessions: TrainingSessionView[];
     activities: ActivityView[];
+    calendarEntries: CalendarEntryView[];
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
     canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
 };
 
 export function DayColumn({
@@ -26,25 +33,36 @@ export function DayColumn({
     isPast,
     sessions,
     activities,
+    calendarEntries,
     canManageSessions,
     canManageSessionLinks,
     canOpenActivityDetails,
     onCreateSession,
     onEditSession,
     onOpenActivity,
+    onOpenCalendarEntry,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
     const canOpenEditModal = canManageSessions || canManageSessionLinks;
     const isReadOnly = !canManageSessions && !canManageSessionLinks;
-    const hasEntries = sessions.length > 0 || activities.length > 0;
+    const hasEntries =
+        sessions.length > 0 ||
+        calendarEntries.length > 0 ||
+        activities.length > 0;
 
-    const sortedActivities = activities.slice().sort((left, right) => {
+    const sortedActivities = activities
+        .filter((activity) => activity.linkedSessionId === null)
+        .slice()
+        .sort((left, right) => {
         if (left.startedAt === right.startedAt) {
             return left.id - right.id;
         }
 
         return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
-    });
+        });
+    const sortedCalendarEntries = calendarEntries
+        .slice()
+        .sort((left, right) => left.id - right.id);
 
     const openCreateSession = (): void => {
         if (!canOpenCreateModal) {
@@ -77,9 +95,9 @@ export function DayColumn({
                         role: 'button' as const,
                         tabIndex: 0,
                     }
-                : {})}
+                  : {})}
             className={cn(
-                'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 text-left transition-all duration-200',
+                'group/day relative flex h-full w-full flex-col px-2 pt-1.5 pb-2 text-left transition-all duration-200',
                 isToday
                     ? 'bg-zinc-900/40 ring-1 ring-white/5 ring-inset'
                     : 'bg-transparent',
@@ -167,6 +185,19 @@ export function DayColumn({
                         onClick={() => {
                             if (canOpenActivityDetails) {
                                 onOpenActivity(activity);
+                            }
+                        }}
+                    />
+                ))}
+
+                {sortedCalendarEntries.map((calendarEntry) => (
+                    <CalendarEntryRow
+                        key={calendarEntry.id}
+                        entry={calendarEntry}
+                        isInteractive={canManageSessions}
+                        onClick={() => {
+                            if (canManageSessions) {
+                                onOpenCalendarEntry(calendarEntry);
                             }
                         }}
                     />

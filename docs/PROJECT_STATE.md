@@ -2,13 +2,17 @@
 
 ## Current Phase
 
-Refactor hardening Waves 6-8 are complete (backend boundaries, security/content hardening, and final quality gates).
+Phase 10 is complete: unified completion + calendar entry type flow (workout/other + entitlement gating), built on top of completed refactor hardening waves.
 
 ## Current Wave Focus
 
-- Maintain behavior-preserving state after Waves 6-8 completion.
-- Continue incremental decomposition/hardening in future waves without contract drift.
-- Preserve existing contracts (API, routes, payloads) and slicing-aligned visuals.
+- Phase 10 delivered end-to-end:
+    - provider sync reconciliation now auto-links/auto-completes planned matches
+    - unplanned synced activities now create completed plan-less sessions
+    - calendar create flow now starts with `Workout` vs `Other`
+    - `event`/`goal`/`note` calendar entries are persisted and rendered in the same window flow
+    - entitlement flags now gate workout and other entry types for non-subscribed athletes
+    - compliance logic now uses completed planned sessions over planned sessions
 
 ## Previous Phase Snapshot
 
@@ -104,6 +108,11 @@ LOCKED for MVP
 ## Backend Status
 
 - Domain entities, migrations, policies, API resources, and API route scaffolding are in place.
+- Unified completion + entry-type backend additions are now live:
+    - `calendar_entries` CRUD API (athlete-owned)
+    - `entry_type_entitlements` admin-managed gating flags
+    - `training_sessions` provenance fields: `planning_source`, `completion_source`, `auto_completed_at`
+    - `ActivityToSessionReconciler` integrated into sync for auto-link/auto-complete/unplanned creation
 - Authentication remains Fortify-based; API routes use `auth` middleware.
 - TrainingPlan CRUD is implemented and tested.
 - TrainingWeek read + CRUD is implemented and tested (including overlap/date validation).
@@ -184,6 +193,11 @@ LOCKED for MVP
 ## Frontend Status
 
 - Athlete calendar uses real backend data with athlete-only session write interactions enabled.
+- Unified calendar creation and rendering flow is now live:
+    - first-step selector (`Workout` vs `Other`)
+    - dedicated modal for `event`/`goal`/`note` entries
+    - entitlement lock-state rendering for gated types
+    - linked activity/session duplicate cards removed (single-card session rendering)
 - Athlete calendar now supports athlete-only session writes (modal CRUD) against real backend endpoints.
 - Athlete calendar now centers on the current week at initial load and supports infinite vertical scrolling (past/future windows) through session read API window fetches.
 - Calendar composition now follows slicing structure:

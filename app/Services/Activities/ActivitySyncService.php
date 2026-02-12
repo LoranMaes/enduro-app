@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ActivityProviders\ActivityProviderConnectionStore;
 use App\Services\ActivityProviders\ActivityProviderManager;
 use App\Services\ActivityProviders\ActivityProviderTokenManager;
+use App\Services\Training\ActivityToSessionReconciler;
 use Carbon\CarbonImmutable;
 
 class ActivitySyncService
@@ -17,7 +18,7 @@ class ActivitySyncService
         private readonly ActivityProviderConnectionStore $connectionStore,
         private readonly ActivityProviderTokenManager $tokenManager,
         private readonly ExternalActivityPersister $persister,
-        private readonly ActivityAutoLinkService $activityAutoLinkService,
+        private readonly ActivityToSessionReconciler $activityToSessionReconciler,
     ) {}
 
     /**
@@ -45,10 +46,7 @@ class ActivitySyncService
         if ($externalActivityId !== null) {
             $activity = $providerClient->fetchActivity($user, $externalActivityId);
             $persistedActivity = $this->persister->persist($user, $activity);
-            $this->activityAutoLinkService->autoLinkSingleActivity(
-                athlete: $user,
-                activity: $persistedActivity,
-            );
+            $this->activityToSessionReconciler->reconcile($persistedActivity);
 
             $syncedAt = CarbonImmutable::now();
 
@@ -71,19 +69,15 @@ class ActivitySyncService
                 'per_page' => $perPage,
             ]);
 
-            $syncedActivitiesCount += $this->persister
+            $persistedActivities = $this->persister
                 ->persistMany($user, $activities)
-                ->count();
+                ->values();
+            $syncedActivitiesCount += $persistedActivities->count();
+            $this->activityToSessionReconciler->reconcileMany($persistedActivities);
 
             $batchCount = $activities->count();
             $page++;
         } while ($batchCount === $perPage);
-
-        $this->activityAutoLinkService->autoLinkRecentActivities(
-            athlete: $user,
-            provider: $normalizedProvider,
-            afterTimestamp: $afterTimestamp,
-        );
 
         $syncedAt = CarbonImmutable::now();
 

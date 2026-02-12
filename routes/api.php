@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\TicketInternalNoteController;
 use App\Http\Controllers\Api\Admin\TicketNotificationController;
 use App\Http\Controllers\Api\Admin\TicketStatusController;
 use App\Http\Controllers\Api\Admin\TicketUserSearchController;
+use App\Http\Controllers\Api\CalendarEntryController;
 use App\Http\Controllers\Api\StravaWebhookEventController;
 use App\Http\Controllers\Api\StravaWebhookVerificationController;
 use App\Http\Controllers\Api\TrainingPlanController;
@@ -56,6 +57,14 @@ Route::middleware([
         'index',
         'show',
     ]);
+    Route::apiResource('calendar-entries', CalendarEntryController::class)
+        ->only([
+            'index',
+            'store',
+            'show',
+            'update',
+            'destroy',
+        ]);
     Route::get('activities/{activity}/streams', ActivityStreamController::class)
         ->name('activities.streams');
     Route::post('activity-providers/{provider}/sync', ActivityProviderSyncController::class)

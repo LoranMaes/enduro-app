@@ -1,14 +1,18 @@
 import {
     mapActivityCollection,
+    mapCalendarEntryCollection,
     mapTrainingSessionCollection,
 } from '@/lib/training-plans';
 import { index as listActivities } from '@/routes/activities';
+import { index as listCalendarEntries } from '@/routes/calendar-entries';
 import { index as listTrainingSessions } from '@/routes/training-sessions';
 import type {
     ActivityApi,
     ActivityView,
     ApiCollectionResponse,
     ApiPaginatedCollectionResponse,
+    CalendarEntryApi,
+    CalendarEntryView,
     TrainingSessionApi,
     TrainingSessionView,
 } from '@/types/training-plans';
@@ -150,6 +154,29 @@ export const mergeActivities = (
     });
 };
 
+export const mergeCalendarEntries = (
+    existingEntries: CalendarEntryView[],
+    incomingEntries: CalendarEntryView[],
+): CalendarEntryView[] => {
+    const entryMap = new Map<number, CalendarEntryView>();
+
+    existingEntries.forEach((entry) => {
+        entryMap.set(entry.id, entry);
+    });
+
+    incomingEntries.forEach((entry) => {
+        entryMap.set(entry.id, entry);
+    });
+
+    return Array.from(entryMap.values()).sort((left, right) => {
+        if (left.scheduledDate === right.scheduledDate) {
+            return left.id - right.id;
+        }
+
+        return left.scheduledDate.localeCompare(right.scheduledDate);
+    });
+};
+
 export const fetchWindowSessions = async (
     from: string,
     to: string,
@@ -246,4 +273,54 @@ export const fetchWindowActivities = async (
     }
 
     return collectedActivities;
+};
+
+export const fetchWindowCalendarEntries = async (
+    from: string,
+    to: string,
+): Promise<CalendarEntryView[]> => {
+    const collectedEntries: CalendarEntryView[] = [];
+    let page = 1;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+        const route = listCalendarEntries({
+            query: {
+                from,
+                to,
+                per_page: ACTIVITIES_PER_PAGE,
+                page,
+            },
+        });
+        const response = await fetch(route.url, {
+            method: route.method.toUpperCase(),
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Unable to fetch calendar entries for window ${from} to ${to}.`,
+            );
+        }
+
+        const payload =
+            (await response.json()) as ApiPaginatedCollectionResponse<CalendarEntryApi>;
+        const mappedEntries = mapCalendarEntryCollection(
+            payload as ApiCollectionResponse<CalendarEntryApi>,
+        );
+        collectedEntries.push(...mappedEntries);
+
+        const meta = payload.meta;
+
+        if (meta === undefined || meta.current_page >= meta.last_page) {
+            hasMorePages = false;
+        } else {
+            page += 1;
+        }
+    }
+
+    return collectedEntries;
 };

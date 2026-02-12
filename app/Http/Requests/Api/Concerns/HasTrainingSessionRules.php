@@ -19,6 +19,7 @@ trait HasTrainingSessionRules
             'training_week_id' => ['nullable', 'integer', 'exists:training_weeks,id'],
             'date' => ['required', 'date'],
             'sport' => ['required', Rule::enum(TrainingSessionSport::class)],
+            'title' => ['nullable', 'string', 'max:180'],
             'planned_duration_minutes' => ['required', 'integer', 'min:1'],
             'planned_tss' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string'],

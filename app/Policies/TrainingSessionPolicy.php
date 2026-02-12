@@ -4,12 +4,9 @@ namespace App\Policies;
 
 use App\Models\TrainingSession;
 use App\Models\User;
-use App\Policies\Concerns\DetectsImpersonation;
 
 class TrainingSessionPolicy
 {
-    use DetectsImpersonation;
-
     public function before(User $user, string $ability): ?bool
     {
         if (
@@ -56,10 +53,6 @@ class TrainingSessionPolicy
 
     public function create(User $user): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
         if ($user->isAthlete()) {
             return true;
         }
@@ -70,10 +63,6 @@ class TrainingSessionPolicy
 
     public function update(User $user, TrainingSession $trainingSession): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
         if ($user->isAthlete()) {
             return $this->resolveAthleteId($trainingSession) === $user->id;
         }
@@ -83,10 +72,6 @@ class TrainingSessionPolicy
 
     public function delete(User $user, TrainingSession $trainingSession): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
         if ($user->isAthlete()) {
             return $this->resolveAthleteId($trainingSession) === $user->id;
         }
@@ -96,10 +81,6 @@ class TrainingSessionPolicy
 
     public function restore(User $user, TrainingSession $trainingSession): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
         if ($user->isAthlete()) {
             return $this->resolveAthleteId($trainingSession) === $user->id;
         }
@@ -109,10 +90,6 @@ class TrainingSessionPolicy
 
     public function forceDelete(User $user, TrainingSession $trainingSession): bool
     {
-        if ($this->isImpersonating()) {
-            return false;
-        }
-
         return false;
     }
 

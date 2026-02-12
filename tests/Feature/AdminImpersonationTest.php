@@ -134,7 +134,7 @@ it('blocks impersonating unapproved coaches', function () {
     expect(session('impersonation.impersonated_user_id'))->toBeNull();
 });
 
-it('blocks impersonated admin sessions from writing training data', function () {
+it('allows impersonated athlete session writes while still blocking plan and week writes', function () {
     $admin = User::factory()->admin()->create();
     $athlete = User::factory()->athlete()->create();
 
@@ -174,7 +174,11 @@ it('blocks impersonated admin sessions from writing training data', function () 
 
     $this
         ->deleteJson("/api/training-sessions/{$session->id}")
-        ->assertForbidden();
+        ->assertNoContent();
+
+    $this->assertDatabaseMissing('training_sessions', [
+        'id' => $session->id,
+    ]);
 });
 
 it('stops impersonation and restores the original admin context', function () {

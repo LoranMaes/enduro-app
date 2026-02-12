@@ -24,6 +24,8 @@ class RevertCompletionAction
             'actual_duration_minutes' => null,
             'actual_tss' => null,
             'completed_at' => null,
+            'completion_source' => null,
+            'auto_completed_at' => null,
         ]);
 
         return $trainingSession->refresh()->loadMissing('activity');

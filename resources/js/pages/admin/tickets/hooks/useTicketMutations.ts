@@ -70,7 +70,7 @@ export function useTicketMutations({
         async (ticketId: number): Promise<TicketRecord | null> => {
             const route = adminTicketShow(ticketId);
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: defaultHeaders,
             });
 
@@ -89,7 +89,7 @@ export function useTicketMutations({
         ): Promise<TicketMutationResult<TicketRecord>> => {
             const route = adminTicketStore();
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export function useTicketMutations({
         ): Promise<TicketRecord | null> => {
             const route = adminTicketMoveStatus(ticketId);
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'Content-Type': 'application/json',
@@ -175,13 +175,14 @@ export function useTicketMutations({
             ticketId: number,
             changes: TicketUpdatePayload,
         ): Promise<TicketMutationResult<TicketRecord>> => {
-            const route = adminTicketUpdate(ticketId);
-            const response = await fetch(route.url, {
-                method: route.method,
+            const route = adminTicketUpdate.form.patch(ticketId);
+            const response = await fetch(route.action, {
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
+                    'X-HTTP-Method-Override': 'PATCH',
                 },
                 body: JSON.stringify(changes),
             });
@@ -228,7 +229,7 @@ export function useTicketMutations({
         ): Promise<TicketMutationResult<TicketRecord>> => {
             const route = adminTicketInternalNoteUpsert(ticketId);
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'Content-Type': 'application/json',
@@ -271,7 +272,7 @@ export function useTicketMutations({
 
             const route = adminTicketAttachmentStore(ticketId);
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'X-CSRF-TOKEN': csrfToken(),
@@ -302,7 +303,7 @@ export function useTicketMutations({
             });
 
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'X-CSRF-TOKEN': csrfToken(),
@@ -328,7 +329,7 @@ export function useTicketMutations({
             });
 
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: defaultHeaders,
             });
 
@@ -359,7 +360,7 @@ export function useTicketMutations({
                 });
 
                 const response = await fetch(route.url, {
-                    method: route.method,
+                    method: route.method.toUpperCase(),
                     headers: defaultHeaders,
                 });
 

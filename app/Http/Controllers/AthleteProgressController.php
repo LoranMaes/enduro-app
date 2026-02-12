@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Http\Requests\Progress\IndexRequest;
 use App\Models\Activity;
@@ -46,6 +47,7 @@ class AthleteProgressController extends Controller
                 'id',
                 'scheduled_date',
                 'status',
+                'planning_source',
                 'duration_minutes',
                 'actual_duration_minutes',
                 'planned_tss',
@@ -104,9 +106,18 @@ class AthleteProgressController extends Controller
                 continue;
             }
 
-            $weeklyBuckets[$weekKey]['planned_sessions']++;
-            $weeklyBuckets[$weekKey]['planned_duration_minutes'] += $session->duration_minutes;
-            $weeklyBuckets[$weekKey]['planned_tss'] += $session->planned_tss ?? 0;
+            $isPlannedSession = (
+                ($session->planning_source instanceof TrainingSessionPlanningSource
+                    ? $session->planning_source
+                    : TrainingSessionPlanningSource::tryFrom((string) $session->planning_source))
+                ?? TrainingSessionPlanningSource::Planned
+            ) === TrainingSessionPlanningSource::Planned;
+
+            if ($isPlannedSession) {
+                $weeklyBuckets[$weekKey]['planned_sessions']++;
+                $weeklyBuckets[$weekKey]['planned_duration_minutes'] += $session->duration_minutes;
+                $weeklyBuckets[$weekKey]['planned_tss'] += $session->planned_tss ?? 0;
+            }
 
             $actualDurationMinutes = $this->actualMetricsResolver->resolveActualDurationMinutes($session);
             $actualTss = $this->actualMetricsResolver->resolveActualTss($session, $user);
@@ -121,10 +132,10 @@ class AthleteProgressController extends Controller
                 || $actualDurationMinutes !== null
                 || $actualTss !== null;
 
-            if (
-                $hasActualExecution
-            ) {
-                $weeklyBuckets[$weekKey]['completed_sessions']++;
+            if ($hasActualExecution) {
+                if ($isPlannedSession) {
+                    $weeklyBuckets[$weekKey]['completed_sessions']++;
+                }
                 $weeklyBuckets[$weekKey]['actual_duration_minutes'] += $actualDurationMinutes
                     ?? $session->duration_minutes;
                 $weeklyBuckets[$weekKey]['actual_tss'] += $actualTss

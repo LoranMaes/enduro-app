@@ -41,6 +41,7 @@ class User extends Authenticatable
         'strava_access_token',
         'strava_refresh_token',
         'strava_token_expires_at',
+        'is_subscribed',
         'suspended_at',
         'suspended_by_user_id',
         'suspension_reason',
@@ -76,6 +77,7 @@ class User extends Authenticatable
             'last_name' => 'string',
             'timezone' => 'string',
             'unit_system' => 'string',
+            'is_subscribed' => 'boolean',
             'strava_token_expires_at' => 'datetime',
             'suspended_at' => 'datetime',
         ];
@@ -134,6 +136,11 @@ class User extends Authenticatable
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class, 'athlete_id');
+    }
+
+    public function calendarEntries(): HasMany
+    {
+        return $this->hasMany(CalendarEntry::class);
     }
 
     public function activityProviderConnections(): HasMany

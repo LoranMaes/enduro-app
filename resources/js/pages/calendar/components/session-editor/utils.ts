@@ -12,12 +12,14 @@ import type {
 export function buildPayload(data: SubmitPayloadInput): SessionWritePayload {
     const parsedDurationMinutes = Number.parseInt(data.plannedDurationMinutes, 10);
     const parsedPlannedTss = Number.parseInt(data.plannedTss, 10);
+    const normalizedTitle = data.title.trim();
     const normalizedNotes = data.notes.trim();
 
     return {
         training_week_id: data.trainingWeekId,
         date: data.date,
         sport: data.sport,
+        title: normalizedTitle === '' ? null : normalizedTitle,
         planned_duration_minutes:
             data.plannedStructure !== null
                 ? Math.max(1, Math.round(data.derivedStructureDurationMinutes))
@@ -159,9 +161,13 @@ export function mapSessionFromApi(
         trainingWeekId: session.training_week_id ?? null,
         scheduledDate: session.scheduled_date,
         sport: session.sport,
+        title: session.title ?? null,
         status: session.status,
+        planningSource: session.planning_source ?? 'planned',
+        completionSource: session.completion_source ?? null,
         isCompleted: session.is_completed ?? session.status === 'completed',
         completedAt: session.completed_at ?? null,
+        autoCompletedAt: session.auto_completed_at ?? null,
         durationMinutes: session.duration_minutes,
         actualDurationMinutes: session.actual_duration_minutes ?? null,
         plannedTss: session.planned_tss,

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateAdminEntitlementsRequest;
 use App\Models\AdminSetting;
 use App\Models\User;
+use App\Services\Entitlements\EntryTypeEntitlementService;
 use App\Services\Tickets\TicketArchiveDelayResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class AdminSettingsController extends Controller
 {
     public function __construct(
         private readonly TicketArchiveDelayResolver $ticketArchiveDelayResolver,
+        private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
     ) {}
 
     public function show(Request $request): Response
@@ -24,21 +27,26 @@ class AdminSettingsController extends Controller
 
         return Inertia::render('admin/settings/index', [
             'ticketArchiveDelayHours' => $this->ticketArchiveDelayResolver->resolveHours(),
+            'entryTypeEntitlements' => $this->entryTypeEntitlementService->resolvedDefinitions(),
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateAdminEntitlementsRequest $request): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User && $user->isAdmin(), 403);
 
-        $validated = $request->validate([
-            'ticket_archive_delay_hours' => ['required', 'integer', 'min:1', 'max:168'],
-        ]);
+        $validated = $request->validated();
 
-        $settings = AdminSetting::tickets();
-        $settings->ticket_archive_delay_hours = (int) $validated['ticket_archive_delay_hours'];
-        $settings->save();
+        if (array_key_exists('ticket_archive_delay_hours', $validated)) {
+            $settings = AdminSetting::tickets();
+            $settings->ticket_archive_delay_hours = (int) $validated['ticket_archive_delay_hours'];
+            $settings->save();
+        }
+
+        if (array_key_exists('entitlements', $validated)) {
+            $this->entryTypeEntitlementService->updateMany($validated['entitlements']);
+        }
 
         return back()->with('status', 'Admin settings updated.');
     }

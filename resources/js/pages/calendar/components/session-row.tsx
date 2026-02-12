@@ -38,11 +38,23 @@ const sportConfig: Record<
         borderColor: 'bg-violet-400',
         title: 'Zone 2',
     },
+    mtn_bike: {
+        icon: Bike,
+        textColor: 'text-violet-400',
+        borderColor: 'bg-violet-400',
+        title: 'MTB',
+    },
     run: {
         icon: Footprints,
         textColor: 'text-rose-400',
         borderColor: 'bg-rose-400',
         title: 'Intervals',
+    },
+    walk: {
+        icon: Footprints,
+        textColor: 'text-emerald-400',
+        borderColor: 'bg-emerald-400',
+        title: 'Walk',
     },
     gym: {
         icon: Dumbbell,
@@ -55,6 +67,24 @@ const sportConfig: Record<
         textColor: 'text-amber-400',
         borderColor: 'bg-amber-400',
         title: 'Strength',
+    },
+    day_off: {
+        icon: Activity,
+        textColor: 'text-zinc-500',
+        borderColor: 'bg-zinc-500',
+        title: 'Day Off',
+    },
+    custom: {
+        icon: Activity,
+        textColor: 'text-zinc-300',
+        borderColor: 'bg-zinc-400',
+        title: 'Custom',
+    },
+    other: {
+        icon: Activity,
+        textColor: 'text-zinc-300',
+        borderColor: 'bg-zinc-400',
+        title: 'Workout',
     },
     rest: {
         icon: Activity,
@@ -103,7 +133,7 @@ export function SessionRow({
     const displayTss = isCompleted
         ? (session.actualTss ?? undefined)
         : (session.plannedTss ?? undefined);
-    const displayTitle = config.title;
+    const displayTitle = session.title?.trim() !== '' ? session.title : config.title;
     const isSkipped = session.status === 'skipped';
     const isPlanned = session.status === 'planned';
     const isLinked = session.linkedActivityId !== null;

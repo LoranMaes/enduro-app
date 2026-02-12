@@ -11,12 +11,22 @@ import type {
 } from '../workout-structure-builder';
 
 export type SessionEditorMode = 'create' | 'edit';
-export type Sport = 'swim' | 'bike' | 'run' | 'gym' | 'other';
+export type Sport =
+    | 'swim'
+    | 'bike'
+    | 'run'
+    | 'day_off'
+    | 'mtn_bike'
+    | 'custom'
+    | 'walk'
+    | 'gym'
+    | 'other';
 
 export type ValidationField =
     | 'training_week_id'
     | 'date'
     | 'sport'
+    | 'title'
     | 'planned_duration_minutes'
     | 'planned_tss'
     | 'notes'
@@ -30,6 +40,7 @@ export type SessionWritePayload = {
     training_week_id: number | null;
     date: string;
     sport: Sport;
+    title: string | null;
     planned_duration_minutes: number;
     planned_tss: number | null;
     notes: string | null;
@@ -62,6 +73,7 @@ export type SessionEditorContext =
           mode: 'create';
           trainingWeekId: number | null;
           date: string;
+          sport?: Sport;
       }
     | {
           mode: 'edit';
@@ -84,6 +96,7 @@ export type SubmitPayloadInput = {
     trainingWeekId: number | null;
     date: string;
     sport: Sport;
+    title: string;
     plannedDurationMinutes: string;
     plannedTss: string;
     notes: string;

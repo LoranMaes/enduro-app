@@ -28,6 +28,8 @@ export function SessionEditorModal({
         plannedDurationInputRef,
         sport,
         setSport,
+        sessionTitle,
+        setSessionTitle,
         plannedDurationMinutes,
         setPlannedDurationMinutes,
         plannedTss,
@@ -111,6 +113,7 @@ export function SessionEditorModal({
         canManageSessionWrites,
         isBusy,
         sport,
+        title: sessionTitle,
         plannedDurationMinutes,
         plannedTss,
         notes,
@@ -241,6 +244,8 @@ export function SessionEditorModal({
                                         dateLabel={dateLabel}
                                         sport={sport}
                                         setSport={setSport}
+                                        sessionTitle={sessionTitle}
+                                        setSessionTitle={setSessionTitle}
                                         canManageSessionWrites={canManageSessionWrites}
                                         clearFieldError={clearFieldError}
                                         errors={errors}

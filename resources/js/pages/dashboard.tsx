@@ -3,6 +3,7 @@ import type {
     ActivityApi,
     ApiCollectionResponse,
     ApiPaginatedCollectionResponse,
+    CalendarEntryApi,
     TrainingPlanApi,
     TrainingSessionApi,
 } from '@/types/training-plans';
@@ -11,6 +12,7 @@ type DashboardProps = {
     trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
     trainingSessions: ApiCollectionResponse<TrainingSessionApi>;
     activities: ApiCollectionResponse<ActivityApi>;
+    calendarEntries: ApiCollectionResponse<CalendarEntryApi>;
     calendarWindow: {
         starts_at: string;
         ends_at: string;
@@ -24,6 +26,13 @@ type DashboardProps = {
             provider_athlete_id: string | null;
         }
     > | null;
+    entryTypeEntitlements: Array<{
+        key: string;
+        category: 'workout' | 'other' | string;
+        label: string;
+        requires_subscription: boolean;
+    }>;
+    isSubscribed: boolean;
     athleteTrainingTargets: {
         ftp_watts: number | null;
         max_heart_rate_bpm: number | null;
@@ -50,8 +59,11 @@ export default function Dashboard({
     trainingPlans,
     trainingSessions,
     activities,
+    calendarEntries,
     calendarWindow,
     providerStatus,
+    entryTypeEntitlements,
+    isSubscribed,
     athleteTrainingTargets,
     viewingAthlete = null,
 }: DashboardProps) {
@@ -60,8 +72,11 @@ export default function Dashboard({
             trainingPlans={trainingPlans}
             trainingSessions={trainingSessions}
             activities={activities}
+            calendarEntries={calendarEntries}
             calendarWindow={calendarWindow}
             providerStatus={providerStatus}
+            entryTypeEntitlements={entryTypeEntitlements}
+            isSubscribed={isSubscribed}
             athleteTrainingTargets={athleteTrainingTargets}
             viewingAthlete={viewingAthlete}
             headTitle="Dashboard"

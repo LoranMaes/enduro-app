@@ -2,6 +2,7 @@
 
 namespace App\Actions\TrainingSession;
 
+use App\Enums\TrainingSessionCompletionSource;
 use App\Enums\TrainingSessionStatus;
 use App\Models\Activity;
 use App\Models\TrainingSession;
@@ -15,8 +16,11 @@ class CompleteSessionAction
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
     ) {}
 
-    public function execute(User $user, TrainingSession $trainingSession): TrainingSession
-    {
+    public function execute(
+        User $user,
+        TrainingSession $trainingSession,
+        TrainingSessionCompletionSource $completionSource = TrainingSessionCompletionSource::Manual,
+    ): TrainingSession {
         $trainingSession->loadMissing('activity');
 
         if (
@@ -51,6 +55,10 @@ class CompleteSessionAction
             'actual_duration_minutes' => $actualDurationMinutes,
             'actual_tss' => $this->actualMetricsResolver->resolveActivityTss($linkedActivity, $user),
             'completed_at' => now(),
+            'completion_source' => $completionSource->value,
+            'auto_completed_at' => $completionSource === TrainingSessionCompletionSource::ProviderAuto
+                ? now()
+                : null,
         ]);
 
         return $trainingSession->refresh()->loadMissing('activity');

@@ -1,13 +1,18 @@
 import {
     useCallback,
     useEffect,
+    type RefObject,
     useRef,
     useState,
     type Dispatch,
     type MutableRefObject,
     type SetStateAction,
 } from 'react';
-import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
+import type {
+    ActivityView,
+    CalendarEntryView,
+    TrainingSessionView,
+} from '@/types/training-plans';
 import { WINDOW_EXTENSION_WEEKS } from '../constants';
 import {
     addDays,
@@ -24,17 +29,24 @@ export function useCalendarInfiniteLoading({
     scrollContainerRef,
     fetchWindowSessions,
     fetchWindowActivities,
+    fetchWindowCalendarEntries,
     mergeSessions,
     mergeActivities,
+    mergeCalendarEntries,
     setSessions,
     setActivities,
+    setCalendarEntries,
     setCalendarWindow,
 }: {
     calendarViewMode: 'infinite' | 'day' | 'week' | 'month';
     calendarWindow: CalendarWindow;
-    scrollContainerRef: MutableRefObject<HTMLElement | null>;
+    scrollContainerRef: RefObject<HTMLElement | null>;
     fetchWindowSessions: (from: string, to: string) => Promise<TrainingSessionView[]>;
     fetchWindowActivities: (from: string, to: string) => Promise<ActivityView[]>;
+    fetchWindowCalendarEntries: (
+        from: string,
+        to: string,
+    ) => Promise<CalendarEntryView[]>;
     mergeSessions: (
         existingSessions: TrainingSessionView[],
         incomingSessions: TrainingSessionView[],
@@ -43,8 +55,13 @@ export function useCalendarInfiniteLoading({
         existingActivities: ActivityView[],
         incomingActivities: ActivityView[],
     ) => ActivityView[];
+    mergeCalendarEntries: (
+        existingEntries: CalendarEntryView[],
+        incomingEntries: CalendarEntryView[],
+    ) => CalendarEntryView[];
     setSessions: Dispatch<SetStateAction<TrainingSessionView[]>>;
     setActivities: Dispatch<SetStateAction<ActivityView[]>>;
+    setCalendarEntries: Dispatch<SetStateAction<CalendarEntryView[]>>;
     setCalendarWindow: Dispatch<SetStateAction<CalendarWindow>>;
 }) {
     const topSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -108,9 +125,11 @@ export function useCalendarInfiniteLoading({
             }
 
             try {
-                const [fetchedSessions, fetchedActivities] = await Promise.all([
+                const [fetchedSessions, fetchedActivities, fetchedEntries] =
+                    await Promise.all([
                     fetchWindowSessions(fetchFrom, fetchTo),
                     fetchWindowActivities(fetchFrom, fetchTo),
+                    fetchWindowCalendarEntries(fetchFrom, fetchTo),
                 ]);
 
                 setSessions((currentSessions) => {
@@ -121,6 +140,9 @@ export function useCalendarInfiniteLoading({
                         currentActivities,
                         fetchedActivities,
                     );
+                });
+                setCalendarEntries((currentEntries) => {
+                    return mergeCalendarEntries(currentEntries, fetchedEntries);
                 });
                 setCalendarWindow((currentWindow) => {
                     return direction === 'past'
@@ -175,15 +197,18 @@ export function useCalendarInfiniteLoading({
         [
             calendarViewMode,
             fetchWindowActivities,
+            fetchWindowCalendarEntries,
             fetchWindowSessions,
             isLoadingFuture,
             isLoadingPast,
             mergeActivities,
+            mergeCalendarEntries,
             mergeSessions,
             calendarWindow.ends_at,
             calendarWindow.starts_at,
             scrollContainerRef,
             setActivities,
+            setCalendarEntries,
             setCalendarWindow,
             setSessions,
         ],

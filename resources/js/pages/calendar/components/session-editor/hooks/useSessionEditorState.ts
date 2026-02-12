@@ -27,6 +27,8 @@ type UseSessionEditorStateResult = {
     plannedDurationInputRef: RefObject<HTMLInputElement | null>;
     sport: Sport;
     setSport: Dispatch<SetStateAction<Sport>>;
+    sessionTitle: string;
+    setSessionTitle: Dispatch<SetStateAction<string>>;
     plannedDurationMinutes: string;
     setPlannedDurationMinutes: Dispatch<SetStateAction<string>>;
     plannedTss: string;
@@ -59,6 +61,7 @@ export function useSessionEditorState({
 }: UseSessionEditorStateParams): UseSessionEditorStateResult {
     const plannedDurationInputRef = useRef<HTMLInputElement | null>(null);
     const [sport, setSport] = useState<Sport>('run');
+    const [sessionTitle, setSessionTitle] = useState('');
     const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('60');
     const [plannedTss, setPlannedTss] = useState('');
     const [notes, setNotes] = useState('');
@@ -109,6 +112,7 @@ export function useSessionEditorState({
 
         if (context.mode === 'edit') {
             setSport(toSport(context.session.sport));
+            setSessionTitle(context.session.title ?? '');
             setPlannedDurationMinutes(context.session.durationMinutes.toString());
             setPlannedTss(
                 context.session.plannedTss !== null
@@ -121,7 +125,8 @@ export function useSessionEditorState({
             );
             setSessionDetails(context.session);
         } else {
-            setSport('run');
+            setSport(context.sport ?? 'run');
+            setSessionTitle('');
             setPlannedDurationMinutes('60');
             setPlannedTss('');
             setNotes('');
@@ -154,6 +159,8 @@ export function useSessionEditorState({
         plannedDurationInputRef,
         sport,
         setSport,
+        sessionTitle,
+        setSessionTitle,
         plannedDurationMinutes,
         setPlannedDurationMinutes,
         plannedTss,

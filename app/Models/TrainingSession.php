@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Concerns\LogsModelActivity;
+use App\Enums\TrainingSessionCompletionSource;
+use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,12 +24,16 @@ class TrainingSession extends Model
         'training_week_id',
         'scheduled_date',
         'sport',
+        'title',
         'status',
+        'planning_source',
+        'completion_source',
         'duration_minutes',
         'actual_duration_minutes',
         'planned_tss',
         'actual_tss',
         'completed_at',
+        'auto_completed_at',
         'notes',
         'planned_structure',
     ];
@@ -40,7 +46,10 @@ class TrainingSession extends Model
         return [
             'scheduled_date' => 'date',
             'status' => TrainingSessionStatus::class,
+            'planning_source' => TrainingSessionPlanningSource::class,
+            'completion_source' => TrainingSessionCompletionSource::class,
             'completed_at' => 'datetime',
+            'auto_completed_at' => 'datetime',
             'planned_structure' => 'array',
         ];
     }

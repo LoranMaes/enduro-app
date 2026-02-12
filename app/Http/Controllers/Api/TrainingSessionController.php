@@ -6,6 +6,7 @@ use App\Actions\TrainingSession\CompleteSessionAction;
 use App\Actions\TrainingSession\LinkActivityAction;
 use App\Actions\TrainingSession\RevertCompletionAction;
 use App\Actions\TrainingSession\UnlinkActivityAction;
+use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CompleteTrainingSessionRequest;
@@ -21,6 +22,7 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
+use App\Services\Entitlements\EntryTypeEntitlementService;
 use App\Support\QueryScopes\TrainingScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +38,7 @@ class TrainingSessionController extends Controller
         private readonly UnlinkActivityAction $unlinkActivityAction,
         private readonly CompleteSessionAction $completeSessionAction,
         private readonly RevertCompletionAction $revertCompletionAction,
+        private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
     ) {}
 
     /**
@@ -101,12 +104,19 @@ class TrainingSessionController extends Controller
             ]);
         }
 
+        $this->ensureWorkoutEntitlement(
+            sport: $validated['sport'],
+            user: $request->user(),
+        );
+
         $trainingSession = TrainingSession::query()->create([
             'user_id' => $ownerId,
             'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
+            'title' => $validated['title'] ?? null,
             'status' => TrainingSessionStatus::Planned->value,
+            'planning_source' => TrainingSessionPlanningSource::Planned->value,
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
@@ -163,11 +173,24 @@ class TrainingSessionController extends Controller
             ]);
         }
 
+        if (
+            array_key_exists('sport', $validated)
+            && $validated['sport'] !== $trainingSession->sport
+        ) {
+            $this->ensureWorkoutEntitlement(
+                sport: $validated['sport'],
+                user: $request->user(),
+            );
+        }
+
         $trainingSession->update([
             'user_id' => $ownerId,
             'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
+            'title' => array_key_exists('title', $validated)
+                ? $validated['title']
+                : $trainingSession->title,
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
@@ -269,5 +292,26 @@ class TrainingSessionController extends Controller
         return new TrainingSessionResource(
             $this->revertCompletionAction->execute($trainingSession),
         );
+    }
+
+    private function ensureWorkoutEntitlement(string $sport, ?User $user): void
+    {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        if ($user->is_subscribed) {
+            return;
+        }
+
+        $entryTypeKey = sprintf('workout.%s', $sport);
+
+        if (! $this->entryTypeEntitlementService->requiresSubscription($entryTypeKey)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'sport' => 'This workout type requires an active subscription.',
+        ]);
     }
 }

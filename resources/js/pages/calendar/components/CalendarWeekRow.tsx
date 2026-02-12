@@ -1,5 +1,6 @@
 import type {
     ActivityView,
+    CalendarEntryView,
     TrainingSessionView,
     TrainingWeekView,
 } from '@/types/training-plans';
@@ -8,6 +9,7 @@ import { WeekSection } from '../components/week-section';
 type CalendarWeekRowProps = {
     week: TrainingWeekView;
     activities: ActivityView[];
+    calendarEntries: CalendarEntryView[];
     visibleDayDates: string[] | null;
     summaryRailWidth: number;
     canManageSessions: boolean;
@@ -16,11 +18,13 @@ type CalendarWeekRowProps = {
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
 };
 
 export function CalendarWeekRow({
     week,
     activities,
+    calendarEntries,
     visibleDayDates,
     summaryRailWidth,
     canManageSessions,
@@ -29,11 +33,13 @@ export function CalendarWeekRow({
     onCreateSession,
     onEditSession,
     onOpenActivity,
+    onOpenCalendarEntry,
 }: CalendarWeekRowProps) {
     return (
         <WeekSection
             week={week}
             activities={activities}
+            calendarEntries={calendarEntries}
             visibleDayDates={visibleDayDates}
             summaryRailWidth={summaryRailWidth}
             canManageSessions={canManageSessions}
@@ -42,6 +48,7 @@ export function CalendarWeekRow({
             onCreateSession={onCreateSession}
             onEditSession={onEditSession}
             onOpenActivity={onOpenActivity}
+            onOpenCalendarEntry={onOpenCalendarEntry}
         />
     );
 }

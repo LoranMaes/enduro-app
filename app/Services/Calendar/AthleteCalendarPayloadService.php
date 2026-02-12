@@ -2,14 +2,17 @@
 
 namespace App\Services\Calendar;
 
+use App\Http\Resources\CalendarEntryResource;
 use App\Http\Resources\TrainingPlanResource;
 use App\Http\Resources\TrainingSessionResource;
 use App\Models\Activity;
 use App\Models\ActivityProviderConnection;
+use App\Models\CalendarEntry;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Services\Entitlements\EntryTypeEntitlementService;
 use App\Support\QueryScopes\TrainingScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +21,7 @@ class AthleteCalendarPayloadService
 {
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
     ) {}
 
     /**
@@ -26,8 +30,11 @@ class AthleteCalendarPayloadService
      *     trainingPlans: array<string, mixed>,
      *     trainingSessions: array<string, mixed>,
      *     activities: array{data: array<int, array<string, mixed>>},
+     *     calendarEntries: array<string, mixed>,
      *     calendarWindow: array{starts_at: string, ends_at: string},
      *     providerStatus: array<string, array{connected: bool, last_synced_at: string|null, last_sync_status: string|null, provider_athlete_id: string|null}>|null,
+     *     entryTypeEntitlements: array<int, array{key: string, category: string, label: string, requires_subscription: bool}>,
+     *     isSubscribed: bool,
      *     athleteTrainingTargets: array{
      *         ftp_watts: int|null,
      *         max_heart_rate_bpm: int|null,
@@ -93,6 +100,12 @@ class AthleteCalendarPayloadService
                 'elevation_gain_meters',
                 'raw_payload',
             ]);
+        $calendarEntries = $this->queryCalendarEntries($authenticatedUser, $athlete)
+            ->whereDate('scheduled_date', '>=', $calendarWindow['starts_at'])
+            ->whereDate('scheduled_date', '<=', $calendarWindow['ends_at'])
+            ->orderBy('scheduled_date')
+            ->orderBy('id')
+            ->get();
 
         $metricsUser = $athlete ?? $authenticatedUser;
         $athleteSettingsSubject = $athlete instanceof User
@@ -123,8 +136,13 @@ class AthleteCalendarPayloadService
                     ],
                 )->values()->all(),
             ],
+            'calendarEntries' => CalendarEntryResource::collection($calendarEntries)
+                ->response()
+                ->getData(true),
             'calendarWindow' => $calendarWindow,
             'providerStatus' => $this->resolveProviderStatus($athleteSettingsSubject),
+            'entryTypeEntitlements' => $this->entryTypeEntitlementService->resolvedDefinitions(),
+            'isSubscribed' => (bool) ($athleteSettingsSubject?->is_subscribed ?? false),
             'athleteTrainingTargets' => $this->resolveAthleteTrainingTargets($athleteSettingsSubject),
         ];
     }
@@ -170,6 +188,19 @@ class AthleteCalendarPayloadService
         }
 
         return TrainingScope::forVisibleActivities($authenticatedUser);
+    }
+
+    private function queryCalendarEntries(User $authenticatedUser, ?User $athlete): Builder
+    {
+        if ($athlete instanceof User) {
+            return CalendarEntry::query()->where('user_id', $athlete->id);
+        }
+
+        if ($authenticatedUser->isAthlete()) {
+            return CalendarEntry::query()->where('user_id', $authenticatedUser->id);
+        }
+
+        return CalendarEntry::query()->whereKey([]);
     }
 
     /**

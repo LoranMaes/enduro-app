@@ -1,11 +1,9 @@
 import InputError from '@/components/input-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { sportOptions } from '../constants';
-import type {
-    SessionEditorContext,
-    Sport,
-    ValidationErrors,
-} from '../types';
+import type { SessionEditorContext, Sport, ValidationErrors } from '../types';
 import { SessionCompletionSection } from './SessionCompletionSection';
 import { SessionLinkingSection } from './SessionLinkingSection';
 import { SessionNotesSection } from './SessionNotesSection';
@@ -16,6 +14,8 @@ type SessionDetailsTabProps = {
     dateLabel: string;
     sport: Sport;
     setSport: (sport: Sport) => void;
+    sessionTitle: string;
+    setSessionTitle: (value: string) => void;
     canManageSessionWrites: boolean;
     clearFieldError: (field: keyof ValidationErrors) => void;
     errors: ValidationErrors;
@@ -39,7 +39,9 @@ type SessionDetailsTabProps = {
     isLinkingActivity: boolean;
     onUnlinkActivity: () => void;
     onLinkActivity: (activityId: number) => void;
-    selectedSession: import('@/types/training-plans').TrainingSessionView | null;
+    selectedSession:
+        | import('@/types/training-plans').TrainingSessionView
+        | null;
     sessionIsCompleted: boolean;
     sessionIsAdjusted: boolean;
     plannedDurationLabel: string;
@@ -58,6 +60,8 @@ export function SessionDetailsTab({
     dateLabel,
     sport,
     setSport,
+    sessionTitle,
+    setSessionTitle,
     canManageSessionWrites,
     clearFieldError,
     errors,
@@ -116,6 +120,31 @@ export function SessionDetailsTab({
             </div>
 
             <div className="space-y-1.5">
+                <Label
+                    htmlFor="session-title"
+                    className="text-xs text-zinc-400"
+                >
+                    Title
+                </Label>
+                <Input
+                    id="session-title"
+                    value={sessionTitle}
+                    disabled={!canManageSessionWrites}
+                    maxLength={180}
+                    placeholder="Interval Session, Easy Run, etc."
+                    onChange={(event) => {
+                        setSessionTitle(event.target.value);
+                        clearFieldError('title');
+                    }}
+                    className={cn(
+                        'h-10 rounded-md border-border bg-background text-zinc-200 placeholder:text-zinc-600',
+                        !canManageSessionWrites && 'cursor-default opacity-65',
+                    )}
+                />
+                <InputError message={errors.title} />
+            </div>
+
+            <div className="space-y-1.5">
                 <div className="text-xs text-zinc-400">Sport</div>
                 <div className="grid grid-cols-5 gap-2 rounded-lg bg-background/70 p-1">
                     {sportOptions.map((option) => {
@@ -154,7 +183,9 @@ export function SessionDetailsTab({
 
             <SessionTotalsSection
                 hasStructuredPlanning={hasStructuredPlanning}
-                derivedStructureDurationMinutes={derivedStructureDurationMinutes}
+                derivedStructureDurationMinutes={
+                    derivedStructureDurationMinutes
+                }
                 derivedStructureTss={derivedStructureTss}
                 plannedDurationMinutes={plannedDurationMinutes}
                 plannedTss={plannedTss}

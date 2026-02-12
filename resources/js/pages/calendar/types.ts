@@ -2,6 +2,8 @@ import type {
     ActivityApi,
     ApiCollectionResponse,
     ApiPaginatedCollectionResponse,
+    CalendarEntryApi,
+    CalendarEntryView,
     TrainingPlanApi,
     TrainingSessionApi,
 } from '@/types/training-plans';
@@ -38,8 +40,16 @@ export type CalendarPageProps = {
     trainingPlans: ApiPaginatedCollectionResponse<TrainingPlanApi>;
     trainingSessions: ApiCollectionResponse<TrainingSessionApi>;
     activities: ApiCollectionResponse<ActivityApi>;
+    calendarEntries: ApiCollectionResponse<CalendarEntryApi>;
     calendarWindow: CalendarWindow;
     providerStatus: ProviderStatus;
+    entryTypeEntitlements: Array<{
+        key: string;
+        category: 'workout' | 'other' | string;
+        label: string;
+        requires_subscription: boolean;
+    }>;
+    isSubscribed: boolean;
     athleteTrainingTargets: AthleteTrainingTargets | null;
     viewingAthlete?: {
         id: number;
@@ -49,3 +59,32 @@ export type CalendarPageProps = {
 };
 
 export type CalendarViewMode = 'infinite' | 'day' | 'week' | 'month';
+
+export type WorkoutEntrySport =
+    | 'run'
+    | 'bike'
+    | 'swim'
+    | 'day_off'
+    | 'mtn_bike'
+    | 'custom'
+    | 'walk';
+
+export type OtherEntryType = 'event' | 'goal' | 'note';
+
+export type EntryTypeEntitlement = {
+    key: string;
+    category: 'workout' | 'other' | string;
+    label: string;
+    requires_subscription: boolean;
+};
+
+export type CalendarEntryEditorContext =
+    | {
+          mode: 'create';
+          date: string;
+          type: OtherEntryType;
+      }
+    | {
+          mode: 'edit';
+          entry: CalendarEntryView;
+      };

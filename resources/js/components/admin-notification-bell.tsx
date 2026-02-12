@@ -107,7 +107,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
             });
 
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -136,7 +136,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
             });
 
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ export function AdminNotificationBell({ className }: { className?: string }) {
             const route = ticketNotificationsMarkAllSeen();
 
             const response = await fetch(route.url, {
-                method: route.method,
+                method: route.method.toUpperCase(),
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',

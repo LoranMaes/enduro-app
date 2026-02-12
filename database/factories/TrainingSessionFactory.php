@@ -30,6 +30,7 @@ class TrainingSessionFactory extends Factory
             'training_week_id' => TrainingWeek::factory(),
             'scheduled_date' => fake()->dateTimeBetween('-2 weeks', '+2 weeks'),
             'sport' => fake()->randomElement(['swim', 'bike', 'run', 'gym']),
+            'title' => fake()->optional()->sentence(3),
             'status' => fake()->randomElement([
                 TrainingSessionStatus::Planned->value,
                 TrainingSessionStatus::Completed->value,

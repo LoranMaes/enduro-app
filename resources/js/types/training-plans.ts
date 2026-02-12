@@ -19,9 +19,13 @@ export type TrainingSessionApi = {
     training_week_id: number | null;
     scheduled_date: string;
     sport: string;
+    title?: string | null;
     status: 'planned' | 'completed' | 'skipped' | 'partial' | string;
+    planning_source?: 'planned' | 'unplanned' | string | null;
+    completion_source?: 'manual' | 'provider_auto' | string | null;
     is_completed?: boolean;
     completed_at?: string | null;
+    auto_completed_at?: string | null;
     duration_minutes: number;
     actual_duration_minutes?: number | null;
     planned_tss: number | null;
@@ -112,9 +116,13 @@ export type TrainingSessionView = {
     trainingWeekId: number | null;
     scheduledDate: string;
     sport: string;
+    title: string | null;
     status: string;
+    planningSource: string;
+    completionSource: string | null;
     isCompleted: boolean;
     completedAt: string | null;
+    autoCompletedAt: string | null;
     durationMinutes: number;
     actualDurationMinutes: number | null;
     plannedTss: number | null;
@@ -188,4 +196,28 @@ export type ActivityView = {
     distanceMeters: number | null;
     elevationGainMeters: number | null;
     resolvedTss: number | null;
+};
+
+export type CalendarEntryApi = {
+    id: number;
+    user_id: number;
+    scheduled_date: string;
+    type: 'event' | 'goal' | 'note' | string;
+    title: string | null;
+    body: string | null;
+    meta: Record<string, unknown> | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+export type CalendarEntryView = {
+    id: number;
+    userId: number;
+    scheduledDate: string;
+    type: 'event' | 'goal' | 'note' | string;
+    title: string | null;
+    body: string | null;
+    meta: Record<string, unknown> | null;
+    createdAt: string | null;
+    updatedAt: string | null;
 };
