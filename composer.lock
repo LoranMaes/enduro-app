@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6e04aef330d8c1918fa924dd09426ca2",
+    "content-hash": "ba333862d5114a0d4310b64f46bfa48f",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -10821,6 +10821,70 @@
                 }
             ],
             "time": "2025-02-07T05:00:38+00:00"
+        },
+        {
+            "name": "spatie/boost-spatie-guidelines",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/boost-spatie-guidelines.git",
+                "reference": "44a206c5225e264e9096909b4dcba1a9bb12e6da"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/boost-spatie-guidelines/zipball/44a206c5225e264e9096909b4dcba1a9bb12e6da",
+                "reference": "44a206c5225e264e9096909b4dcba1a9bb12e6da",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "pestphp/pest": "^2.0|^3.0|^4.0",
+                "phpstan/phpstan": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Spatie\\BoostSpatieGuidelines\\BoostSpatieGuidelinesServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\BoostSpatieGuidelines\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Spatie's Laravel & PHP coding guidelines for Laravel Boost",
+            "homepage": "https://github.com/spatie/boost-spatie-guidelines",
+            "keywords": [
+                "boost",
+                "coding-standards",
+                "guidelines",
+                "laravel",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/boost-spatie-guidelines/issues",
+                "source": "https://github.com/spatie/boost-spatie-guidelines/tree/v1.0.0"
+            },
+            "time": "2026-01-26T19:21:06+00:00"
         },
         {
             "name": "staabm/side-effects-detector",

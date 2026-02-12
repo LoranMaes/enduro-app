@@ -1,8 +1,9 @@
-[mcp_servers.laravel-boost]
-command = "vendor/bin/sail"
-args = ["artisan", "boost:mcp"]
-cwd = "/var/www/html"
 
 [mcp_servers.shadcn]
 command = "npx"
 args = ["shadcn@latest", "mcp"]
+
+[mcp_servers.laravel-boost]
+command = "vendor/bin/sail"
+args = ["artisan", "boost:mcp"]
+cwd = "/var/www/html"
