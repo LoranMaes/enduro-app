@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import {
     mapActivityCollection,
     mapCalendarEntryCollection,
+    mapGoalCollection,
     mapTrainingSessionCollection,
 } from '@/lib/training-plans';
 import { dashboard } from '@/routes';
@@ -10,10 +11,11 @@ import type { BreadcrumbItem } from '@/types';
 import type {
     ActivityView,
     CalendarEntryView,
+    GoalView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import CalendarPageContent from './CalendarPage';
-import type { CalendarPageProps } from './types';
+import type { CalendarPageProps, ProgressComplianceWeek } from './types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -27,6 +29,8 @@ export default function CalendarIndex({
     trainingSessions,
     activities,
     calendarEntries,
+    goals,
+    compliance,
     calendarWindow,
     providerStatus,
     entryTypeEntitlements,
@@ -41,6 +45,8 @@ export default function CalendarIndex({
     const initialActivities: ActivityView[] = mapActivityCollection(activities);
     const initialEntries: CalendarEntryView[] =
         mapCalendarEntryCollection(calendarEntries);
+    const initialGoals: GoalView[] = mapGoalCollection(goals);
+    const initialCompliance: ProgressComplianceWeek[] = compliance?.weeks ?? [];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -52,6 +58,8 @@ export default function CalendarIndex({
                         initialSessions={initialSessions}
                         initialActivities={initialActivities}
                         initialEntries={initialEntries}
+                        initialGoals={initialGoals}
+                        initialCompliance={initialCompliance}
                         initialWindow={calendarWindow}
                         providerStatus={providerStatus}
                         entryTypeEntitlements={entryTypeEntitlements}

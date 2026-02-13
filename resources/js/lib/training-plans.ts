@@ -4,6 +4,8 @@ import type {
     ApiCollectionResponse,
     CalendarEntryApi,
     CalendarEntryView,
+    GoalApi,
+    GoalView,
     TrainingPlanApi,
     TrainingSessionApi,
     TrainingPlanView,
@@ -125,6 +127,22 @@ export const mapCalendarEntry = (
     };
 };
 
+export const mapGoal = (goal: GoalApi): GoalView => {
+    return {
+        id: goal.id,
+        userId: goal.user_id,
+        type: goal.type,
+        sport: goal.sport,
+        title: goal.title,
+        description: goal.description,
+        targetDate: goal.target_date,
+        priority: goal.priority,
+        status: goal.status,
+        createdAt: goal.created_at,
+        updatedAt: goal.updated_at,
+    };
+};
+
 const mapWeek = (
     week: TrainingPlanApi['training_weeks'][number],
 ): TrainingWeekView => {
@@ -169,4 +187,10 @@ export const mapCalendarEntryCollection = (
     response: ApiCollectionResponse<CalendarEntryApi>,
 ): CalendarEntryView[] => {
     return response.data.map(mapCalendarEntry);
+};
+
+export const mapGoalCollection = (
+    response: ApiCollectionResponse<GoalApi>,
+): GoalView[] => {
+    return response.data.map(mapGoal);
 };

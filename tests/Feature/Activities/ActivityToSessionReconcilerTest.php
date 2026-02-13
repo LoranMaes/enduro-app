@@ -46,6 +46,7 @@ it('auto links and auto completes a matching planned session', function () {
     expect($session->status->value)->toBe('completed');
     expect($session->planning_source->value)->toBe('planned');
     expect($session->completion_source?->value)->toBe('provider_auto');
+    expect($session->actual_tss)->toBe(72);
     expect($session->completed_at)->not->toBeNull();
     expect($session->auto_completed_at)->not->toBeNull();
 });
@@ -71,6 +72,7 @@ it('creates a completed unplanned session when no match exists', function () {
     expect($resolvedSession?->completion_source?->value)->toBe('provider_auto');
     expect($resolvedSession?->title)->toBe('Free Workout');
     expect($resolvedSession?->notes)->toBe('Free Workout');
+    expect($resolvedSession?->actual_tss)->toBeNull();
     expect($resolvedSession?->completed_at)->not->toBeNull();
     expect($resolvedSession?->auto_completed_at)->not->toBeNull();
     expect($activity->fresh()->training_session_id)->toBe($resolvedSession?->id);
@@ -145,4 +147,86 @@ it('links to the only planned session on a day even when duration differs signif
         ->count();
 
     expect($sessionCount)->toBe(1);
+});
+
+it('does not auto merge or create a free workout when multiple planned sessions could match', function () {
+    $athlete = User::factory()->athlete()->create();
+    $plan = TrainingPlan::factory()->for($athlete)->create();
+    $week = TrainingWeek::factory()->for($plan)->create([
+        'starts_at' => '2026-02-16',
+        'ends_at' => '2026-02-22',
+    ]);
+
+    TrainingSession::factory()->for($week)->create([
+        'user_id' => $athlete->id,
+        'scheduled_date' => '2026-02-18',
+        'sport' => 'run',
+        'status' => 'planned',
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'duration_minutes' => 35,
+        'completed_at' => null,
+    ]);
+    TrainingSession::factory()->for($week)->create([
+        'user_id' => $athlete->id,
+        'scheduled_date' => '2026-02-18',
+        'sport' => 'run',
+        'status' => 'planned',
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'duration_minutes' => 40,
+        'completed_at' => null,
+    ]);
+
+    $activity = Activity::factory()->create([
+        'athlete_id' => $athlete->id,
+        'training_session_id' => null,
+        'sport' => 'run',
+        'started_at' => '2026-02-18 07:35:00',
+        'duration_seconds' => 2200,
+    ]);
+
+    $resolvedSession = app(ActivityToSessionReconciler::class)->reconcile($activity);
+
+    expect($resolvedSession)->toBeNull();
+    expect($activity->fresh()->training_session_id)->toBeNull();
+
+    $sessionCount = TrainingSession::query()
+        ->where('user_id', $athlete->id)
+        ->whereDate('scheduled_date', '2026-02-18')
+        ->where('sport', 'run')
+        ->count();
+
+    expect($sessionCount)->toBe(2);
+});
+
+it('creates an unplanned workout when a single planned session is outside tolerance', function () {
+    $athlete = User::factory()->athlete()->create();
+    $plan = TrainingPlan::factory()->for($athlete)->create();
+    $week = TrainingWeek::factory()->for($plan)->create([
+        'starts_at' => '2026-02-23',
+        'ends_at' => '2026-03-01',
+    ]);
+    TrainingSession::factory()->for($week)->create([
+        'user_id' => $athlete->id,
+        'scheduled_date' => '2026-02-24',
+        'sport' => 'bike',
+        'status' => 'planned',
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'duration_minutes' => 240,
+        'completed_at' => null,
+    ]);
+
+    $activity = Activity::factory()->create([
+        'athlete_id' => $athlete->id,
+        'training_session_id' => null,
+        'sport' => 'bike',
+        'started_at' => '2026-02-24 06:40:00',
+        'duration_seconds' => 900,
+    ]);
+
+    $resolvedSession = app(ActivityToSessionReconciler::class)->reconcile($activity);
+
+    expect($resolvedSession)->toBeInstanceOf(TrainingSession::class);
+    expect($resolvedSession?->planning_source->value)->toBe('unplanned');
+    expect($resolvedSession?->title)->toBe('Free Workout');
+    expect($activity->fresh()->training_session_id)->toBe($resolvedSession?->id);
 });

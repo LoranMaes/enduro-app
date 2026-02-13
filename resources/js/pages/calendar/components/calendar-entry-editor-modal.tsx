@@ -41,7 +41,6 @@ type ValidationErrors = {
 
 const OTHER_TYPE_OPTIONS: Array<{ type: OtherEntryType; label: string }> = [
     { type: 'event', label: 'Event' },
-    { type: 'goal', label: 'Goal' },
     { type: 'note', label: 'Note' },
 ];
 

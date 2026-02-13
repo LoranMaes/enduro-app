@@ -143,6 +143,21 @@ class User extends Authenticatable
         return $this->hasMany(CalendarEntry::class);
     }
 
+    public function goals(): HasMany
+    {
+        return $this->hasMany(Goal::class);
+    }
+
+    public function annualTrainingPlans(): HasMany
+    {
+        return $this->hasMany(AnnualTrainingPlan::class);
+    }
+
+    public function workoutLibraryItems(): HasMany
+    {
+        return $this->hasMany(WorkoutLibraryItem::class);
+    }
+
     public function activityProviderConnections(): HasMany
     {
         return $this->hasMany(ActivityProviderConnection::class);

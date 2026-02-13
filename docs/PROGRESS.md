@@ -1,5 +1,131 @@
 # Endure — Progress Log
 
+## 2026-02-13 (Calendar Create/Library UX + Drag/Drop Hardening Complete)
+
+- Completed post-wave UX hardening and behavior-preserving fixes for calendar creation and workout library interactions:
+    - restored intended creation flow:
+        - day click / `+` opens first-step picker
+        - selecting workout type opens the regular session editor (`Details` + `Structure`)
+        - library flow is now separate from in-modal sport selection flow
+    - moved workout library interaction to a dedicated calendar side sheet:
+        - opened from calendar header action
+        - non-blocking sheet behavior so calendar remains visible/interactable
+        - mode-specific sheet width (browse vs create/edit)
+    - improved workout template preview fidelity:
+        - template previews now render variable-height block bars to better reflect intensity/structure differences
+    - added workout template edit support in the library panel
+    - hardened calendar drag-and-drop:
+        - uncompleted sessions can be moved to different days
+        - library template drop creates planned sessions on target date
+        - normalized dropped planned-structure payload into API-expected shape (`duration_minutes` fields, nested items)
+        - added defensive fallback for invalid `training_week_id` scenarios by retrying with `null`
+    - added `hideOverlay` support on shared sheet primitive for non-modal sidepanel usage
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php tests/Feature/WorkoutLibraryApiTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (ATP + Workout Library + Merge Polish + Settings Refactor Complete)
+
+- Completed strict behavior-preserving wave for ATP, workout library, merge hardening, and settings entitlements refactor:
+    - ATP moved to dedicated athlete page:
+        - page route: `/atp/{year}`
+        - API: `GET /api/atp/{year}`, `PATCH /api/atp/{year}/weeks/{week_start}`
+        - added persisted week metadata model (`annual_training_plan_weeks`) with week type/priority/notes and planned/completed minutes + placeholder TSS values
+        - ATP read payload is cached for 60 seconds
+        - ATP row/bar interactions navigate to calendar week context (`/calendar?week=YYYY-MM-DD`)
+    - workout library added as athlete-owned reusable structure catalog:
+        - API: `GET/POST/PATCH/DELETE /api/workout-library...`
+        - owner-only policy enforcement
+        - integrated into calendar create flow (`Workout -> New Workout | From Library`)
+        - selecting a library item creates a planned session with structure + estimated metrics
+    - merge/completion hardening:
+        - reconciler now handles ambiguous multi-match cases safely (no auto-link, no duplicate free-workout creation)
+        - deterministic matching improved with sport/day/tolerance/proximity checks
+        - completion source visibility hardened (`Auto-completed` vs manual)
+    - settings refactor:
+        - removed separate admin entitlements page
+        - moved workout type gating management into `Admin Settings` tabs (`Workout Types`)
+        - admin-only and hidden during impersonation
+    - resolved Wayfinder generation corruption by regenerating and replacing generated route/action artifacts
+- Added/updated test coverage:
+    - `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - `tests/Feature/AtpPageTest.php`
+    - `tests/Feature/WorkoutLibraryApiTest.php`
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+    - `tests/Feature/AdminSettingsPageTest.php`
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Completion & Compliance Phase 2 Complete)
+
+- Completed coach-grade compliance and entitlement hardening pass with behavior-preserving scope:
+    - added read-only compliance API endpoint:
+        - `GET /api/progress/compliance?from=...&to=...`
+    - added modular progress services:
+        - `app/Services/Progress/ComplianceService.php`
+        - `app/Services/Progress/WeeklyRecommendationBandService.php`
+    - compliance now uses planned sessions only for denominator:
+        - `planned_sessions_count`
+        - `planned_completed_count`
+        - `compliance_ratio`
+    - added placeholder weekly recommendation band plumbing (minutes-based, no load science):
+        - min/max derived from prior 4 weeks completed-minute average
+        - returns `null` when fewer than 2 history weeks exist
+    - integrated compliance + placeholder band into frontend:
+        - progress page now includes a dedicated Compliance panel
+        - calendar week headers now show subtle compliance and range-state indicators (`In range`/`High`/`Low`/`No baseline`)
+        - week compliance chip can jump into `/progress` with an appropriate range window
+    - added dedicated admin entitlement management surface:
+        - web page: `/admin/settings/entitlements`
+        - API: `GET/PATCH /api/admin/entitlements/entry-types`, `POST /api/admin/entitlements/entry-types/reset`
+        - DB overrides now include `updated_by_admin_id`
+        - effective source now exposed per entry type (`config_default` vs `customized`)
+        - entitlement resolution now uses 60-second cache
+    - completion-source UX polish:
+        - calendar session row shows subtle `Auto-completed` vs `Completed`
+        - session completion section now surfaces completion source meta
+- Added/updated test coverage:
+    - `tests/Feature/Api/ProgressComplianceApiTest.php`
+    - `tests/Feature/Api/Admin/EntryTypeEntitlementApiTest.php`
+    - `tests/Feature/AdminEntitlementPageTest.php`
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/ProgressComplianceApiTest.php tests/Feature/Api/Admin/EntryTypeEntitlementApiTest.php tests/Feature/AdminEntitlementPageTest.php tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Training Completion Flow v2 Foundations Complete)
+
+- Completed behavior-preserving Phase 1 foundation pass:
+    - verified existing activity reconciliation pipeline and duplicate-card filtering
+    - fixed athlete context gating in calendar selection to treat `role: null` and impersonation as athlete context (restores session edit/title input behavior)
+    - added Goals domain backbone:
+        - `goals` table + model + resource + API controller + requests + policy
+        - endpoints: `GET/POST /api/goals`, `GET/PATCH /api/goals/{goal}`
+    - added ATP scaffold:
+        - `annual_training_plans` table + model
+        - endpoint: `GET /api/annual-training-plan/{year}` with create-if-missing behavior
+    - wired goals into calendar payload and frontend loading:
+        - goals now load with initial dashboard payload and infinite-window fetches
+        - goals render in day columns and open a dedicated goal modal
+        - create-entry flow now routes `Other -> Goal` to goal creation modal
+    - added config-driven entitlement defaults (`config/training.php`) while retaining DB override behavior
+    - constrained completion write behavior so `actual_tss` is copied only from provider `raw_payload.tss` during completion writes
+    - added plans-page ATP placeholder link (`Annual Training Plan (coming soon)`)
+- Added/updated test coverage:
+    - `tests/Feature/Api/GoalApiTest.php`
+    - `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - `tests/Feature/DashboardTest.php`
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Activities/ActivityToSessionReconcilerTest.php tests/Feature/Api/GoalApiTest.php tests/Feature/Api/AnnualTrainingPlanApiTest.php tests/Feature/DashboardTest.php tests/Feature/Api/CalendarEntryApiTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-12 (Unified Completion + Calendar Entry Types Pass Complete)
 
 - Completed feature pass for unified completion and calendar entry types:

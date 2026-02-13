@@ -3,50 +3,71 @@ import { cn } from '@/lib/utils';
 import type {
     ActivityView,
     CalendarEntryView,
+    GoalView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import { ActivityRow } from './activity-row';
 import { CalendarEntryRow } from './calendar-entry-row';
+import { GoalRow } from './goal-row';
 import { SessionRow } from './session-row';
 
 type DayColumnProps = {
     dayNumber: string;
     dayDate: string;
+    targetWeekId: number;
     isToday: boolean;
     isPast: boolean;
+    dropActive: boolean;
+    draggingSessionId: number | null;
     sessions: TrainingSessionView[];
     activities: ActivityView[];
     calendarEntries: CalendarEntryView[];
+    goals: GoalView[];
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
     canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
+    onSessionDragStart: (session: TrainingSessionView) => void;
+    onSessionDragEnd: () => void;
+    onDayDragOver: (date: string) => void;
+    onDayDrop: (date: string, targetWeekId: number) => void;
     onOpenActivity: (activity: ActivityView) => void;
     onOpenCalendarEntry: (entry: CalendarEntryView) => void;
+    onOpenGoal: (goal: GoalView) => void;
 };
 
 export function DayColumn({
     dayNumber,
     dayDate,
+    targetWeekId,
     isToday,
     isPast,
+    dropActive,
+    draggingSessionId,
     sessions,
     activities,
     calendarEntries,
+    goals,
     canManageSessions,
     canManageSessionLinks,
     canOpenActivityDetails,
     onCreateSession,
     onEditSession,
+    onSessionDragStart,
+    onSessionDragEnd,
+    onDayDragOver,
+    onDayDrop,
     onOpenActivity,
     onOpenCalendarEntry,
+    onOpenGoal,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
     const canOpenEditModal = canManageSessions || canManageSessionLinks;
     const isReadOnly = !canManageSessions && !canManageSessionLinks;
     const hasEntries =
         sessions.length > 0 ||
+        goals.length > 0 ||
         calendarEntries.length > 0 ||
         activities.length > 0;
 
@@ -63,6 +84,19 @@ export function DayColumn({
     const sortedCalendarEntries = calendarEntries
         .slice()
         .sort((left, right) => left.id - right.id);
+    const sortedGoals = goals.slice().sort((left, right) => left.id - right.id);
+    const unlinkedSessionCountBySport = sessions.reduce<Record<string, number>>(
+        (carry, session) => {
+            if (session.linkedActivityId !== null || session.status === 'completed') {
+                return carry;
+            }
+
+            carry[session.sport] = (carry[session.sport] ?? 0) + 1;
+
+            return carry;
+        },
+        {},
+    );
 
     const openCreateSession = (): void => {
         if (!canOpenCreateModal) {
@@ -96,6 +130,34 @@ export function DayColumn({
                         tabIndex: 0,
                     }
                   : {})}
+            onDragEnter={(event) => {
+                if (!canManageSessions) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                onDayDragOver(dayDate);
+            }}
+            onDragOver={(event) => {
+                if (!canManageSessions) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = 'move';
+                onDayDragOver(dayDate);
+            }}
+            onDrop={(event) => {
+                if (!canManageSessions) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                onDayDrop(dayDate, targetWeekId);
+            }}
             className={cn(
                 'group/day relative flex h-full w-full flex-col px-2 pt-1.5 pb-2 text-left transition-all duration-200',
                 isToday
@@ -110,6 +172,7 @@ export function DayColumn({
                 canOpenCreateModal &&
                     'focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none focus-visible:ring-inset',
                 isReadOnly && 'cursor-default',
+                dropActive && 'ring-1 ring-sky-400/80 ring-inset bg-sky-500/5',
             )}
         >
             <div className="mb-2 flex items-start justify-between px-1">
@@ -169,10 +232,22 @@ export function DayColumn({
                         session={session}
                         showDate={false}
                         isInteractive={canOpenEditModal}
+                        isDraggable={canManageSessions && session.status !== 'completed'}
+                        isDragging={draggingSessionId === session.id}
                         onClick={() => {
                             if (canOpenEditModal) {
                                 onEditSession(session);
                             }
+                        }}
+                        onDragStart={(event) => {
+                            event.dataTransfer.setData(
+                                'text/plain',
+                                `session:${session.id}`,
+                            );
+                            onSessionDragStart(session);
+                        }}
+                        onDragEnd={() => {
+                            onSessionDragEnd();
                         }}
                     />
                 ))}
@@ -181,6 +256,9 @@ export function DayColumn({
                     <ActivityRow
                         key={activity.id}
                         activity={activity}
+                        showPossibleMatch={
+                            (unlinkedSessionCountBySport[activity.sport] ?? 0) > 0
+                        }
                         isInteractive={canOpenActivityDetails}
                         onClick={() => {
                             if (canOpenActivityDetails) {
@@ -198,6 +276,19 @@ export function DayColumn({
                         onClick={() => {
                             if (canManageSessions) {
                                 onOpenCalendarEntry(calendarEntry);
+                            }
+                        }}
+                    />
+                ))}
+
+                {sortedGoals.map((goal) => (
+                    <GoalRow
+                        key={goal.id}
+                        goal={goal}
+                        isInteractive={canManageSessions}
+                        onClick={() => {
+                            if (canManageSessions) {
+                                onOpenGoal(goal);
                             }
                         }}
                     />

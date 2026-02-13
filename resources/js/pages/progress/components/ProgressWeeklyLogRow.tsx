@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
 import type { ProgressWeek } from '../types';
 import { calculateCompliance, formatDuration, formatShortDate } from '../utils';
 
@@ -18,7 +19,7 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
             type="button"
             onClick={() => {
                 router.get(
-                    '/dashboard',
+                    dashboard().url,
                     {
                         starts_from: week.week_start,
                         ends_to: week.week_end,

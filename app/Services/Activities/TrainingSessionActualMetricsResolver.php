@@ -85,6 +85,13 @@ class TrainingSessionActualMetricsResolver
         return $this->estimateHeartRateBasedTss($activity, $athlete);
     }
 
+    public function resolveActivityProviderTss(Activity $activity): ?int
+    {
+        $rawPayload = $this->normalizePayload($activity->raw_payload);
+
+        return $this->payloadInteger($rawPayload, ['tss']);
+    }
+
     private function resolveSessionActivity(TrainingSession $trainingSession): ?Activity
     {
         if ($trainingSession->relationLoaded('activity')) {

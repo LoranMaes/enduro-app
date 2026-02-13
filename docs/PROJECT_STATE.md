@@ -2,21 +2,28 @@
 
 ## Current Phase
 
-Phase 10 is complete: unified completion + calendar entry type flow (workout/other + entitlement gating), built on top of completed refactor hardening waves.
+Phase 14 is complete: calendar creation UX correction + workout-library sidepanel hardening + drag/drop stabilization.
 
 ## Current Wave Focus
 
-- Phase 10 delivered end-to-end:
-    - provider sync reconciliation now auto-links/auto-completes planned matches
-    - unplanned synced activities now create completed plan-less sessions
-    - calendar create flow now starts with `Workout` vs `Other`
-    - `event`/`goal`/`note` calendar entries are persisted and rendered in the same window flow
-    - entitlement flags now gate workout and other entry types for non-subscribed athletes
-    - compliance logic now uses completed planned sessions over planned sessions
+- Phase 14 delivered end-to-end:
+    - session creation flow now stays canonical:
+        - day click/plus -> type picker -> sport -> session editor (`Details` + `Structure`)
+        - workout library is no longer injected into this modal flow
+    - workout library now runs from a dedicated non-blocking sidepanel (calendar remains visible/interactable)
+    - template previews now show variable-height block bars for clearer structure/intensity hints
+    - workout templates support edit flow from the library panel
+    - drag/drop is hardened:
+        - uncompleted sessions can be moved between days
+        - library templates can be dropped on a day to create planned sessions
+        - dropped structure payloads are normalized to API-required keys
+        - invalid week-id edge cases retry with `training_week_id = null`
 
 ## Previous Phase Snapshot
 
-Backend spine + athlete operational flows are complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
+Phase 13 delivered ATP dedicated page + workout library domain/API + reconciliation hardening + settings entitlement consolidation.
+
+Backend spine + athlete operational flows remain complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
 
@@ -113,6 +120,10 @@ LOCKED for MVP
     - `entry_type_entitlements` admin-managed gating flags
     - `training_sessions` provenance fields: `planning_source`, `completion_source`, `auto_completed_at`
     - `ActivityToSessionReconciler` integrated into sync for auto-link/auto-complete/unplanned creation
+- Goals/ATP foundations are now live:
+    - `goals` domain with athlete/admin policy controls and CRUD-lite API (`index/store/show/update`)
+    - `annual_training_plans` skeleton domain with per-athlete/per-year uniqueness and auto-create read endpoint
+    - calendar payload includes `goals` window data for frontend rendering
 - Authentication remains Fortify-based; API routes use `auth` middleware.
 - TrainingPlan CRUD is implemented and tested.
 - TrainingWeek read + CRUD is implemented and tested (including overlap/date validation).
@@ -198,6 +209,10 @@ LOCKED for MVP
     - dedicated modal for `event`/`goal`/`note` entries
     - entitlement lock-state rendering for gated types
     - linked activity/session duplicate cards removed (single-card session rendering)
+- Goal creation/view flow is now separated from generic calendar entries:
+    - `Other -> Goal` opens a dedicated goal modal
+    - goals render in day columns as dedicated cards and can be updated in-place
+    - event/note entry flow remains on calendar-entry modal
 - Athlete calendar now supports athlete-only session writes (modal CRUD) against real backend endpoints.
 - Athlete calendar now centers on the current week at initial load and supports infinite vertical scrolling (past/future windows) through session read API window fetches.
 - Calendar composition now follows slicing structure:

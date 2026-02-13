@@ -53,7 +53,7 @@ class CompleteSessionAction
         $trainingSession->update([
             'status' => TrainingSessionStatus::Completed->value,
             'actual_duration_minutes' => $actualDurationMinutes,
-            'actual_tss' => $this->actualMetricsResolver->resolveActivityTss($linkedActivity, $user),
+            'actual_tss' => $this->actualMetricsResolver->resolveActivityProviderTss($linkedActivity),
             'completed_at' => now(),
             'completion_source' => $completionSource->value,
             'auto_completed_at' => $completionSource === TrainingSessionCompletionSource::ProviderAuto

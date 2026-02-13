@@ -1,10 +1,13 @@
 import {
     mapActivityCollection,
     mapCalendarEntryCollection,
+    mapGoalCollection,
     mapTrainingSessionCollection,
 } from '@/lib/training-plans';
 import { index as listActivities } from '@/routes/activities';
 import { index as listCalendarEntries } from '@/routes/calendar-entries';
+import { index as listGoals } from '@/routes/goals';
+import { compliance as progressCompliance } from '@/routes/progress';
 import { index as listTrainingSessions } from '@/routes/training-sessions';
 import type {
     ActivityApi,
@@ -13,6 +16,8 @@ import type {
     ApiPaginatedCollectionResponse,
     CalendarEntryApi,
     CalendarEntryView,
+    GoalApi,
+    GoalView,
     TrainingSessionApi,
     TrainingSessionView,
 } from '@/types/training-plans';
@@ -24,6 +29,7 @@ import {
     formatDateKey,
 } from './lib/calendar-weeks';
 import type { CalendarViewMode } from './types';
+import type { ProgressCompliancePayload, ProgressComplianceWeek } from './types';
 
 export const resolveWeekStartKey = (dateKey: string): string => {
     return formatDateKey(startOfIsoWeek(parseDate(dateKey)));
@@ -177,6 +183,48 @@ export const mergeCalendarEntries = (
     });
 };
 
+export const mergeGoals = (
+    existingGoals: GoalView[],
+    incomingGoals: GoalView[],
+): GoalView[] => {
+    const goalMap = new Map<number, GoalView>();
+
+    existingGoals.forEach((goal) => {
+        goalMap.set(goal.id, goal);
+    });
+
+    incomingGoals.forEach((goal) => {
+        goalMap.set(goal.id, goal);
+    });
+
+    return Array.from(goalMap.values()).sort((left, right) => {
+        if (left.targetDate === right.targetDate) {
+            return left.id - right.id;
+        }
+
+        return (left.targetDate ?? '').localeCompare(right.targetDate ?? '');
+    });
+};
+
+export const mergeComplianceWeeks = (
+    existingWeeks: ProgressComplianceWeek[],
+    incomingWeeks: ProgressComplianceWeek[],
+): ProgressComplianceWeek[] => {
+    const complianceMap = new Map<string, ProgressComplianceWeek>();
+
+    existingWeeks.forEach((week) => {
+        complianceMap.set(week.week_starts_at, week);
+    });
+
+    incomingWeeks.forEach((week) => {
+        complianceMap.set(week.week_starts_at, week);
+    });
+
+    return Array.from(complianceMap.values()).sort((left, right) => {
+        return left.week_starts_at.localeCompare(right.week_starts_at);
+    });
+};
+
 export const fetchWindowSessions = async (
     from: string,
     to: string,
@@ -323,4 +371,79 @@ export const fetchWindowCalendarEntries = async (
     }
 
     return collectedEntries;
+};
+
+export const fetchWindowGoals = async (
+    from: string,
+    to: string,
+): Promise<GoalView[]> => {
+    const collectedGoals: GoalView[] = [];
+    let page = 1;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+        const route = listGoals({
+            query: {
+                from,
+                to,
+                per_page: ACTIVITIES_PER_PAGE,
+                page,
+            },
+        });
+        const response = await fetch(route.url, {
+            method: route.method.toUpperCase(),
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Unable to fetch goals for window ${from} to ${to}.`);
+        }
+
+        const payload =
+            (await response.json()) as ApiPaginatedCollectionResponse<GoalApi>;
+        const mappedGoals = mapGoalCollection(
+            payload as ApiCollectionResponse<GoalApi>,
+        );
+        collectedGoals.push(...mappedGoals);
+
+        const meta = payload.meta;
+
+        if (meta === undefined || meta.current_page >= meta.last_page) {
+            hasMorePages = false;
+        } else {
+            page += 1;
+        }
+    }
+
+    return collectedGoals;
+};
+
+export const fetchWindowCompliance = async (
+    from: string,
+    to: string,
+): Promise<ProgressComplianceWeek[]> => {
+    const route = progressCompliance({
+        query: {
+            from,
+            to,
+        },
+    });
+    const response = await fetch(route.url, {
+        method: route.method.toUpperCase(),
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Unable to fetch compliance for window ${from} to ${to}.`);
+    }
+
+    const payload = (await response.json()) as ProgressCompliancePayload;
+
+    return payload.weeks;
 };

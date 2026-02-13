@@ -5,6 +5,7 @@ import { sync as syncActivityProvider } from '@/routes/activity-providers';
 import type {
     ActivityView,
     CalendarEntryView,
+    GoalView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import {
@@ -12,19 +13,25 @@ import {
     SYNC_POLLING_STATUSES,
 } from '../constants';
 import type { CalendarWindow } from '../lib/calendar-weeks';
-import type { ProviderStatus } from '../types';
+import type { ProgressComplianceWeek, ProviderStatus } from '../types';
 import {
     fetchWindowCalendarEntries as fetchWindowCalendarEntriesRequest,
+    fetchWindowCompliance as fetchWindowComplianceRequest,
+    fetchWindowGoals as fetchWindowGoalsRequest,
     fetchWindowActivities as fetchWindowActivitiesRequest,
     fetchWindowSessions as fetchWindowSessionsRequest,
     mergeActivities as mergeActivitiesState,
     mergeCalendarEntries as mergeCalendarEntriesState,
+    mergeComplianceWeeks as mergeComplianceWeeksState,
+    mergeGoals as mergeGoalsState,
     mergeSessions as mergeSessionsState,
 } from '../utils';
 export function useCalendarSessions({
     initialSessions,
     initialActivities,
     initialEntries,
+    initialGoals,
+    initialCompliance,
     initialWindow,
     providerStatus,
     authUserId,
@@ -33,6 +40,8 @@ export function useCalendarSessions({
     initialSessions: TrainingSessionView[];
     initialActivities: ActivityView[];
     initialEntries: CalendarEntryView[];
+    initialGoals: GoalView[];
+    initialCompliance: ProgressComplianceWeek[];
     initialWindow: CalendarWindow;
     providerStatus: ProviderStatus;
     authUserId: number;
@@ -48,6 +57,9 @@ export function useCalendarSessions({
         useState<ActivityView[]>(initialActivities);
     const [calendarEntries, setCalendarEntries] =
         useState<CalendarEntryView[]>(initialEntries);
+    const [goals, setGoals] = useState<GoalView[]>(initialGoals);
+    const [complianceWeeks, setComplianceWeeks] =
+        useState<ProgressComplianceWeek[]>(initialCompliance);
     const [providerStatusState, setProviderStatusState] =
         useState(providerStatus);
     const [isSyncDispatching, setIsSyncDispatching] = useState(false);
@@ -89,6 +101,8 @@ export function useCalendarSessions({
 
     const mergeActivities = useCallback(mergeActivitiesState, []);
     const mergeCalendarEntries = useCallback(mergeCalendarEntriesState, []);
+    const mergeComplianceWeeks = useCallback(mergeComplianceWeeksState, []);
+    const mergeGoals = useCallback(mergeGoalsState, []);
 
     const fetchWindowSessions = useCallback(
         async (from: string, to: string): Promise<TrainingSessionView[]> => {
@@ -111,6 +125,20 @@ export function useCalendarSessions({
         [],
     );
 
+    const fetchWindowGoals = useCallback(
+        async (from: string, to: string): Promise<GoalView[]> => {
+            return fetchWindowGoalsRequest(from, to);
+        },
+        [],
+    );
+
+    const fetchWindowCompliance = useCallback(
+        async (from: string, to: string): Promise<ProgressComplianceWeek[]> => {
+            return fetchWindowComplianceRequest(from, to);
+        },
+        [],
+    );
+
     const refreshCalendarData = useCallback(
         (calendarWindow: CalendarWindow): void => {
             setIsRefreshing(true);
@@ -128,11 +156,21 @@ export function useCalendarSessions({
                     calendarWindow.starts_at,
                     calendarWindow.ends_at,
                 ),
+                fetchWindowGoals(
+                    calendarWindow.starts_at,
+                    calendarWindow.ends_at,
+                ),
+                fetchWindowCompliance(
+                    calendarWindow.starts_at,
+                    calendarWindow.ends_at,
+                ),
             ])
-                .then(([freshSessions, freshActivities, freshEntries]) => {
+                .then(([freshSessions, freshActivities, freshEntries, freshGoals, freshCompliance]) => {
                     setSessions(freshSessions);
                     setActivities(freshActivities);
                     setCalendarEntries(freshEntries);
+                    setGoals(freshGoals);
+                    setComplianceWeeks(freshCompliance);
                 })
                 .catch((error) => {
                     console.error(error);
@@ -144,6 +182,8 @@ export function useCalendarSessions({
         [
             fetchWindowActivities,
             fetchWindowCalendarEntries,
+            fetchWindowCompliance,
+            fetchWindowGoals,
             fetchWindowSessions,
         ],
     );
@@ -205,9 +245,13 @@ export function useCalendarSessions({
         setSessions(initialSessions);
         setActivities(initialActivities);
         setCalendarEntries(initialEntries);
+        setGoals(initialGoals);
+        setComplianceWeeks(initialCompliance);
     }, [
         initialEntries,
         initialActivities,
+        initialCompliance,
+        initialGoals,
         initialSessions,
         initialWindow.ends_at,
         initialWindow.starts_at,
@@ -309,6 +353,8 @@ export function useCalendarSessions({
         setActivities,
         calendarEntries,
         setCalendarEntries,
+        goals,
+        setGoals,
         providerStatusState,
         setProviderStatusState,
         isSyncDispatching,
@@ -321,10 +367,16 @@ export function useCalendarSessions({
         mergeSessions,
         mergeActivities,
         mergeCalendarEntries,
+        mergeComplianceWeeks,
+        mergeGoals,
         fetchWindowSessions,
         fetchWindowActivities,
         fetchWindowCalendarEntries,
+        fetchWindowGoals,
+        fetchWindowCompliance,
         refreshCalendarData,
         triggerProviderSync,
+        complianceWeeks,
+        setComplianceWeeks,
     };
 }

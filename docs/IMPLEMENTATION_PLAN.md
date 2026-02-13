@@ -4,6 +4,151 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 14 — Calendar Creation UX + Workout Library DnD Hardening (COMPLETE)
+
+- Goals:
+  - align calendar creation flow with slicing intent (session creation and library flows clearly separated)
+  - keep calendar fully visible when using workout library tooling
+  - harden drag/drop creation and date moves without backend contract changes
+  - improve workout template preview readability and template management usability
+- Boundaries:
+  - no API contract changes
+  - no backend flow redesign
+  - no visual redesign outside existing calendar theme
+  - preserve existing session editor and structure-builder behavior
+- Completed:
+  - creation-flow correction:
+    - day click / plus -> type picker -> sport -> existing session editor (`Details` + `Structure`)
+    - workout library removed from this inline flow and exposed as separate calendar action panel
+  - workout library sidepanel:
+    - opens from calendar header
+    - non-blocking sheet mode (calendar stays visible/usable)
+    - width now adapts by mode (browse vs create/edit template)
+  - template UX:
+    - added structure mini-preview with variable-height bars for better structure differentiation
+    - added edit flow for existing workout templates
+  - drag/drop hardening:
+    - uncompleted sessions can be dragged to other days
+    - library templates can be dropped on day targets to create planned sessions
+    - drop payload normalization now maps structure keys to API expectations (`duration_minutes`, nested repeat items)
+    - added fallback retry path for invalid `training_week_id` values (`null` retry)
+  - shared UI primitive:
+    - extended `Sheet` with optional `hideOverlay` for sidepanel interaction pattern
+
+---
+
+## Phase 13 — ATP/Libraries/Merge/Settings Consolidation (COMPLETE)
+
+- Goals:
+  - ship ATP as a dedicated athlete page with persisted week metadata
+  - add athlete-owned workout library and wire it into calendar workout creation
+  - harden activity/session reconciliation for ambiguous matches
+  - consolidate workout-type entitlements into admin settings tabs
+- Boundaries:
+  - no backend contract drift on existing APIs
+  - no visual redesign
+  - impersonation-safe admin visibility only
+- Completed:
+  - ATP:
+    - route `/atp/{year}` + sidebar entry (athlete-only)
+    - API endpoints:
+      - `GET /api/atp/{year}`
+      - `PATCH /api/atp/{year}/weeks/{week_start}`
+    - persisted week metadata table `annual_training_plan_weeks`
+    - 60-second cache on ATP read service payload
+    - week/bar navigation wired to calendar via `?week=...`
+  - workout library:
+    - domain + owner-only policy + CRUD API:
+      - `GET/POST/PATCH/DELETE /api/workout-library...`
+    - calendar flow integration:
+      - `Workout -> New Workout | From Library`
+      - library selection creates planned session with structure + estimated duration/TSS
+  - merge hardening:
+    - reconciler now avoids auto-linking ambiguous multi-match candidates
+    - no duplicate free-workout creation when candidates are ambiguous
+    - matching tolerance/proximity checks improved
+  - settings consolidation:
+    - standalone `/admin/settings/entitlements` page removed
+    - workout-type entitlement controls moved into `Admin Settings` tab (`Workout Types`)
+    - admin-only and hidden during impersonation
+  - generator stability:
+    - regenerated and restored Wayfinder-generated `actions` and `routes` artifacts cleanly
+
+---
+
+## Phase 12 — Completion & Compliance Phase 2 (COMPLETE)
+
+- Goals:
+  - add coach-grade compliance read model without introducing training-science load modeling
+  - add placeholder weekly recommendation band plumbing (minutes-based only)
+  - add admin-managed entitlement overrides UI/API with impersonation-safe access
+  - improve completion-source visibility in calendar/session detail surfaces
+- Boundaries:
+  - no backend policy contract drift
+  - no route shape drift on existing endpoints
+  - no visual redesign
+  - no advanced load/physiology calculations
+- Completed:
+  - backend compliance architecture:
+    - `ComplianceService` for weekly/summary planned-only compliance aggregation
+    - `WeeklyRecommendationBandService` for placeholder min/max minutes band
+    - API endpoint: `GET /api/progress/compliance`
+  - progress integration:
+    - Inertia progress page now receives compliance payload from backend service
+    - dedicated compliance panel added with weekly `X/Y`, percentage, and placeholder band status
+  - calendar integration:
+    - calendar window now hydrates and incrementally merges compliance weeks
+    - week headers show compliance chip and range-state chip (`In range`, `High`, `Low`, `No baseline`)
+    - week compliance indicator can navigate to progress with an appropriate range
+  - admin entitlement management:
+    - initially delivered as dedicated page/API surface (later consolidated into Admin Settings tabs in Phase 13)
+    - API endpoints:
+      - `GET /api/admin/entitlements/entry-types`
+      - `PATCH /api/admin/entitlements/entry-types`
+      - `POST /api/admin/entitlements/entry-types/reset`
+    - `entry_type_entitlements` now tracks `updated_by_admin_id`
+    - service now merges config defaults + DB overrides with 60-second cache and source metadata
+  - completion-source UX:
+    - calendar session cards now distinguish `Auto-completed` and manual completion labels
+    - session completion panel now shows completion source meta line
+
+---
+
+## Phase 11 — Completion v2 Foundations (COMPLETE)
+
+- Goals:
+  - keep unified session/activity reconciliation behavior stable
+  - add minimal goals domain foundation for calendar integration
+  - add minimal annual training plan (ATP) yearly scaffold endpoint
+  - keep creation flow foundation modular (`Workout` vs `Other`) with dedicated goal path
+  - preserve Wayfinder-only frontend route usage
+- Boundaries:
+  - no training-science load-modeling expansion
+  - no backend contract breakage in existing session/calendar APIs
+  - no visual redesign
+- Completed:
+  - goals backend scaffold:
+    - migrations/models/policy/resource/requests/controller/routes
+    - endpoints: `GET/POST /api/goals`, `GET/PATCH /api/goals/{goal}`
+  - ATP backend scaffold:
+    - migration/model
+    - endpoint: `GET /api/annual-training-plan/{year}` (auto-create skeleton)
+  - calendar payload + frontend wiring:
+    - goals included in dashboard payload window
+    - goals window fetching for infinite-load path
+    - goals rendered in day columns with dedicated goal modal
+    - create selector now routes `Other -> Goal` into goal modal
+  - athlete-context write gating fix:
+    - calendar write permissions now correctly treat `role: null` as athlete
+    - impersonation context treated as athlete context in calendar selection
+  - completion write behavior guard:
+    - completion now copies provider `tss` only (no derived TSS write on completion)
+  - config-driven entitlement defaults:
+    - added `config/training.php` defaults with env overrides
+    - DB entitlement records still override defaults
+
+---
+
 ## Phase 10 — Unified Completion + Calendar Entry Types (COMPLETE)
 
 - Goals:

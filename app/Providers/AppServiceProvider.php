@@ -4,16 +4,20 @@ namespace App\Providers;
 
 use App\Models\Activity;
 use App\Models\CalendarEntry;
+use App\Models\Goal;
 use App\Models\Ticket;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
+use App\Models\WorkoutLibraryItem;
 use App\Policies\ActivityPolicy;
 use App\Policies\CalendarEntryPolicy;
+use App\Policies\GoalPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\TrainingPlanPolicy;
 use App\Policies\TrainingSessionPolicy;
 use App\Policies\TrainingWeekPolicy;
+use App\Policies\WorkoutLibraryItemPolicy;
 use App\Services\ActivityProviders\ActivityProviderManager;
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
 use Carbon\CarbonImmutable;
@@ -77,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TrainingSession::class, TrainingSessionPolicy::class);
         Gate::policy(Activity::class, ActivityPolicy::class);
         Gate::policy(CalendarEntry::class, CalendarEntryPolicy::class);
+        Gate::policy(Goal::class, GoalPolicy::class);
+        Gate::policy(WorkoutLibraryItem::class, WorkoutLibraryItemPolicy::class);
         Gate::policy(Ticket::class, TicketPolicy::class);
     }
 

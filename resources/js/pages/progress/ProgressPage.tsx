@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { ProgressHeader } from './components/ProgressHeader';
 import { ProgressLoadTrendChart } from './components/ProgressLoadTrendChart';
+import { ProgressCompliancePanel } from './components/ProgressCompliancePanel';
 import { ProgressSummaryCards } from './components/ProgressSummaryCards';
 import { ProgressWeeklyLogs } from './components/ProgressWeeklyLogs';
 import { progressBreadcrumbs } from './constants';
@@ -10,7 +11,7 @@ import { useProgressMetrics } from './hooks/useProgressMetrics';
 import { useProgressState } from './hooks/useProgressState';
 import type { ProgressPageProps } from './types';
 
-export function ProgressPage({ range, summary, weeks }: ProgressPageProps) {
+export function ProgressPage({ range, summary, weeks, compliance }: ProgressPageProps) {
     const { isSwitchingRange, hoveredIndex, setHoveredIndex, switchRange } =
         useProgressState(range.weeks);
 
@@ -50,6 +51,8 @@ export function ProgressPage({ range, summary, weeks }: ProgressPageProps) {
                         selectedRangeWeeks={range.weeks}
                         currentStreakWeeks={summary.current_streak_weeks}
                     />
+
+                    <ProgressCompliancePanel compliance={compliance} />
 
                     <ProgressWeeklyLogs weeks={weeks} />
                 </div>

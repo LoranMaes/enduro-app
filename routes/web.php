@@ -16,6 +16,7 @@ use App\Http\Controllers\AthleteActivityDetailController;
 use App\Http\Controllers\AthleteCalendarController;
 use App\Http\Controllers\AthleteProgressController;
 use App\Http\Controllers\AthleteSessionDetailController;
+use App\Http\Controllers\AtpPageController;
 use App\Http\Controllers\Auth\CoachPendingApprovalController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
@@ -77,6 +78,11 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
     Route::get('plans', function () {
         return Inertia::render('plans/index');
     })->middleware('approved_coach')->name('plans.index');
+
+    Route::get('atp/{year}', AtpPageController::class)
+        ->middleware('approved_coach')
+        ->whereNumber('year')
+        ->name('atp.show');
 
     Route::middleware(['admin', 'not_impersonating'])->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', AdminConsoleController::class)->name('index');

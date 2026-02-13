@@ -55,7 +55,13 @@ class ActivityToSessionReconciler
                 }
             }
 
-            $matchingSession = $this->findMatchingPlannedSession($athlete, $freshActivity);
+            $matchingResult = $this->findMatchingPlannedSession($athlete, $freshActivity);
+
+            if ($matchingResult['ambiguous']) {
+                return null;
+            }
+
+            $matchingSession = $matchingResult['session'];
 
             if (! $matchingSession instanceof TrainingSession) {
                 $matchingSession = $this->createUnplannedSession($athlete, $freshActivity);
@@ -130,18 +136,19 @@ class ActivityToSessionReconciler
         );
     }
 
+    /**
+     * @return array{session: TrainingSession|null, ambiguous: bool}
+     */
     private function findMatchingPlannedSession(
         User $athlete,
         Activity $activity,
-    ): ?TrainingSession {
+    ): array {
         $activitySport = $this->normalizeSport($activity->sport);
         $activityDate = $activity->started_at?->toDateString();
 
         if ($activityDate === null) {
-            return null;
+            return ['session' => null, 'ambiguous' => false];
         }
-
-        $activityDurationMinutes = $this->activityDurationMinutes($activity);
 
         /** @var Collection<int, TrainingSession> $candidateSessions */
         $candidateSessions = TrainingSession::query()
@@ -149,6 +156,7 @@ class ActivityToSessionReconciler
             ->whereDate('scheduled_date', $activityDate)
             ->where('sport', $activitySport)
             ->where('planning_source', TrainingSessionPlanningSource::Planned->value)
+            ->whereNull('completed_at')
             ->whereDoesntHave('activity')
             ->orderBy('scheduled_date')
             ->orderBy('id')
@@ -158,36 +166,28 @@ class ActivityToSessionReconciler
             ]);
 
         if ($candidateSessions->isEmpty()) {
-            return null;
+            return ['session' => null, 'ambiguous' => false];
         }
 
-        $bestSession = $candidateSessions
-            ->sortBy(function (TrainingSession $session) use ($activityDurationMinutes): int {
-                return abs($session->duration_minutes - $activityDurationMinutes);
-            })
-            ->first();
-
-        if (! $bestSession instanceof TrainingSession) {
-            return null;
+        if ($candidateSessions->count() > 1) {
+            return ['session' => null, 'ambiguous' => true];
         }
 
-        if ($candidateSessions->count() === 1) {
-            return $bestSession;
+        $candidate = $candidateSessions->first();
+
+        if (! $candidate instanceof TrainingSession) {
+            return ['session' => null, 'ambiguous' => false];
         }
 
-        $durationDifference = abs(
-            $bestSession->duration_minutes - $activityDurationMinutes,
-        );
-        $maximumAllowedDifference = max(
-            20,
-            (int) round($activityDurationMinutes * 0.5),
-        );
-
-        if ($durationDifference > $maximumAllowedDifference) {
-            return null;
+        if (! $this->isWithinDurationTolerance($candidate, $activity)) {
+            return ['session' => null, 'ambiguous' => false];
         }
 
-        return $bestSession;
+        if (! $this->isWithinStartTimeProximity($candidate, $activity)) {
+            return ['session' => null, 'ambiguous' => false];
+        }
+
+        return ['session' => $candidate, 'ambiguous' => false];
     }
 
     private function createUnplannedSession(
@@ -232,6 +232,34 @@ class ActivityToSessionReconciler
         }
 
         return max(1, (int) round($activity->duration_seconds / 60));
+    }
+
+    private function isWithinDurationTolerance(
+        TrainingSession $session,
+        Activity $activity,
+    ): bool {
+        $plannedDurationMinutes = max(1, (int) $session->duration_minutes);
+        $activityDurationMinutes = $this->activityDurationMinutes($activity);
+        $durationDifference = abs($plannedDurationMinutes - $activityDurationMinutes);
+        $maximumAllowedDifference = max(
+            45,
+            (int) round($plannedDurationMinutes * 0.85),
+            (int) round($activityDurationMinutes * 0.85),
+        );
+
+        return $durationDifference <= $maximumAllowedDifference;
+    }
+
+    private function isWithinStartTimeProximity(
+        TrainingSession $session,
+        Activity $activity,
+    ): bool {
+        /**
+         * Training sessions currently track a scheduled date without planned start times.
+         * Keep this check explicit so time-aware proximity can be introduced later
+         * without changing reconciliation flow shape.
+         */
+        return $activity->started_at !== null;
     }
 
     private function normalizeSport(string $sport): string

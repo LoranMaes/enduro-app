@@ -1,9 +1,10 @@
 import { Head, router } from '@inertiajs/react';
-import { Cog, Flag, Layers, TimerReset } from 'lucide-react';
+import { CreditCard, Plug, Settings2, TimerReset } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { index as adminIndex } from '@/routes/admin';
 import {
@@ -12,19 +13,32 @@ import {
 } from '@/routes/admin/settings';
 import type { BreadcrumbItem } from '@/types';
 
+type EntryTypeEntitlement = {
+    key: string;
+    category: 'workout' | 'other' | string;
+    label: string;
+    requires_subscription: boolean;
+};
+
 type AdminSettingsProps = {
     ticketArchiveDelayHours: number;
-    entryTypeEntitlements: Array<{
-        key: string;
-        category: 'workout' | 'other' | string;
-        label: string;
-        requires_subscription: boolean;
-    }>;
+    entryTypeEntitlements: EntryTypeEntitlement[];
 };
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Admin Console',
+        href: adminIndex().url,
+    },
+    {
+        title: 'Settings',
+        href: adminSettingsShow().url,
+    },
+];
 
 const serializeAdminSettingsState = (
     delayHours: number,
-    entitlements: AdminSettingsProps['entryTypeEntitlements'],
+    entitlements: EntryTypeEntitlement[],
 ): string => {
     const normalizedEntitlements = entitlements
         .map((entitlement) => ({
@@ -39,29 +53,21 @@ const serializeAdminSettingsState = (
     });
 };
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Admin Console',
-        href: adminIndex().url,
-    },
-    {
-        title: 'Settings',
-        href: adminSettingsShow().url,
-    },
-];
-
 export default function AdminSettings({
     ticketArchiveDelayHours,
     entryTypeEntitlements,
 }: AdminSettingsProps) {
-    const [archiveDelayHours, setArchiveDelayHours] = useState<number>(
-        ticketArchiveDelayHours,
-    );
-    const [entitlements, setEntitlements] = useState(entryTypeEntitlements);
-    const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<
+        'general' | 'workout-types' | 'integrations' | 'billing'
+    >('general');
+    const [archiveDelayHours, setArchiveDelayHours] =
+        useState<number>(ticketArchiveDelayHours);
+    const [entitlements, setEntitlements] =
+        useState<EntryTypeEntitlement[]>(entryTypeEntitlements);
     const [saveStatus, setSaveStatus] = useState<
         'idle' | 'saving' | 'saved' | 'error'
     >('idle');
+
     const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const saveStatusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,28 +77,20 @@ export default function AdminSettings({
             entryTypeEntitlements,
         );
     }, [ticketArchiveDelayHours, entryTypeEntitlements]);
-    const lastSavedStateRef = useRef<string>(initialSerializedState);
+    const lastSavedStateRef = useRef(initialSerializedState);
 
     const groupedEntitlements = useMemo(() => {
-        const workout = entitlements.filter(
-            (entitlement) => entitlement.category === 'workout',
-        );
-        const other = entitlements.filter(
-            (entitlement) => entitlement.category === 'other',
-        );
-
-        return { workout, other };
+        return {
+            workout: entitlements.filter((entitlement) => entitlement.category === 'workout'),
+            other: entitlements.filter((entitlement) => entitlement.category === 'other'),
+        };
     }, [entitlements]);
 
     useEffect(() => {
         setArchiveDelayHours(ticketArchiveDelayHours);
         setEntitlements(entryTypeEntitlements);
         lastSavedStateRef.current = initialSerializedState;
-    }, [
-        entryTypeEntitlements,
-        initialSerializedState,
-        ticketArchiveDelayHours,
-    ]);
+    }, [entryTypeEntitlements, initialSerializedState, ticketArchiveDelayHours]);
 
     useEffect(() => {
         const currentState = serializeAdminSettingsState(
@@ -113,7 +111,6 @@ export default function AdminSettings({
         }
 
         saveDebounceRef.current = setTimeout(() => {
-            setSaving(true);
             setSaveStatus('saving');
 
             const route = adminSettingsUpdate();
@@ -137,9 +134,6 @@ export default function AdminSettings({
                     },
                     onError: () => {
                         setSaveStatus('error');
-                    },
-                    onFinish: () => {
-                        setSaving(false);
                     },
                 },
             );
@@ -172,205 +166,176 @@ export default function AdminSettings({
         };
     }, [saveStatus]);
 
+    const updateEntitlement = (key: string, checked: boolean): void => {
+        setEntitlements((currentEntitlements) => {
+            return currentEntitlements.map((currentEntitlement) => {
+                if (currentEntitlement.key !== key) {
+                    return currentEntitlement;
+                }
+
+                return {
+                    ...currentEntitlement,
+                    requires_subscription: checked,
+                };
+            });
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Admin Settings" />
 
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
                 <header className="border-b border-border px-6 py-6">
-                    <div className="flex items-center gap-2">
-                        <Cog className="h-4 w-4 text-zinc-500" />
-                        <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
-                            Admin Controls
-                        </p>
-                    </div>
-                    <h1 className="mt-2 text-4xl font-medium text-zinc-100">
-                        Settings
-                    </h1>
+                    <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
+                        Admin Controls
+                    </p>
+                    <h1 className="mt-2 text-4xl font-medium text-zinc-100">Settings</h1>
                     <p className="mt-2 text-sm text-zinc-500">
-                        Operational defaults and feature controls for internal tools.
+                        Operational defaults and entry type controls.
                     </p>
                 </header>
 
-                <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <div className="grid gap-4 xl:grid-cols-3">
-                        <section className="rounded-xl border border-border bg-surface p-5 xl:col-span-2">
-                            <div className="mb-4 flex items-center gap-2">
-                                <TimerReset className="h-4 w-4 text-zinc-500" />
-                                <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
-                                    Ticket Lifecycle
-                                </h2>
-                            </div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-6">
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(value) => {
+                            setActiveTab(
+                                value === 'workout-types' || value === 'integrations' || value === 'billing'
+                                    ? value
+                                    : 'general',
+                            );
+                        }}
+                    >
+                        <TabsList className="grid w-full max-w-3xl grid-cols-4 border border-border bg-surface p-1">
+                            <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
+                            <TabsTrigger value="workout-types" className="text-xs">Workout Types</TabsTrigger>
+                            <TabsTrigger value="integrations" className="text-xs">Integrations</TabsTrigger>
+                            <TabsTrigger value="billing" className="text-xs">Billing</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
 
-                            <div className="space-y-4">
+                    <div className="mt-5 rounded-xl border border-border bg-surface p-5">
+                        {activeTab === 'general' ? (
+                            <section>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <TimerReset className="h-4 w-4 text-zinc-500" />
+                                    <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
+                                        Ticket Lifecycle
+                                    </h2>
+                                </div>
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="ticket-archive-delay">
-                                        Archive delay (hours)
-                                    </Label>
+                                    <Label htmlFor="ticket-archive-delay">Archive delay (hours)</Label>
                                     <Input
                                         id="ticket-archive-delay"
                                         type="number"
                                         min={1}
                                         max={168}
                                         value={archiveDelayHours}
-                                        onChange={(event) =>
+                                        onChange={(event) => {
                                             setArchiveDelayHours(
-                                                Number.parseInt(
-                                                    event.target.value,
-                                                    10,
-                                                ) || 1,
-                                            )
-                                        }
+                                                Number.parseInt(event.target.value, 10) || 1,
+                                            );
+                                        }}
                                         className="h-10 max-w-40 bg-background"
                                     />
-                                    <p className="text-xs text-zinc-500">
-                                        Tickets in Done are archived automatically after
-                                        this delay.
-                                    </p>
                                 </div>
+                            </section>
+                        ) : null}
 
-                                <div className="flex items-center justify-end">
-                                    <span className="text-xs text-zinc-500">
-                                        {saveStatus === 'saving'
-                                            ? 'Saving...'
-                                            : saveStatus === 'saved'
-                                              ? 'Saved'
-                                              : saveStatus === 'error'
-                                                ? 'Could not save'
-                                                : saving
-                                                  ? 'Saving...'
-                                                  : 'Auto-save enabled'}
-                                    </span>
+                        {activeTab === 'workout-types' ? (
+                            <section>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <Settings2 className="h-4 w-4 text-zinc-500" />
+                                    <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
+                                        Workout Type Entitlements
+                                    </h2>
                                 </div>
-                            </div>
-                        </section>
-
-                        <section className="rounded-xl border border-border bg-surface p-5">
-                            <div className="mb-4 flex items-center gap-2">
-                                <Flag className="h-4 w-4 text-zinc-500" />
-                                <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
-                                    Feature Flags
-                                </h2>
-                            </div>
-                            <p className="text-sm text-zinc-500">
-                                Placeholder for coach/athlete variables and rollout flags.
-                            </p>
-                        </section>
-
-                        <section className="rounded-xl border border-border bg-surface p-5 xl:col-span-3">
-                            <div className="mb-4 flex items-center gap-2">
-                                <Flag className="h-4 w-4 text-zinc-500" />
-                                <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
-                                    Entry Type Entitlements
-                                </h2>
-                            </div>
-                            <p className="mb-4 text-xs text-zinc-500">
-                                Toggle which calendar entry types require a subscription.
-                            </p>
-                            <div className="grid gap-4 lg:grid-cols-2">
-                                <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-                                    <p className="text-xs font-medium text-zinc-300 uppercase">
-                                        Workout types
-                                    </p>
-                                    <div className="space-y-2">
-                                        {groupedEntitlements.workout.map((entitlement) => (
-                                            <label
-                                                key={entitlement.key}
-                                                className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-3 py-2"
-                                            >
-                                                <span className="text-sm text-zinc-300">
-                                                    {entitlement.label}
-                                                </span>
-                                                <Checkbox
-                                                    checked={
-                                                        entitlement.requires_subscription
-                                                    }
-                                                    onCheckedChange={(checked) => {
-                                                        const resolvedChecked =
-                                                            checked === true;
-                                                        setEntitlements((currentEntitlements) =>
-                                                            currentEntitlements.map((currentEntitlement) => {
-                                                                if (
-                                                                    currentEntitlement.key !==
-                                                                    entitlement.key
-                                                                ) {
-                                                                    return currentEntitlement;
-                                                                }
-
-                                                                return {
-                                                                    ...currentEntitlement,
-                                                                    requires_subscription:
-                                                                        resolvedChecked,
-                                                                };
-                                                            }),
-                                                        );
-                                                    }}
-                                                />
-                                            </label>
-                                        ))}
-                                    </div>
+                                <div className="grid gap-4 lg:grid-cols-2">
+                                    <EntitlementGroup
+                                        title="Workout types"
+                                        entitlements={groupedEntitlements.workout}
+                                        onToggle={updateEntitlement}
+                                    />
+                                    <EntitlementGroup
+                                        title="Other entries"
+                                        entitlements={groupedEntitlements.other}
+                                        onToggle={updateEntitlement}
+                                    />
                                 </div>
-                                <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-                                    <p className="text-xs font-medium text-zinc-300 uppercase">
-                                        Other entries
-                                    </p>
-                                    <div className="space-y-2">
-                                        {groupedEntitlements.other.map((entitlement) => (
-                                            <label
-                                                key={entitlement.key}
-                                                className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-3 py-2"
-                                            >
-                                                <span className="text-sm text-zinc-300">
-                                                    {entitlement.label}
-                                                </span>
-                                                <Checkbox
-                                                    checked={
-                                                        entitlement.requires_subscription
-                                                    }
-                                                    onCheckedChange={(checked) => {
-                                                        const resolvedChecked =
-                                                            checked === true;
-                                                        setEntitlements((currentEntitlements) =>
-                                                            currentEntitlements.map((currentEntitlement) => {
-                                                                if (
-                                                                    currentEntitlement.key !==
-                                                                    entitlement.key
-                                                                ) {
-                                                                    return currentEntitlement;
-                                                                }
+                            </section>
+                        ) : null}
 
-                                                                return {
-                                                                    ...currentEntitlement,
-                                                                    requires_subscription:
-                                                                        resolvedChecked,
-                                                                };
-                                                            }),
-                                                        );
-                                                    }}
-                                                />
-                                            </label>
-                                        ))}
-                                    </div>
+                        {activeTab === 'integrations' ? (
+                            <section>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <Plug className="h-4 w-4 text-zinc-500" />
+                                    <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
+                                        Integrations
+                                    </h2>
                                 </div>
-                            </div>
-                        </section>
+                                <p className="text-sm text-zinc-500">Integration controls are coming soon.</p>
+                            </section>
+                        ) : null}
 
-                        <section className="rounded-xl border border-border bg-surface p-5 xl:col-span-3">
-                            <div className="mb-3 flex items-center gap-2">
-                                <Layers className="h-4 w-4 text-zinc-500" />
-                                <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
-                                    Configuration Roadmap
-                                </h2>
-                            </div>
-                            <ul className="space-y-2 text-sm text-zinc-500">
-                                <li>- Athlete defaults (units, onboarding toggles)</li>
-                                <li>- Coach constraints and approval automation</li>
-                                <li>- Ticket workflow templates and SLA presets</li>
-                            </ul>
-                        </section>
+                        {activeTab === 'billing' ? (
+                            <section>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <CreditCard className="h-4 w-4 text-zinc-500" />
+                                    <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
+                                        Billing
+                                    </h2>
+                                </div>
+                                <p className="text-sm text-zinc-500">Billing administration is currently a placeholder.</p>
+                            </section>
+                        ) : null}
+
+                        <div className="mt-5 flex justify-end">
+                            <span className="text-xs text-zinc-500">
+                                {saveStatus === 'saving'
+                                    ? 'Saving...'
+                                    : saveStatus === 'saved'
+                                      ? 'Saved'
+                                      : saveStatus === 'error'
+                                        ? 'Could not save'
+                                        : 'Auto-save enabled'}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+function EntitlementGroup({
+    title,
+    entitlements,
+    onToggle,
+}: {
+    title: string;
+    entitlements: EntryTypeEntitlement[];
+    onToggle: (key: string, checked: boolean) => void;
+}) {
+    return (
+        <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
+            <p className="text-xs font-medium text-zinc-300 uppercase">{title}</p>
+            <div className="space-y-2">
+                {entitlements.map((entitlement) => (
+                    <label
+                        key={entitlement.key}
+                        className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-3 py-2"
+                    >
+                        <span className="text-sm text-zinc-300">{entitlement.label}</span>
+                        <Checkbox
+                            checked={entitlement.requires_subscription}
+                            onCheckedChange={(checked) => {
+                                onToggle(entitlement.key, checked === true);
+                            }}
+                        />
+                    </label>
+                ))}
+            </div>
+        </div>
     );
 }

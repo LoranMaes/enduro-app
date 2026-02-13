@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     CalendarDays,
+    CalendarRange,
     ClipboardCheck,
     Eye,
     FileText,
@@ -21,6 +22,7 @@ import { show as adminSettingsShow } from '@/routes/admin/settings';
 import { index as adminTicketsIndex } from '@/routes/admin/tickets';
 import { index as adminUsersIndex } from '@/routes/admin/users';
 import { index as coachesIndex } from '@/routes/coaches';
+import { show as showAtp } from '@/routes/atp';
 import { index as plansIndex } from '@/routes/plans';
 import { index as progressIndex } from '@/routes/progress';
 import { overview as settingsOverview } from '@/routes/settings';
@@ -83,7 +85,7 @@ export function AppSidebar() {
                   title: 'Settings',
                   href: adminSettingsShow().url,
                   icon: Settings,
-                  isActive: (path: string) => path.startsWith('/admin/settings'),
+                  isActive: (path: string) => path === '/admin/settings',
               },
           ]
         : [
@@ -97,6 +99,17 @@ export function AppSidebar() {
               },
               ...(role === 'athlete'
                   ? [
+                        ...(!isImpersonating
+                            ? [
+                                  {
+                                      title: 'Annual Plan',
+                                      href: showAtp(new Date().getFullYear()).url,
+                                      icon: CalendarRange,
+                                      isActive: (path: string) =>
+                                          path.startsWith('/atp'),
+                                  } satisfies SidebarItem,
+                              ]
+                            : []),
                         {
                             title: 'Training Progress',
                             href: progressIndex().url,

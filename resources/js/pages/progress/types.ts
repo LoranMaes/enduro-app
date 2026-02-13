@@ -27,10 +27,39 @@ export type ProgressSummary = {
     current_streak_weeks: number;
 };
 
+export type ProgressComplianceWeek = {
+    week_starts_at: string;
+    week_ends_at: string;
+    planned_sessions_count: number;
+    planned_completed_count: number;
+    compliance_ratio: number;
+    planned_duration_minutes_total: number;
+    completed_duration_minutes_total: number;
+    actual_minutes_total: number;
+    recommendation_band: {
+        min_minutes: number;
+        max_minutes: number;
+    } | null;
+};
+
+export type ProgressComplianceSummary = {
+    total_planned_sessions_count: number;
+    total_planned_completed_count: number;
+    compliance_ratio: number;
+    range_starts_at: string;
+    range_ends_at: string;
+};
+
+export type ProgressCompliancePayload = {
+    weeks: ProgressComplianceWeek[];
+    summary: ProgressComplianceSummary;
+};
+
 export type ProgressPageProps = {
     range: ProgressRange;
     summary: ProgressSummary;
     weeks: ProgressWeek[];
+    compliance: ProgressCompliancePayload;
 };
 
 export type ProgressPoint = {

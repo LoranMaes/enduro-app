@@ -5,11 +5,13 @@ import { show as showSessionDetails } from '@/routes/sessions';
 import type {
     ActivityView,
     CalendarEntryView,
+    GoalView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import type { SessionEditorContext } from '../components/session-editor-modal';
 import type {
     CalendarEntryEditorContext,
+    GoalEditorContext,
     OtherEntryType,
     WorkoutEntrySport,
 } from '../types';
@@ -26,12 +28,14 @@ export function useCalendarSelection({
     const [createEntryDate, setCreateEntryDate] = useState<string | null>(null);
     const [calendarEntryEditorContext, setCalendarEntryEditorContext] =
         useState<CalendarEntryEditorContext | null>(null);
+    const [goalEditorContext, setGoalEditorContext] =
+        useState<GoalEditorContext | null>(null);
 
-    void impersonating;
-
-    const canManageSessionWrites = role === 'athlete';
-    const canManageSessionLinks = role === 'athlete';
-    const canOpenActivityDetails = role === 'athlete';
+    const isAthleteContext =
+        role === null || role === undefined || role === 'athlete' || impersonating;
+    const canManageSessionWrites = isAthleteContext;
+    const canManageSessionLinks = isAthleteContext;
+    const canOpenActivityDetails = isAthleteContext;
 
     const openCreateEntryFlow = useCallback(
         (date: string): void => {
@@ -62,7 +66,7 @@ export function useCalendarSelection({
     );
 
     const openCreateCalendarEntryModal = useCallback(
-        (date: string, type: OtherEntryType): void => {
+        (date: string, type: Exclude<OtherEntryType, 'goal'>): void => {
             if (!canManageSessionWrites) {
                 return;
             }
@@ -72,6 +76,35 @@ export function useCalendarSelection({
                 mode: 'create',
                 date,
                 type,
+            });
+        },
+        [canManageSessionWrites],
+    );
+
+    const openCreateGoalModal = useCallback(
+        (date: string): void => {
+            if (!canManageSessionWrites) {
+                return;
+            }
+
+            setCreateEntryDate(null);
+            setGoalEditorContext({
+                mode: 'create',
+                date,
+            });
+        },
+        [canManageSessionWrites],
+    );
+
+    const openGoalModal = useCallback(
+        (goal: GoalView): void => {
+            if (!canManageSessionWrites) {
+                return;
+            }
+
+            setGoalEditorContext({
+                mode: 'edit',
+                goal,
             });
         },
         [canManageSessionWrites],
@@ -142,22 +175,30 @@ export function useCalendarSelection({
         setCalendarEntryEditorContext(null);
     }, []);
 
+    const closeGoalModal = useCallback((): void => {
+        setGoalEditorContext(null);
+    }, []);
+
     return {
         sessionEditorContext,
         setSessionEditorContext,
         createEntryDate,
         calendarEntryEditorContext,
+        goalEditorContext,
         canManageSessionWrites,
         canManageSessionLinks,
         canOpenActivityDetails,
         openCreateEntryFlow,
         openCreateSessionModal,
         openCreateCalendarEntryModal,
+        openCreateGoalModal,
         openEditCalendarEntryModal,
+        openGoalModal,
         openEditSessionModal,
         openActivityDetails,
         closeSessionModal,
         closeCreateEntryFlow,
         closeCalendarEntryModal,
+        closeGoalModal,
     };
 }

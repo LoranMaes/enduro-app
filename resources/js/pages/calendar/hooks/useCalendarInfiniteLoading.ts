@@ -5,15 +5,16 @@ import {
     useRef,
     useState,
     type Dispatch,
-    type MutableRefObject,
     type SetStateAction,
 } from 'react';
 import type {
     ActivityView,
     CalendarEntryView,
+    GoalView,
     TrainingSessionView,
 } from '@/types/training-plans';
 import { WINDOW_EXTENSION_WEEKS } from '../constants';
+import type { ProgressComplianceWeek } from '../types';
 import {
     addDays,
     addWeeks,
@@ -30,12 +31,18 @@ export function useCalendarInfiniteLoading({
     fetchWindowSessions,
     fetchWindowActivities,
     fetchWindowCalendarEntries,
+    fetchWindowGoals,
+    fetchWindowCompliance,
     mergeSessions,
     mergeActivities,
     mergeCalendarEntries,
+    mergeGoals,
+    mergeComplianceWeeks,
     setSessions,
     setActivities,
     setCalendarEntries,
+    setGoals,
+    setComplianceWeeks,
     setCalendarWindow,
 }: {
     calendarViewMode: 'infinite' | 'day' | 'week' | 'month';
@@ -47,6 +54,11 @@ export function useCalendarInfiniteLoading({
         from: string,
         to: string,
     ) => Promise<CalendarEntryView[]>;
+    fetchWindowGoals: (from: string, to: string) => Promise<GoalView[]>;
+    fetchWindowCompliance: (
+        from: string,
+        to: string,
+    ) => Promise<ProgressComplianceWeek[]>;
     mergeSessions: (
         existingSessions: TrainingSessionView[],
         incomingSessions: TrainingSessionView[],
@@ -59,9 +71,19 @@ export function useCalendarInfiniteLoading({
         existingEntries: CalendarEntryView[],
         incomingEntries: CalendarEntryView[],
     ) => CalendarEntryView[];
+    mergeGoals: (
+        existingGoals: GoalView[],
+        incomingGoals: GoalView[],
+    ) => GoalView[];
+    mergeComplianceWeeks: (
+        existingWeeks: ProgressComplianceWeek[],
+        incomingWeeks: ProgressComplianceWeek[],
+    ) => ProgressComplianceWeek[];
     setSessions: Dispatch<SetStateAction<TrainingSessionView[]>>;
     setActivities: Dispatch<SetStateAction<ActivityView[]>>;
     setCalendarEntries: Dispatch<SetStateAction<CalendarEntryView[]>>;
+    setGoals: Dispatch<SetStateAction<GoalView[]>>;
+    setComplianceWeeks: Dispatch<SetStateAction<ProgressComplianceWeek[]>>;
     setCalendarWindow: Dispatch<SetStateAction<CalendarWindow>>;
 }) {
     const topSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -125,12 +147,20 @@ export function useCalendarInfiniteLoading({
             }
 
             try {
-                const [fetchedSessions, fetchedActivities, fetchedEntries] =
+                const [
+                    fetchedSessions,
+                    fetchedActivities,
+                    fetchedEntries,
+                    fetchedGoals,
+                    fetchedCompliance,
+                ] =
                     await Promise.all([
-                    fetchWindowSessions(fetchFrom, fetchTo),
-                    fetchWindowActivities(fetchFrom, fetchTo),
-                    fetchWindowCalendarEntries(fetchFrom, fetchTo),
-                ]);
+                        fetchWindowSessions(fetchFrom, fetchTo),
+                        fetchWindowActivities(fetchFrom, fetchTo),
+                        fetchWindowCalendarEntries(fetchFrom, fetchTo),
+                        fetchWindowGoals(fetchFrom, fetchTo),
+                        fetchWindowCompliance(fetchFrom, fetchTo),
+                    ]);
 
                 setSessions((currentSessions) => {
                     return mergeSessions(currentSessions, fetchedSessions);
@@ -143,6 +173,12 @@ export function useCalendarInfiniteLoading({
                 });
                 setCalendarEntries((currentEntries) => {
                     return mergeCalendarEntries(currentEntries, fetchedEntries);
+                });
+                setGoals((currentGoals) => {
+                    return mergeGoals(currentGoals, fetchedGoals);
+                });
+                setComplianceWeeks((currentWeeks) => {
+                    return mergeComplianceWeeks(currentWeeks, fetchedCompliance);
                 });
                 setCalendarWindow((currentWindow) => {
                     return direction === 'past'
@@ -198,11 +234,15 @@ export function useCalendarInfiniteLoading({
             calendarViewMode,
             fetchWindowActivities,
             fetchWindowCalendarEntries,
+            fetchWindowCompliance,
+            fetchWindowGoals,
             fetchWindowSessions,
             isLoadingFuture,
             isLoadingPast,
             mergeActivities,
             mergeCalendarEntries,
+            mergeGoals,
+            mergeComplianceWeeks,
             mergeSessions,
             calendarWindow.ends_at,
             calendarWindow.starts_at,
@@ -210,6 +250,8 @@ export function useCalendarInfiniteLoading({
             setActivities,
             setCalendarEntries,
             setCalendarWindow,
+            setGoals,
+            setComplianceWeeks,
             setSessions,
         ],
     );

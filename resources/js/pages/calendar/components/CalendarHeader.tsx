@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Layers, RefreshCw } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Layers, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarViewMode } from '../types';
 
@@ -13,6 +13,7 @@ type CalendarHeaderProps = {
     isSyncDispatching: boolean;
     isStravaSyncInProgress: boolean;
     onSync: () => void;
+    onOpenWorkoutLibrary: () => void;
     viewModes: CalendarViewMode[];
     calendarViewMode: CalendarViewMode;
     onModeChange: (mode: CalendarViewMode) => void;
@@ -36,6 +37,7 @@ export function CalendarHeader({
     isSyncDispatching,
     isStravaSyncInProgress,
     onSync,
+    onOpenWorkoutLibrary,
     viewModes,
     calendarViewMode,
     onModeChange,
@@ -110,6 +112,16 @@ export function CalendarHeader({
                             {isSyncDispatching || isStravaSyncInProgress
                                 ? 'Syncing'
                                 : 'Sync'}
+                        </button>
+                    ) : null}
+                    {canManageSessionWrites ? (
+                        <button
+                            type="button"
+                            onClick={onOpenWorkoutLibrary}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                        >
+                            <BookOpen className="h-3.5 w-3.5" />
+                            Library
                         </button>
                     ) : null}
                     <div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-xs font-medium text-zinc-200">

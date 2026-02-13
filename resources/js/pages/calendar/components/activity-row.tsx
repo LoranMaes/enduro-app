@@ -54,12 +54,14 @@ const sportConfig: Record<
 type ActivityRowProps = {
     activity: ActivityView;
     isInteractive?: boolean;
+    showPossibleMatch?: boolean;
     onClick?: () => void;
 };
 
 export function ActivityRow({
     activity,
     isInteractive = false,
+    showPossibleMatch = false,
     onClick,
 }: ActivityRowProps) {
     const config = sportConfig[activity.sport] ?? sportConfig.other;
@@ -122,6 +124,12 @@ export function ActivityRow({
                     {isLinked ? 'Linked' : 'Unlinked'}
                 </span>
             </div>
+
+            {!isLinked && showPossibleMatch ? (
+                <p className="mt-1 text-[0.625rem] text-amber-300/80">
+                    Possible match
+                </p>
+            ) : null}
 
             <div className="mt-1 flex items-center gap-2 text-[0.625rem] text-zinc-500">
                 <span className="inline-flex items-center gap-1">

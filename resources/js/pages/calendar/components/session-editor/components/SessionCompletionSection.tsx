@@ -109,6 +109,14 @@ export function SessionCompletionSection({
                                     : 'Completed'
                                 : 'Uses linked activity values only.'}
                         </p>
+                        {sessionIsCompleted ? (
+                            <p className="mt-0.5 text-[0.6875rem] text-zinc-500">
+                                Source:{' '}
+                                {selectedSession.completionSource === 'provider_auto'
+                                    ? 'Auto-completed from provider sync'
+                                    : 'Completed manually'}
+                            </p>
+                        ) : null}
                     </div>
 
                     {canManageSessionLinks ? (

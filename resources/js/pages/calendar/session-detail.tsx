@@ -44,8 +44,7 @@ export default function SessionDetailPage({
     const linkedActivityId = sessionView.linkedActivityId;
     const canEditNotes =
         !isActivityOnly &&
-        auth.user.role === 'athlete' &&
-        auth.impersonating !== true;
+        (auth.user.role === null || auth.user.role === 'athlete');
 
     const {
         streamData,

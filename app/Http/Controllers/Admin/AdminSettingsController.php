@@ -45,7 +45,10 @@ class AdminSettingsController extends Controller
         }
 
         if (array_key_exists('entitlements', $validated)) {
-            $this->entryTypeEntitlementService->updateMany($validated['entitlements']);
+            $this->entryTypeEntitlementService->updateMany(
+                $validated['entitlements'],
+                $user,
+            );
         }
 
         return back()->with('status', 'Admin settings updated.');

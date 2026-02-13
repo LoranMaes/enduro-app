@@ -51,6 +51,31 @@ export function useCalendarScroll({
         });
     }, [calendarViewMode, currentWeekStart]);
 
+    const jumpToWeek = useCallback(
+        (weekStart: string, behavior: ScrollBehavior = 'smooth'): void => {
+            if (calendarViewMode !== 'infinite') {
+                return;
+            }
+
+            const container = scrollContainerRef.current;
+            const weekElement = weekElementsRef.current[weekStart];
+
+            if (container === null || weekElement === null || weekElement === undefined) {
+                return;
+            }
+
+            container.scrollTo({
+                top: Math.max(
+                    0,
+                    weekElement.offsetTop -
+                        (container.clientHeight - weekElement.offsetHeight) / 2,
+                ),
+                behavior,
+            });
+        },
+        [calendarViewMode],
+    );
+
     useLayoutEffect(() => {
         if (calendarViewMode !== 'infinite') {
             return;
@@ -140,6 +165,7 @@ export function useCalendarScroll({
         weekElementsRef,
         isCurrentWeekVisible,
         jumpToCurrentWeek,
+        jumpToWeek,
         markHydratedWindow,
     };
 }

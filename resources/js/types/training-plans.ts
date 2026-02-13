@@ -221,3 +221,31 @@ export type CalendarEntryView = {
     createdAt: string | null;
     updatedAt: string | null;
 };
+
+export type GoalApi = {
+    id: number;
+    user_id: number;
+    type: 'race' | 'distance' | 'performance' | 'text' | string;
+    sport: 'run' | 'bike' | 'swim' | 'other' | string | null;
+    title: string;
+    description: string | null;
+    target_date: string | null;
+    priority: 'low' | 'normal' | 'high' | string;
+    status: 'active' | 'completed' | 'cancelled' | string;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+export type GoalView = {
+    id: number;
+    userId: number;
+    type: string;
+    sport: string | null;
+    title: string;
+    description: string | null;
+    targetDate: string | null;
+    priority: string;
+    status: string;
+    createdAt: string | null;
+    updatedAt: string | null;
+};

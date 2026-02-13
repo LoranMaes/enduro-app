@@ -175,14 +175,13 @@ export function useTicketMutations({
             ticketId: number,
             changes: TicketUpdatePayload,
         ): Promise<TicketMutationResult<TicketRecord>> => {
-            const route = adminTicketUpdate.form.patch(ticketId);
-            const response = await fetch(route.action, {
+            const route = adminTicketUpdate.patch(ticketId);
+            const response = await fetch(route.url, {
                 method: route.method.toUpperCase(),
                 headers: {
                     ...defaultHeaders,
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
-                    'X-HTTP-Method-Override': 'PATCH',
                 },
                 body: JSON.stringify(changes),
             });

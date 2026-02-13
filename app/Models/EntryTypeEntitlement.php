@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EntryTypeEntitlement extends Model
 {
@@ -12,6 +13,7 @@ class EntryTypeEntitlement extends Model
     protected $fillable = [
         'key',
         'requires_subscription',
+        'updated_by_admin_id',
     ];
 
     /**
@@ -21,6 +23,12 @@ class EntryTypeEntitlement extends Model
     {
         return [
             'requires_subscription' => 'bool',
+            'updated_by_admin_id' => 'int',
         ];
+    }
+
+    public function updatedByAdmin(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by_admin_id');
     }
 }

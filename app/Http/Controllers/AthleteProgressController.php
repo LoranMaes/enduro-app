@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Services\Progress\ComplianceService;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +18,7 @@ class AthleteProgressController extends Controller
 {
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly ComplianceService $complianceService,
     ) {}
 
     public function __invoke(IndexRequest $request): Response
@@ -276,6 +278,11 @@ class AthleteProgressController extends Controller
                 'current_streak_weeks' => $currentStreakWeeks,
             ],
             'weeks' => $progressWeeks,
+            'compliance' => $this->complianceService->resolve(
+                $user,
+                $windowStart,
+                $windowEnd,
+            ),
         ]);
     }
 }

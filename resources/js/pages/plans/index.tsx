@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { show as showAtp } from '@/routes/atp';
 import { index as plansIndex } from '@/routes/plans';
 import type { BreadcrumbItem } from '@/types';
 
@@ -11,6 +12,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function PlansIndex() {
+    const currentYear = new Date().getFullYear();
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Training Plans" />
@@ -55,6 +58,21 @@ export default function PlansIndex() {
                                     Plans feed sessions without replacing athlete control.
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="mt-6 rounded-xl border border-border/70 bg-zinc-900/40 p-4">
+                            <p className="text-[0.625rem] tracking-wider text-zinc-500 uppercase">
+                                Annual Training Plan
+                            </p>
+                            <p className="mt-2 text-sm text-zinc-300">
+                                Annual Training Plan (coming soon)
+                            </p>
+                            <a
+                                href={showAtp(currentYear).url}
+                                className="mt-3 inline-flex text-xs text-zinc-400 underline underline-offset-2 transition-colors hover:text-zinc-200"
+                            >
+                                Open yearly scaffold
+                            </a>
                         </div>
                     </section>
                 </div>
