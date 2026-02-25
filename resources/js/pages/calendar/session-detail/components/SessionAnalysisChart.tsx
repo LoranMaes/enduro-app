@@ -181,6 +181,7 @@ export function SessionAnalysisChart({
                                         onHoverSampleIndexChange
                                     }
                                     onZoomSelection={onZoomSelection}
+                                    onResetZoom={onResetZoom}
                                 />
                             ) : (
                                 <p className="text-xs text-zinc-500">

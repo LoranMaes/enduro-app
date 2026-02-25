@@ -30,8 +30,12 @@ export function ProgressLoadTrendChart({
                         Actual
                     </span>
                     <span className="inline-flex items-center gap-2">
-                        <span className="h-2 w-4 border border-sky-500/35 bg-sky-500/15" />
-                        Target Range
+                        <span className="h-0.5 w-4 border-t border-dashed border-sky-400" />
+                        Planned
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                        <span className="h-2 w-4 border border-emerald-500/35 bg-emerald-500/20" />
+                        Suggested Range
                     </span>
                 </div>
             </div>
@@ -54,6 +58,9 @@ export function ProgressLoadTrendChart({
                     </span>
                 </p>
             </div>
+            <p className="mt-1 text-[0.6875rem] text-zinc-600">
+                Suggested range: trailing 4-week average actual TSS (±15%).
+            </p>
 
             <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/70 bg-background/60">
                 {activePoint !== undefined ? (
@@ -70,6 +77,16 @@ export function ProgressLoadTrendChart({
                                 <span>Planned</span>
                                 <span className="font-mono">{activePoint.plannedTss ?? '—'}</span>
                             </span>
+                            {activePoint.suggestedMinTss !== null
+                            && activePoint.suggestedMaxTss !== null ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-300">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
+                                    <span>Range</span>
+                                    <span className="font-mono">
+                                        {activePoint.suggestedMinTss}–{activePoint.suggestedMaxTss}
+                                    </span>
+                                </span>
+                            ) : null}
                         </div>
                     </div>
                 ) : null}
@@ -133,7 +150,41 @@ export function ProgressLoadTrendChart({
                             <polygon
                                 key={index}
                                 points={segment}
-                                fill="rgba(14,116,144,0.18)"
+                                fill="rgba(74,222,128,0.2)"
+                            />
+                        ))}
+
+                        {trend.targetBandColumns.map((column, index) => (
+                            <rect
+                                key={`target-column-${index}`}
+                                x={column.x}
+                                y={column.y}
+                                width={column.width}
+                                height={column.height}
+                                fill="rgba(74,222,128,0.2)"
+                                stroke="rgba(74,222,128,0.55)"
+                                strokeWidth={0.8}
+                                rx={1}
+                            />
+                        ))}
+
+                        {trend.targetBandUpperSegments.map((segment, index) => (
+                            <path
+                                key={`target-upper-${index}`}
+                                d={segment}
+                                fill="none"
+                                stroke="rgba(74,222,128,0.8)"
+                                strokeWidth={1.2}
+                            />
+                        ))}
+
+                        {trend.targetBandLowerSegments.map((segment, index) => (
+                            <path
+                                key={`target-lower-${index}`}
+                                d={segment}
+                                fill="none"
+                                stroke="rgba(74,222,128,0.8)"
+                                strokeWidth={1.2}
                             />
                         ))}
 
@@ -142,8 +193,7 @@ export function ProgressLoadTrendChart({
                                 key={`planned-${index}`}
                                 d={segment}
                                 fill="none"
-                                stroke="rgb(14,116,144)"
-                                strokeOpacity={0.9}
+                                stroke="rgba(56,189,248,0.95)"
                                 strokeWidth={1.8}
                                 strokeDasharray="6 6"
                             />

@@ -42,6 +42,10 @@ class User extends Authenticatable
         'strava_refresh_token',
         'strava_token_expires_at',
         'is_subscribed',
+        'stripe_customer_id',
+        'stripe_subscription_status',
+        'stripe_subscription_synced_at',
+        'enable_load_metrics',
         'suspended_at',
         'suspended_by_user_id',
         'suspension_reason',
@@ -78,6 +82,10 @@ class User extends Authenticatable
             'timezone' => 'string',
             'unit_system' => 'string',
             'is_subscribed' => 'boolean',
+            'stripe_customer_id' => 'string',
+            'stripe_subscription_status' => 'string',
+            'stripe_subscription_synced_at' => 'datetime',
+            'enable_load_metrics' => 'boolean',
             'strava_token_expires_at' => 'datetime',
             'suspended_at' => 'datetime',
         ];
@@ -156,6 +164,16 @@ class User extends Authenticatable
     public function workoutLibraryItems(): HasMany
     {
         return $this->hasMany(WorkoutLibraryItem::class);
+    }
+
+    public function trainingLoadSnapshots(): HasMany
+    {
+        return $this->hasMany(TrainingLoadSnapshot::class);
+    }
+
+    public function athleteWeekMetrics(): HasMany
+    {
+        return $this->hasMany(AthleteWeekMetric::class);
     }
 
     public function activityProviderConnections(): HasMany

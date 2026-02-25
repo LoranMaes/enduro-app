@@ -2,6 +2,7 @@
 
 namespace App\Services\Activities;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
 use App\Data\ActivityProviderSyncResultDTO;
 use App\Models\ActivityProviderConnection;
 use App\Models\User;
@@ -19,6 +20,7 @@ class ActivitySyncService
         private readonly ActivityProviderTokenManager $tokenManager,
         private readonly ExternalActivityPersister $persister,
         private readonly ActivityToSessionReconciler $activityToSessionReconciler,
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
     ) {}
 
     /**
@@ -47,6 +49,7 @@ class ActivitySyncService
             $activity = $providerClient->fetchActivity($user, $externalActivityId);
             $persistedActivity = $this->persister->persist($user, $activity);
             $this->activityToSessionReconciler->reconcile($persistedActivity);
+            $this->dispatchRecentLoadRecalculation->execute($user, 60);
 
             $syncedAt = CarbonImmutable::now();
 
@@ -78,6 +81,10 @@ class ActivitySyncService
             $batchCount = $activities->count();
             $page++;
         } while ($batchCount === $perPage);
+
+        if ($syncedActivitiesCount > 0) {
+            $this->dispatchRecentLoadRecalculation->execute($user, 60);
+        }
 
         $syncedAt = CarbonImmutable::now();
 

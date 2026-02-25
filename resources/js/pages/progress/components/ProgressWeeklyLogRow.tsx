@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LoadStatePill } from '@/components/ui/load-state-pill';
 import { dashboard } from '@/routes';
 import type { ProgressWeek } from '../types';
 import { calculateCompliance, formatDuration, formatShortDate } from '../utils';
@@ -13,6 +14,12 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
     const plannedTss = week.planned_tss ?? 0;
     const actualTss = week.actual_tss ?? 0;
     const compliance = calculateCompliance(plannedTss, actualTss);
+    const loadState =
+        week.load_state === 'in_range'
+        || week.load_state === 'high'
+        || week.load_state === 'low'
+            ? week.load_state
+            : 'insufficient';
 
     return (
         <button
@@ -39,6 +46,10 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
                     Planned {formatDuration(week.planned_duration_minutes)} • Actual{' '}
                     {formatDuration(week.actual_duration_minutes)}
                 </span>
+                <LoadStatePill
+                    state={loadState}
+                    className="mt-1 w-fit"
+                />
             </div>
 
             <div className="flex items-center gap-4">

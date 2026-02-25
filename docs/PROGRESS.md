@@ -1,5 +1,138 @@
 # Endure — Progress Log
 
+## 2026-02-25 (ATP + Progress + Session Detail Hardening Pass Complete)
+
+- Completed decision-locked hardening pass without route or payload breaking changes:
+    - ATP visuals/readability:
+        - fixed week-type color system (chart bars + row indicators + legend)
+        - goal flag moved below week number in ATP header chart
+        - ATP dates now render with browser-locale formatting and user timezone context
+        - ATP week rows now render TSS value or `—` (removed “Coming soon” placeholders)
+    - ATP backend correctness + maintainability:
+        - fixed ATP metrics so planned totals include only `planning_source=planned`
+        - completed totals now include completed sessions from both planned and unplanned sources
+        - decomposed ATP service into dedicated collaborators:
+            - `AtpWeekDefinitionFactory`
+            - `AtpWeekSessionMetricsResolver`
+            - `AtpWeekGoalResolver`
+            - `AthleteAnnualTrainingPlanService` now acts as orchestrator/caching layer
+    - Session detail interaction:
+        - interactive chart dotted hover line now snaps to the same sampled point index used by hover markers/map sync
+    - Calendar session card UX:
+        - removed calendar-row “Auto-completed” badge/text while preserving completion behavior
+    - Progress clarity:
+        - load trend target band visibility improved with stronger fill + explicit upper/lower boundary lines
+        - compliance panel switched to TSS-based actual/recommended display
+        - compliance row/header alignment fixed with shared grid-template contract
+        - introduced reusable `LoadStatePill` component and applied it to compliance rows + weekly logs
+- Added/updated test coverage:
+    - expanded `tests/Feature/Api/AnnualTrainingPlanApiTest.php` for planned-vs-unplanned ATP metrics correctness
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/AnnualTrainingPlanApiTest.php tests/Feature/ProgressPageTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-25 (ATP + Load/Progress Hardening Pass Complete)
+
+- Completed reusable weekly metrics hardening with persisted snapshots as single source for ATP/Progress/Calendar:
+    - added `athlete_week_metrics` table + `AthleteWeekMetric` model
+    - added `WeeklyMetricsCalculator`, `WeeklyLoadStateClassifier`, `WeeklyMetricsSnapshotService`
+    - added `RecalculateWeeklyMetricsJob` + `RecalculateRecentWeeklyMetricsJob`
+    - wired weekly metrics recalculation into load dispatch action, activity sync, full-history import, and `load:recompute`
+    - nightly weekly backfill scheduled (`02:15`)
+    - added cache-version bumping in snapshot service for fast invalidation with 60s cached reads
+- ATP payload/UX hardening:
+    - ATP weeks now include `is_current_week`, `load_state`, `load_state_ratio`, `goal_marker`
+    - header chart now supports current-week highlight, hover details, and goal flag markers
+    - week table now surfaces load-state badges and improved desktop viewport fit with sticky header behavior
+- Session detail interaction fixes:
+    - chart crosshair now snaps to the same reference sample as hover dots/values
+    - zoom reset moved from map double-click to chart double-click
+    - map double-click no longer resets chart zoom
+- Progress/compliance clarity upgrades:
+    - compliance and weekly logs now consume snapshot-based load state
+    - removed placeholder compliance wording and added explicit ratio-source metadata
+    - weekly log rows now show clear load-state indicators
+- Training preferences consolidation:
+    - added `AthletePerformanceProfileResolver` for centralized anchors/zones normalization
+    - integrated resolver into `TrainingSessionActualMetricsResolver` and athlete settings payload normalization
+- Settings/billing scaffolding:
+    - replaced timezone free-text with searchable IANA selector (ShadCN Popover + Command)
+    - added Stripe scaffold columns on `users` and webhook endpoint (`POST /api/webhooks/stripe`) with signature validation and subscription flag sync
+- Test coverage added/expanded:
+    - `tests/Unit/WeeklyLoadStateClassifierTest.php`
+    - `tests/Feature/Api/Billing/StripeWebhookApiTest.php`
+    - expanded `tests/Feature/Api/ProgressComplianceApiTest.php`
+    - expanded `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - aligned progress expectations in `tests/Feature/ProgressPageTest.php` with strict planned-session compliance semantics
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Training Load Engine Phase 1 Complete)
+
+- Implemented production load-engine backbone from `docs/TRAINING_LOAD_SYSTEM.md` with multi-athlete-safe service boundaries:
+    - database:
+        - added `training_load_snapshots` table with indexed `user_id` + `date`, and unique (`user_id`, `date`, `sport`)
+        - added `users.enable_load_metrics` boolean toggle (default `true`)
+    - domain:
+        - added `TrainingLoadSnapshot` model + `User::trainingLoadSnapshots()` relation
+    - calculation engine:
+        - added `app/Services/Load/TrainingLoadCalculator.php`
+        - implements day-walk recalculation with:
+            - per-sport daily TSS (`run`, `bike`, `swim`, `other`)
+            - combined daily TSS
+            - ATL (7d EWMA)
+            - CTL (42d EWMA)
+            - TSB (`CTL_yesterday - ATL_yesterday`)
+        - seeds from day-before snapshot, defaults to zeros if missing
+        - idempotent upsert storage
+    - load history API:
+        - added `GET /api/progress`
+        - added `LoadHistoryService` + `LoadHistoryResource`
+        - response now includes:
+            - `combined` series
+            - `per_sport` series
+            - latest ATL/CTL/TSB point
+    - recalculation jobs/dispatch:
+        - added `RecalculateUserLoadJob`
+        - added `RecalculateRecentLoadJob` (nightly backfill, 90 days, chunked by 100 athletes)
+        - wired scheduler in `routes/console.php`
+        - added `DispatchRecentLoadRecalculation` action
+        - dispatch points wired for:
+            - session completion
+            - session unlink
+            - session planned TSS update
+            - activity sync reconciliation completion
+    - command:
+        - added `php artisan load:recompute`
+        - supports `--user=`, `--all`, `--from=`
+        - queues recalculation jobs (no inline heavy compute)
+    - strava full history import:
+        - added `StravaFullHistoryImportJob`
+        - imports paginated activities only
+        - enqueues load recalculation after each imported batch
+    - frontend:
+        - added `PerformanceManagementChart` widget to progress page
+        - added `/api/progress` consumer hook for chart data
+        - supports combined/per-sport toggle
+        - hides load widgets when `load_metrics_enabled = false`
+- Added/updated test coverage:
+    - `tests/Unit/TrainingLoadCalculatorTest.php`
+    - `tests/Feature/RecalculateUserLoadJobTest.php`
+    - `tests/Feature/LoadRebuildCommandTest.php`
+    - `tests/Feature/PerformanceManagementApiTest.php`
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Unit/TrainingLoadCalculatorTest.php tests/Feature/RecalculateUserLoadJobTest.php tests/Feature/LoadRebuildCommandTest.php tests/Feature/PerformanceManagementApiTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
 ## 2026-02-13 (Calendar Create/Library UX + Drag/Drop Hardening Complete)
 
 - Completed post-wave UX hardening and behavior-preserving fixes for calendar creation and workout library interactions:

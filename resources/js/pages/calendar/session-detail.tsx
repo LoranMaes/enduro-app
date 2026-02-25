@@ -264,7 +264,6 @@ export default function SessionDetailPage({
                                 hoverPoint={hoverPoint}
                                 hoverSummary={hoverSummary}
                                 xAxisMode={xAxisMode}
-                                onResetZoom={resetZoomSelection}
                             />
                         }
                         statisticsPanel={

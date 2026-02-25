@@ -7,6 +7,7 @@ use App\Models\ActivityProviderConnection;
 use App\Models\User;
 use App\Services\ActivityProviders\ActivityProviderConnectionStore;
 use App\Services\ActivityProviders\ActivityProviderManager;
+use App\Services\Performance\AthletePerformanceProfileResolver;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,6 +17,7 @@ class AthleteSettingsOverviewController extends Controller
     public function __construct(
         private readonly ActivityProviderManager $providerManager,
         private readonly ActivityProviderConnectionStore $connectionStore,
+        private readonly AthletePerformanceProfileResolver $athletePerformanceProfileResolver,
     ) {}
 
     /**
@@ -27,6 +29,9 @@ class AthleteSettingsOverviewController extends Controller
         abort_unless($user instanceof User, 403);
 
         $user->loadMissing('athleteProfile');
+        $resolvedPerformanceProfile = $this->athletePerformanceProfileResolver->resolve(
+            $user->athleteProfile,
+        );
         $activeTab = $this->resolveActiveTab($request, $user);
 
         return Inertia::render('settings/overview', [
@@ -43,18 +48,12 @@ class AthleteSettingsOverviewController extends Controller
                 'weekly_training_days' => $user->athleteProfile?->weekly_training_days ?? 6,
                 'preferred_rest_day' => $user->athleteProfile?->preferred_rest_day ?? 'monday',
                 'intensity_distribution' => $user->athleteProfile?->intensity_distribution ?? 'polarized',
-                'ftp_watts' => $user->athleteProfile?->ftp_watts,
-                'max_heart_rate_bpm' => $user->athleteProfile?->max_heart_rate_bpm,
-                'threshold_heart_rate_bpm' => $user->athleteProfile?->threshold_heart_rate_bpm,
-                'threshold_pace_minutes_per_km' => $user->athleteProfile?->threshold_pace_minutes_per_km,
-                'power_zones' => $this->normalizeZones(
-                    $user->athleteProfile?->power_zones,
-                    $this->defaultPowerZones(),
-                ),
-                'heart_rate_zones' => $this->normalizeZones(
-                    $user->athleteProfile?->heart_rate_zones,
-                    $this->defaultHeartRateZones(),
-                ),
+                'ftp_watts' => $resolvedPerformanceProfile['ftp_watts'],
+                'max_heart_rate_bpm' => $resolvedPerformanceProfile['max_heart_rate_bpm'],
+                'threshold_heart_rate_bpm' => $resolvedPerformanceProfile['threshold_heart_rate_bpm'],
+                'threshold_pace_minutes_per_km' => $resolvedPerformanceProfile['threshold_pace_minutes_per_km'],
+                'power_zones' => $resolvedPerformanceProfile['power_zones'],
+                'heart_rate_zones' => $resolvedPerformanceProfile['heart_rate_zones'],
             ],
             'providers' => collect($this->providerManager->allowedProviders())
                 ->map(fn (string $provider): array => $this->providerPayload($user, $provider))
@@ -109,80 +108,5 @@ class AthleteSettingsOverviewController extends Controller
         }
 
         return $requestedTab;
-    }
-
-    /**
-     * @param  array<int, array{label: string, min: int, max: int}>  $defaults
-     * @return array<int, array{label: string, min: int, max: int}>
-     */
-    private function normalizeZones(mixed $zones, array $defaults): array
-    {
-        if (! is_array($zones) || count($zones) !== 5) {
-            return $defaults;
-        }
-
-        $normalized = [];
-
-        foreach ($defaults as $index => $fallbackZone) {
-            $zone = $zones[$index] ?? null;
-
-            if (! is_array($zone)) {
-                $normalized[] = $fallbackZone;
-
-                continue;
-            }
-
-            $label = in_array(($zone['label'] ?? null), ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'], true)
-                ? (string) $zone['label']
-                : $fallbackZone['label'];
-            $min = is_numeric($zone['min'] ?? null)
-                ? (int) $zone['min']
-                : $fallbackZone['min'];
-            $max = is_numeric($zone['max'] ?? null)
-                ? (int) $zone['max']
-                : $fallbackZone['max'];
-
-            if ($max < $min) {
-                $normalized[] = $fallbackZone;
-
-                continue;
-            }
-
-            $normalized[] = [
-                'label' => $label,
-                'min' => $min,
-                'max' => $max,
-            ];
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * @return array<int, array{label: string, min: int, max: int}>
-     */
-    private function defaultPowerZones(): array
-    {
-        return [
-            ['label' => 'Z1', 'min' => 55, 'max' => 75],
-            ['label' => 'Z2', 'min' => 76, 'max' => 90],
-            ['label' => 'Z3', 'min' => 91, 'max' => 105],
-            ['label' => 'Z4', 'min' => 106, 'max' => 120],
-            ['label' => 'Z5', 'min' => 121, 'max' => 150],
-        ];
-    }
-
-    /**
-     * @return array<int, array{label: string, min: int, max: int}>
-     */
-    private function defaultHeartRateZones(): array
-    {
-        return [
-            ['label' => 'Z1', 'min' => 60, 'max' => 72],
-            ['label' => 'Z2', 'min' => 73, 'max' => 82],
-            ['label' => 'Z3', 'min' => 83, 'max' => 89],
-            ['label' => 'Z4', 'min' => 90, 'max' => 95],
-            ['label' => 'Z5', 'min' => 96, 'max' => 100],
-        ];
     }
 }

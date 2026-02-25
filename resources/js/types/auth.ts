@@ -5,6 +5,7 @@ export type User = {
     last_name?: string | null;
     email: string;
     role?: 'athlete' | 'coach' | 'admin' | null;
+    timezone?: string | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;

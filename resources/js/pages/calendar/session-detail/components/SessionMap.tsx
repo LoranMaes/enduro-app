@@ -7,7 +7,6 @@ import {
     Polyline,
     TileLayer,
     useMap,
-    useMapEvents,
 } from 'react-leaflet';
 import { streamColors, streamLabels } from '../constants';
 import type { MapPoint, XAxisMode } from '../types';
@@ -22,7 +21,6 @@ type SessionMapProps = {
         values: Array<{ key: string; value: number | null }>;
     } | null;
     xAxisMode: XAxisMode;
-    onResetZoom: () => void;
 };
 
 export function SessionMap({
@@ -31,7 +29,6 @@ export function SessionMap({
     hoverPoint,
     hoverSummary,
     xAxisMode,
-    onResetZoom,
 }: SessionMapProps) {
     return (
         <div className="flex min-h-0 flex-col rounded-xl border border-border bg-surface p-4">
@@ -47,7 +44,6 @@ export function SessionMap({
                             points={latLngPoints}
                             focusPoints={focusedRoutePoints}
                             hoverPoint={hoverPoint}
-                            onResetZoom={onResetZoom}
                         />
 
                         {hoverSummary !== null ? (
@@ -108,12 +104,10 @@ function ActivityMap({
     points,
     focusPoints,
     hoverPoint,
-    onResetZoom,
 }: {
     points: MapPoint[];
     focusPoints: MapPoint[];
     hoverPoint: MapPoint | null;
-    onResetZoom: () => void;
 }) {
     const effectiveFocusPoints = focusPoints.length > 1 ? focusPoints : points;
 
@@ -125,7 +119,6 @@ function ActivityMap({
         <MapContainer
             center={points[0]}
             zoom={13}
-            doubleClickZoom={false}
             className="h-full w-full rounded-md"
         >
             <TileLayer
@@ -164,20 +157,9 @@ function ActivityMap({
                 />
             ) : null}
 
-            <MapResetOnDoubleClick onResetZoom={onResetZoom} />
             <FitMapBounds bounds={bounds} />
         </MapContainer>
     );
-}
-
-function MapResetOnDoubleClick({ onResetZoom }: { onResetZoom: () => void }) {
-    useMapEvents({
-        dblclick: () => {
-            onResetZoom();
-        },
-    });
-
-    return null;
 }
 
 function FitMapBounds({ bounds }: { bounds: LatLngBoundsExpression }) {

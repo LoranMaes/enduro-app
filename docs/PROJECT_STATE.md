@@ -2,26 +2,45 @@
 
 ## Current Phase
 
-Phase 14 is complete: calendar creation UX correction + workout-library sidepanel hardening + drag/drop stabilization.
+Phase 17 is complete: ATP/progress/session-detail hardening with week-type visual scanning, localized ATP dates, corrected planned-vs-unplanned ATP aggregation, stronger progress state readability, and ATP service decomposition.
 
 ## Current Wave Focus
 
-- Phase 14 delivered end-to-end:
-    - session creation flow now stays canonical:
-        - day click/plus -> type picker -> sport -> session editor (`Details` + `Structure`)
-        - workout library is no longer injected into this modal flow
-    - workout library now runs from a dedicated non-blocking sidepanel (calendar remains visible/interactable)
-    - template previews now show variable-height block bars for clearer structure/intensity hints
-    - workout templates support edit flow from the library panel
-    - drag/drop is hardened:
-        - uncompleted sessions can be moved between days
-        - library templates can be dropped on a day to create planned sessions
-        - dropped structure payloads are normalized to API-required keys
-        - invalid week-id edge cases retry with `training_week_id = null`
+- Phase 17 delivered end-to-end:
+    - ATP week-type colors are now consistent across chart bars, table indicators, and legend
+    - ATP goal flag is now positioned below week labels for unobstructed week-number readability
+    - ATP week date labels/tooltips now follow browser-locale formatting with user timezone context
+    - ATP table TSS placeholders replaced with real value-or-dash rendering
+    - ATP aggregation now correctly separates:
+        - planned totals (`planning_source=planned` only)
+        - completed totals (completed planned + unplanned sessions)
+    - ATP service decomposition completed:
+        - `AtpWeekDefinitionFactory`
+        - `AtpWeekSessionMetricsResolver`
+        - `AtpWeekGoalResolver`
+        - `AthleteAnnualTrainingPlanService` remains orchestration + cache layer
+    - session-detail dotted hover line now snaps to the selected sample index (aligned with hover point/map sync)
+    - calendar session rows no longer show the auto-completed badge/text
+    - progress load trend target range now renders with stronger visibility (band + explicit boundaries)
+    - progress compliance/weekly logs now use shared `LoadStatePill` component and TSS-based recommended ranges
+- Phase 16 remains in place:
+    - persisted weekly snapshot source added for ATP/progress/calendar:
+        - `athlete_week_metrics`
+        - `WeeklyMetricsCalculator`
+        - `WeeklyLoadStateClassifier`
+        - `WeeklyMetricsSnapshotService`
+    - weekly recalculation dispatch now runs with existing load recalculation hooks and nightly backfill
+    - ATP payload now includes `is_current_week`, `load_state`, `load_state_ratio`, and `goal_marker`
+    - ATP header/table now surface current-week focus, hover detail, and load-state badges
+    - session detail chart hover line is now sample-aligned; zoom reset moved to chart double-click only
+    - progress/compliance now consume snapshot load-state fields with explicit ratio-source messaging
+    - training preference normalization centralized in `AthletePerformanceProfileResolver`
+    - settings timezone input now uses searchable IANA selection
+    - Stripe webhook scaffold added for `is_subscribed` synchronization
 
 ## Previous Phase Snapshot
 
-Phase 13 delivered ATP dedicated page + workout library domain/API + reconciliation hardening + settings entitlement consolidation.
+Phase 14 delivered calendar creation UX correction + workout library sidepanel hardening + drag/drop stabilization.
 
 Backend spine + athlete operational flows remain complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
 
@@ -120,6 +139,12 @@ LOCKED for MVP
     - `entry_type_entitlements` admin-managed gating flags
     - `training_sessions` provenance fields: `planning_source`, `completion_source`, `auto_completed_at`
     - `ActivityToSessionReconciler` integrated into sync for auto-link/auto-complete/unplanned creation
+- Load engine foundation is now live:
+    - `training_load_snapshots` storage model and indexed read/write paths
+    - queue-safe user-window recalculation (`RecalculateUserLoadJob`)
+    - nightly recent backfill (`RecalculateRecentLoadJob`)
+    - operational recompute command (`load:recompute`)
+    - load history API (`GET /api/progress`) with combined and per-sport series
 - Goals/ATP foundations are now live:
     - `goals` domain with athlete/admin policy controls and CRUD-lite API (`index/store/show/update`)
     - `annual_training_plans` skeleton domain with per-athlete/per-year uniqueness and auto-create read endpoint
@@ -209,6 +234,10 @@ LOCKED for MVP
     - dedicated modal for `event`/`goal`/`note` entries
     - entitlement lock-state rendering for gated types
     - linked activity/session duplicate cards removed (single-card session rendering)
+- Progress now includes dedicated performance-management visualization:
+    - ATL/CTL/TSB chart rendering via `/api/progress`
+    - per-sport/combined toggle
+    - load widgets conditionally hidden when `enable_load_metrics` is disabled
 - Goal creation/view flow is now separated from generic calendar entries:
     - `Other -> Goal` opens a dedicated goal modal
     - goals render in day columns as dedicated cards and can be updated in-place

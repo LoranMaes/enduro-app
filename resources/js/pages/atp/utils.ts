@@ -1,5 +1,23 @@
 import type { AtpWeek } from './types';
 
+export function formatAtpDate(
+    value: string,
+    timezone?: string | null,
+): string {
+    const date = new Date(`${value}T00:00:00`);
+    const resolvedTimezone =
+        timezone !== null && timezone !== undefined && timezone.trim() !== ''
+            ? timezone
+            : undefined;
+
+    return date.toLocaleDateString(undefined, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: resolvedTimezone,
+    });
+}
+
 export function minutesToHourLabel(minutes: number): string {
     const safeMinutes = Math.max(0, minutes);
     const hours = safeMinutes / 60;
@@ -20,7 +38,7 @@ export function resolveWeeklyBandState(week: AtpWeek): 'higher' | 'lower' | 'bal
 }
 
 export function formatWeekRange(week: AtpWeek): string {
-    return `${week.week_start_date} — ${week.week_end_date}`;
+    return `${formatAtpDate(week.week_start_date)} — ${formatAtpDate(week.week_end_date)}`;
 }
 
 export function weekSort(weeks: AtpWeek[]): AtpWeek[] {

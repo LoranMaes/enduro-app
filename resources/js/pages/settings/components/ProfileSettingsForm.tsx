@@ -1,5 +1,19 @@
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandEmpty,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import {
     Select,
     SelectContent,
@@ -7,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { unitSystemOptions } from '../constants';
 import type { useProfileSettings } from '../hooks/useProfileSettings';
 
@@ -19,6 +34,21 @@ export function ProfileSettingsForm({
     profileForm,
     onSubmit,
 }: ProfileSettingsFormProps) {
+    const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
+    const timezoneOptions = useMemo(() => {
+        const supportedValuesOf = (
+            Intl as unknown as {
+                supportedValuesOf?: (key: 'timeZone') => string[];
+            }
+        ).supportedValuesOf;
+
+        if (typeof supportedValuesOf === 'function') {
+            return supportedValuesOf('timeZone');
+        }
+
+        return ['UTC'];
+    }, []);
+
     return (
         <form
             onSubmit={(event) => {
@@ -64,15 +94,54 @@ export function ProfileSettingsForm({
                 <label htmlFor="settings-timezone" className="text-xs text-zinc-500">
                     Timezone
                 </label>
-                <input
-                    id="settings-timezone"
-                    value={profileForm.data.timezone}
-                    onChange={(event) => {
-                        profileForm.setData('timezone', event.target.value);
-                        profileForm.clearErrors('timezone');
-                    }}
-                    className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
-                />
+                <Popover open={isTimezoneOpen} onOpenChange={setIsTimezoneOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            id="settings-timezone"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={isTimezoneOpen}
+                            className="w-full justify-between border-border bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900/50"
+                        >
+                            <span className="truncate">
+                                {profileForm.data.timezone.trim() !== ''
+                                    ? profileForm.data.timezone
+                                    : 'Select timezone'}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[22rem] border-border bg-surface p-0">
+                        <Command>
+                            <CommandInput placeholder="Search timezone..." />
+                            <CommandList>
+                                <CommandEmpty>No timezone found.</CommandEmpty>
+                                {timezoneOptions.map((timezone: string) => (
+                                    <CommandItem
+                                        key={timezone}
+                                        value={timezone}
+                                        onSelect={() => {
+                                            profileForm.setData('timezone', timezone);
+                                            profileForm.clearErrors('timezone');
+                                            setIsTimezoneOpen(false);
+                                        }}
+                                        className="text-xs"
+                                    >
+                                        <Check
+                                            className={cn(
+                                                'h-4 w-4',
+                                                profileForm.data.timezone === timezone
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0',
+                                            )}
+                                        />
+                                        <span className="truncate">{timezone}</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
                 <InputError message={profileForm.errors.timezone} />
             </div>
 

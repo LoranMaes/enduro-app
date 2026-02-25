@@ -147,8 +147,6 @@ export function SessionRow({
     const isPlanned = session.status === 'planned';
     const isLinked = session.linkedActivityId !== null;
     const isPlannedWithoutActivity = isPlanned && !isLinked;
-    const isAutoCompleted =
-        isCompleted && session.completionSource === 'provider_auto';
     const isManualCompleted =
         isCompleted &&
         (session.completionSource === 'manual' || session.completionSource === null);
@@ -302,11 +300,6 @@ export function SessionRow({
                                 Adjusted
                             </span>
                         ) : null}
-                        {isAutoCompleted ? (
-                            <span className="inline-flex items-center rounded-full border border-sky-500/45 bg-sky-500/10 px-1.5 py-0.5 text-[0.625rem] text-sky-200">
-                                Auto-completed
-                            </span>
-                        ) : null}
                         {isManualCompleted && !isAdjusted ? (
                             <span className="inline-flex items-center rounded-full border border-emerald-500/50 bg-emerald-950/30 px-1.5 py-0.5 text-[0.625rem] text-emerald-300">
                                 Completed
@@ -384,11 +377,6 @@ export function SessionRow({
             {!compact && !isOverlay && isAdjusted ? (
                 <p className="text-[0.625rem] text-zinc-400">
                     Completed with adjusted values
-                </p>
-            ) : null}
-            {!compact && !isOverlay && isAutoCompleted ? (
-                <p className="text-[0.625rem] text-sky-300">
-                    Auto-completed from linked activity
                 </p>
             ) : null}
 

@@ -2,6 +2,7 @@
 
 namespace App\Actions\TrainingSession;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
 use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\User;
@@ -9,6 +10,10 @@ use Illuminate\Validation\ValidationException;
 
 class UnlinkActivityAction
 {
+    public function __construct(
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
+    ) {}
+
     public function execute(User $user, TrainingSession $trainingSession): Activity
     {
         $linkedActivity = Activity::query()
@@ -29,6 +34,7 @@ class UnlinkActivityAction
 
         $linkedActivity->training_session_id = null;
         $linkedActivity->save();
+        $this->dispatchRecentLoadRecalculation->execute($user, 60);
 
         return $linkedActivity;
     }

@@ -2,12 +2,18 @@
 
 namespace App\Actions\TrainingSession;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
 use App\Enums\TrainingSessionStatus;
 use App\Models\TrainingSession;
+use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 class RevertCompletionAction
 {
+    public function __construct(
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
+    ) {}
+
     public function execute(TrainingSession $trainingSession): TrainingSession
     {
         if (
@@ -27,6 +33,12 @@ class RevertCompletionAction
             'completion_source' => null,
             'auto_completed_at' => null,
         ]);
+
+        $owner = User::query()->find($trainingSession->user_id);
+
+        if ($owner instanceof User && $owner->isAthlete()) {
+            $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+        }
 
         return $trainingSession->refresh()->loadMissing('activity');
     }

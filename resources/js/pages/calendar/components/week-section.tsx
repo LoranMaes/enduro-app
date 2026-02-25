@@ -255,6 +255,7 @@ export function WeekSection({
             : 0;
     const compliancePercentage = Math.round(complianceRatio * 100);
     const recommendationState = resolveRecommendationState(
+        compliance?.load_state ?? null,
         compliance?.recommendation_band ?? null,
         compliance?.actual_minutes_total ?? actualDurationMinutes,
     );
@@ -436,9 +437,22 @@ function sportSortOrder(sport: string): number {
 }
 
 function resolveRecommendationState(
+    loadState: string | null,
     recommendationBand: { min_minutes: number; max_minutes: number } | null,
     actualMinutes: number,
 ): 'too_low' | 'in_range' | 'too_high' {
+    if (loadState === 'in_range') {
+        return 'in_range';
+    }
+
+    if (loadState === 'high') {
+        return 'too_high';
+    }
+
+    if (loadState === 'low') {
+        return 'too_low';
+    }
+
     if (recommendationBand === null) {
         return 'too_low';
     }

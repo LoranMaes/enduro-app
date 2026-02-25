@@ -18,7 +18,11 @@ export type AtpWeek = {
     completed_minutes: number;
     planned_tss: number | null;
     completed_tss: number | null;
+    load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    load_state_ratio: number | null;
+    is_current_week: boolean;
     primary_goal: AtpPrimaryGoal | null;
+    goal_marker: AtpPrimaryGoal | null;
     weeks_to_goal: number | null;
 };
 

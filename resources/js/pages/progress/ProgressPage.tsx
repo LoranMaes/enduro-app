@@ -2,20 +2,32 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { ProgressHeader } from './components/ProgressHeader';
 import { ProgressLoadTrendChart } from './components/ProgressLoadTrendChart';
+import { PerformanceManagementChart } from './components/PerformanceManagementChart';
 import { ProgressCompliancePanel } from './components/ProgressCompliancePanel';
 import { ProgressSummaryCards } from './components/ProgressSummaryCards';
 import { ProgressWeeklyLogs } from './components/ProgressWeeklyLogs';
 import { progressBreadcrumbs } from './constants';
 import { useProgressChartData } from './hooks/useProgressChartData';
+import { usePerformanceManagementData } from './hooks/usePerformanceManagementData';
 import { useProgressMetrics } from './hooks/useProgressMetrics';
 import { useProgressState } from './hooks/useProgressState';
 import type { ProgressPageProps } from './types';
 
-export function ProgressPage({ range, summary, weeks, compliance }: ProgressPageProps) {
+export function ProgressPage({
+    range,
+    summary,
+    weeks,
+    compliance,
+    load_metrics_enabled,
+}: ProgressPageProps) {
     const { isSwitchingRange, hoveredIndex, setHoveredIndex, switchRange } =
         useProgressState(range.weeks);
 
     const trend = useProgressChartData(weeks);
+    const performanceLoad = usePerformanceManagementData(
+        weeks,
+        load_metrics_enabled,
+    );
 
     const { hasVisibleLoadData, activePointIndex, activePoint } = useProgressMetrics(
         weeks,
@@ -36,15 +48,24 @@ export function ProgressPage({ range, summary, weeks, compliance }: ProgressPage
                 />
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-                    <ProgressLoadTrendChart
-                        summary={summary}
-                        trend={trend}
-                        hasVisibleLoadData={hasVisibleLoadData}
-                        activePointIndex={activePointIndex}
-                        activePoint={activePoint}
-                        weeksCount={weeks.length}
-                        onSetHoveredIndex={setHoveredIndex}
-                    />
+                    {load_metrics_enabled ? (
+                        <>
+                            <ProgressLoadTrendChart
+                                summary={summary}
+                                trend={trend}
+                                hasVisibleLoadData={hasVisibleLoadData}
+                                activePointIndex={activePointIndex}
+                                activePoint={activePoint}
+                                weeksCount={weeks.length}
+                                onSetHoveredIndex={setHoveredIndex}
+                            />
+                            <PerformanceManagementChart
+                                data={performanceLoad.data}
+                                loading={performanceLoad.loading}
+                                error={performanceLoad.error}
+                            />
+                        </>
+                    ) : null}
 
                     <ProgressSummaryCards
                         consistencyWeeks={summary.consistency_weeks}

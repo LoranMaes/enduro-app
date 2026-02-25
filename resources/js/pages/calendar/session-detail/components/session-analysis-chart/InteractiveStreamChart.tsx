@@ -9,6 +9,7 @@ type InteractiveStreamChartProps = {
     hoverSampleIndex: number | null;
     onHoverSampleIndexChange: (sampleIndex: number | null) => void;
     onZoomSelection: (min: number, max: number) => void;
+    onResetZoom: () => void;
 };
 
 export function InteractiveStreamChart({
@@ -18,6 +19,7 @@ export function InteractiveStreamChart({
     hoverSampleIndex,
     onHoverSampleIndexChange,
     onZoomSelection,
+    onResetZoom,
 }: InteractiveStreamChartProps) {
     const width = 960;
     const height = 380;
@@ -28,7 +30,6 @@ export function InteractiveStreamChart({
 
     const [selectionStartX, setSelectionStartX] = useState<number | null>(null);
     const [selectionEndX, setSelectionEndX] = useState<number | null>(null);
-    const [hoverChartX, setHoverChartX] = useState<number | null>(null);
 
     const xValues = referencePoints.map((point) => point.x);
     const yValues = series.flatMap((item) => item.points.map((point) => point.y));
@@ -74,14 +75,30 @@ export function InteractiveStreamChart({
     const getChartXFromMouse = (
         event: ReactMouseEvent<SVGSVGElement, MouseEvent>,
     ): number => {
-        const bounds = event.currentTarget.getBoundingClientRect();
-        const svgX = ((event.clientX - bounds.left) / bounds.width) * width;
+        const svg = event.currentTarget;
+        const matrix = svg.getScreenCTM();
 
-        return Math.max(axisLeft, Math.min(axisLeft + chartWidth, svgX));
+        if (matrix === null) {
+            return axisLeft;
+        }
+
+        const point = svg.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+
+        const svgPoint = point.matrixTransform(matrix.inverse());
+
+        return Math.max(
+            axisLeft,
+            Math.min(axisLeft + chartWidth, svgPoint.x),
+        );
     };
 
     const chartXToDomain = (chartX: number): number => {
         return minX + ((chartX - axisLeft) / chartWidth) * (maxX - minX);
+    };
+    const domainToChartX = (domainX: number): number => {
+        return axisLeft + ((domainX - minX) / Math.max(0.000001, maxX - minX)) * chartWidth;
     };
 
     const selectionRectangle =
@@ -99,7 +116,6 @@ export function InteractiveStreamChart({
             preserveAspectRatio="xMidYMid meet"
             onMouseLeave={() => {
                 onHoverSampleIndexChange(null);
-                setHoverChartX(null);
                 setSelectionStartX(null);
                 setSelectionEndX(null);
             }}
@@ -107,17 +123,15 @@ export function InteractiveStreamChart({
                 const chartX = getChartXFromMouse(event);
                 setSelectionStartX(chartX);
                 setSelectionEndX(chartX);
-                setHoverChartX(chartX);
             }}
             onMouseMove={(event) => {
                 const chartX = getChartXFromMouse(event);
                 const domainX = chartXToDomain(chartX);
 
-                setHoverChartX(chartX);
-
                 const closest = referencePoints.reduce<{
                     distance: number;
                     sampleIndex: number;
+                    x: number;
                 } | null>((current, point) => {
                     const distance = Math.abs(point.x - domainX);
 
@@ -125,6 +139,7 @@ export function InteractiveStreamChart({
                         return {
                             distance,
                             sampleIndex: point.sampleIndex,
+                            x: point.x,
                         };
                     }
 
@@ -151,6 +166,9 @@ export function InteractiveStreamChart({
 
                 setSelectionStartX(null);
                 setSelectionEndX(null);
+            }}
+            onDoubleClick={() => {
+                onResetZoom();
             }}
         >
             <rect
@@ -338,10 +356,10 @@ export function InteractiveStreamChart({
                 );
             })}
 
-            {hoverChartX !== null ? (
+            {hoveredReferencePoint !== null ? (
                 <line
-                    x1={hoverChartX}
-                    x2={hoverChartX}
+                    x1={domainToChartX(hoveredReferencePoint.x)}
+                    x2={domainToChartX(hoveredReferencePoint.x)}
                     y1={axisTop}
                     y2={axisTop + chartHeight}
                     stroke="#d4d4d8"

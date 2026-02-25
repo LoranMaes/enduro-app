@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\TrainingSessionPlanningSource;
 use App\Models\AnnualTrainingPlan;
 use App\Models\AnnualTrainingPlanWeek;
+use App\Models\Goal;
+use App\Models\TrainingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -117,4 +120,108 @@ it('updates atp week metadata for athlete users', function () {
             ->whereDate('week_start_date', $weekStart)
             ->value('priority'),
     )->toBe('high');
+});
+
+it('includes current week and goal marker metadata in the atp payload', function () {
+    $athlete = User::factory()->athlete()->create();
+    $year = (int) now()->year;
+    $goalDate = CarbonImmutable::create($year, 6, 15)->toDateString();
+    $goalWeekStart = CarbonImmutable::parse($goalDate)
+        ->startOfWeek(CarbonInterface::MONDAY)
+        ->toDateString();
+
+    Goal::factory()->create([
+        'user_id' => $athlete->id,
+        'title' => 'A Race Goal',
+        'target_date' => $goalDate,
+        'priority' => 'high',
+        'status' => 'active',
+    ]);
+
+    $response = $this
+        ->actingAs($athlete)
+        ->getJson("/api/atp/{$year}")
+        ->assertOk()
+        ->json('data.weeks');
+
+    expect($response)->toBeArray();
+
+    $currentWeeks = collect($response)->filter(
+        fn (array $week): bool => (bool) ($week['is_current_week'] ?? false),
+    );
+
+    expect($currentWeeks->count())->toBe(1);
+
+    $goalWeek = collect($response)->first(
+        fn (array $week): bool => ($week['week_start_date'] ?? null) === $goalWeekStart,
+    );
+
+    expect($goalWeek)->toBeArray();
+    expect($goalWeek['goal_marker'])->not->toBeNull();
+    expect($goalWeek['goal_marker']['title'])->toBe('A Race Goal');
+    expect($goalWeek['load_state'])->toBeString();
+});
+
+it('only counts planned sessions in planned metrics and includes unplanned sessions in completed totals', function () {
+    $athlete = User::factory()->athlete()->create();
+    $weekStart = CarbonImmutable::parse('2026-02-09')
+        ->startOfWeek(CarbonInterface::MONDAY)
+        ->toDateString();
+    $scheduledDate = CarbonImmutable::parse($weekStart)->addDay()->toDateString();
+    $completedAt = CarbonImmutable::parse('2026-02-10 08:00:00');
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => $scheduledDate,
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'duration_minutes' => 60,
+        'planned_tss' => 40,
+        'status' => 'planned',
+        'completed_at' => null,
+        'actual_duration_minutes' => null,
+        'actual_tss' => null,
+    ]);
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => CarbonImmutable::parse($scheduledDate)->addDay()->toDateString(),
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'duration_minutes' => 75,
+        'planned_tss' => 65,
+        'status' => 'completed',
+        'completed_at' => $completedAt,
+        'actual_duration_minutes' => 80,
+        'actual_tss' => 72,
+    ]);
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => CarbonImmutable::parse($scheduledDate)->addDays(2)->toDateString(),
+        'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+        'duration_minutes' => 30,
+        'planned_tss' => 20,
+        'status' => 'completed',
+        'completed_at' => $completedAt->addHour(),
+        'actual_duration_minutes' => 35,
+        'actual_tss' => 28,
+    ]);
+
+    $week = collect(
+        $this
+            ->actingAs($athlete)
+            ->getJson('/api/atp/2026')
+            ->assertOk()
+            ->json('data.weeks'),
+    )->first(
+        fn (array $item): bool => ($item['week_start_date'] ?? null) === $weekStart,
+    );
+
+    expect($week)->toBeArray();
+    expect($week['planned_minutes'])->toBe(135);
+    expect($week['planned_tss'])->toBe(105);
+    expect($week['completed_minutes'])->toBe(115);
+    expect($week['completed_tss'])->toBe(100);
 });

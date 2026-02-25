@@ -2,14 +2,15 @@
 
 namespace App\Services\Progress;
 
-use App\Enums\TrainingSessionPlanningSource;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Metrics\WeeklyMetricsSnapshotService;
 use Carbon\CarbonImmutable;
 
 class ComplianceService
 {
     public function __construct(
+        private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
         private readonly WeeklyRecommendationBandService $weeklyRecommendationBandService,
     ) {}
 
@@ -23,6 +24,11 @@ class ComplianceService
      *         compliance_ratio: float,
      *         planned_duration_minutes_total: int,
      *         completed_duration_minutes_total: int,
+     *         planned_tss_total: int,
+     *         completed_tss_total: int,
+     *         load_state: string,
+     *         load_state_ratio: float|null,
+     *         load_state_source: string,
      *         actual_minutes_total: int,
      *         recommendation_band: array{min_minutes: int, max_minutes: int}|null
      *     }>,
@@ -42,18 +48,15 @@ class ComplianceService
         $historyStartsAt = $rangeStartsAt->subWeeks(4);
         $rangeWeekStartsAt = $this->weekStartsBetween($rangeStartsAt, $rangeEndsAt);
         $historyWeekStartsAt = $this->weekStartsBetween($historyStartsAt, $rangeEndsAt);
+        $snapshotMetrics = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $rangeStartsAt,
+            $rangeEndsAt,
+        );
 
-        $plannedSessionsByWeek = [];
-        $plannedCompletedByWeek = [];
-        $plannedDurationByWeek = [];
-        $completedDurationByWeek = [];
         $actualMinutesByWeek = [];
 
         foreach ($historyWeekStartsAt as $weekStartsAt) {
-            $plannedSessionsByWeek[$weekStartsAt] = 0;
-            $plannedCompletedByWeek[$weekStartsAt] = 0;
-            $plannedDurationByWeek[$weekStartsAt] = 0;
-            $completedDurationByWeek[$weekStartsAt] = 0;
             $actualMinutesByWeek[$weekStartsAt] = 0;
         }
 
@@ -65,9 +68,7 @@ class ComplianceService
             ->orderBy('id')
             ->get([
                 'scheduled_date',
-                'planning_source',
                 'completed_at',
-                'duration_minutes',
                 'actual_duration_minutes',
             ]);
 
@@ -86,32 +87,14 @@ class ComplianceService
                 continue;
             }
 
-            $isPlannedSession = (
-                ($session->planning_source instanceof TrainingSessionPlanningSource
-                    ? $session->planning_source
-                    : TrainingSessionPlanningSource::tryFrom((string) $session->planning_source))
-                ?? TrainingSessionPlanningSource::Planned
-            ) === TrainingSessionPlanningSource::Planned;
-            $isCompleted = $session->completed_at !== null;
-            $actualDurationMinutes = max(0, (int) ($session->actual_duration_minutes ?? 0));
-
-            if ($isCompleted) {
-                $actualMinutesByWeek[$weekStartsAt] += $actualDurationMinutes;
-            }
-
-            if (! $isPlannedSession) {
+            if ($session->completed_at === null) {
                 continue;
             }
 
-            $plannedSessionsByWeek[$weekStartsAt]++;
-            $plannedDurationByWeek[$weekStartsAt] += max(0, (int) $session->duration_minutes);
-
-            if (! $isCompleted) {
-                continue;
-            }
-
-            $plannedCompletedByWeek[$weekStartsAt]++;
-            $completedDurationByWeek[$weekStartsAt] += $actualDurationMinutes;
+            $actualMinutesByWeek[$weekStartsAt] += max(
+                0,
+                (int) ($session->actual_duration_minutes ?? 0),
+            );
         }
 
         $bands = $this->weeklyRecommendationBandService->resolve(
@@ -124,22 +107,42 @@ class ComplianceService
         $totalPlannedCompleted = 0;
 
         foreach ($rangeWeekStartsAt as $weekStartsAt) {
-            $plannedSessionsCount = $plannedSessionsByWeek[$weekStartsAt] ?? 0;
-            $plannedCompletedCount = $plannedCompletedByWeek[$weekStartsAt] ?? 0;
+            $snapshot = $snapshotMetrics[$weekStartsAt] ?? [
+                'week_start_date' => $weekStartsAt,
+                'week_end_date' => CarbonImmutable::parse($weekStartsAt)
+                    ->addDays(6)
+                    ->toDateString(),
+                'planned_sessions_count' => 0,
+                'planned_completed_count' => 0,
+                'planned_minutes_total' => 0,
+                'completed_minutes_total' => 0,
+                'planned_tss_total' => 0,
+                'completed_tss_total' => 0,
+                'load_state' => 'insufficient',
+                'load_state_ratio' => null,
+                'load_state_source' => 'planned_completed_tss_ratio',
+            ];
+            $plannedSessionsCount = (int) $snapshot['planned_sessions_count'];
+            $plannedCompletedCount = (int) $snapshot['planned_completed_count'];
             $complianceRatio = $plannedSessionsCount > 0
                 ? $plannedCompletedCount / $plannedSessionsCount
                 : 0.0;
 
             $weeks[] = [
                 'week_starts_at' => $weekStartsAt,
-                'week_ends_at' => CarbonImmutable::parse($weekStartsAt)
-                    ->addDays(6)
-                    ->toDateString(),
+                'week_ends_at' => (string) $snapshot['week_end_date'],
                 'planned_sessions_count' => $plannedSessionsCount,
                 'planned_completed_count' => $plannedCompletedCount,
                 'compliance_ratio' => $complianceRatio,
-                'planned_duration_minutes_total' => $plannedDurationByWeek[$weekStartsAt] ?? 0,
-                'completed_duration_minutes_total' => $completedDurationByWeek[$weekStartsAt] ?? 0,
+                'planned_duration_minutes_total' => (int) $snapshot['planned_minutes_total'],
+                'completed_duration_minutes_total' => (int) $snapshot['completed_minutes_total'],
+                'planned_tss_total' => (int) $snapshot['planned_tss_total'],
+                'completed_tss_total' => (int) $snapshot['completed_tss_total'],
+                'load_state' => (string) $snapshot['load_state'],
+                'load_state_ratio' => $snapshot['load_state_ratio'] !== null
+                    ? (float) $snapshot['load_state_ratio']
+                    : null,
+                'load_state_source' => (string) $snapshot['load_state_source'],
                 'actual_minutes_total' => $actualMinutesByWeek[$weekStartsAt] ?? 0,
                 'recommendation_band' => $bands[$weekStartsAt] ?? null,
             ];

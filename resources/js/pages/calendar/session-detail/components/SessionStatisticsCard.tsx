@@ -39,6 +39,14 @@ export function SessionStatisticsCard({
     totalDistanceKilometers,
     elevationGainMeters,
 }: SessionStatisticsCardProps) {
+    const isPlannedSession = sessionView.planningSource === 'planned';
+    const plannedDurationLabel = isPlannedSession
+        ? formatDurationMinutes(sessionView.durationMinutes)
+        : '—';
+    const plannedTssLabel = isPlannedSession
+        ? `${formatNumber(sessionView.plannedTss)} TSS`
+        : '—';
+
     return (
         <div className="h-full overflow-y-auto rounded-xl border border-border bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
@@ -84,10 +92,8 @@ export function SessionStatisticsCard({
                     <div className="mt-3 flex flex-wrap gap-1.5">
                         <ComparisonBadge
                             label="Planned"
-                            value={formatDurationMinutes(
-                                sessionView.durationMinutes,
-                            )}
-                            meta={`${formatNumber(sessionView.plannedTss)} TSS`}
+                            value={plannedDurationLabel}
+                            meta={plannedTssLabel}
                         />
                         <ComparisonBadge
                             label="Actual"

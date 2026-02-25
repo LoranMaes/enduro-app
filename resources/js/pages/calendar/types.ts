@@ -29,6 +29,11 @@ export type ProgressComplianceWeek = {
     compliance_ratio: number;
     planned_duration_minutes_total: number;
     completed_duration_minutes_total: number;
+    planned_tss_total: number;
+    completed_tss_total: number;
+    load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    load_state_ratio: number | null;
+    load_state_source: string;
     actual_minutes_total: number;
     recommendation_band: {
         min_minutes: number;

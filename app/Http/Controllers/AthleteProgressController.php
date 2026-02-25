@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Services\Metrics\WeeklyMetricsSnapshotService;
 use App\Services\Progress\ComplianceService;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
@@ -19,6 +20,7 @@ class AthleteProgressController extends Controller
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
         private readonly ComplianceService $complianceService,
+        private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
     ) {}
 
     public function __invoke(IndexRequest $request): Response
@@ -35,6 +37,11 @@ class AthleteProgressController extends Controller
         $currentWeekStart = CarbonImmutable::today()->startOfWeek();
         $windowStart = $currentWeekStart->subWeeks($selectedWeeks - 1);
         $windowEnd = $currentWeekStart->addDays(6);
+        $weeklySnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $windowStart,
+            $windowEnd,
+        );
 
         $sessions = TrainingSession::query()
             ->where('user_id', $user->id)
@@ -181,11 +188,12 @@ class AthleteProgressController extends Controller
         }
 
         $progressWeeks = array_map(
-            function (array $bucket): array {
+            function (array $bucket) use ($weeklySnapshots): array {
                 $hasPlannedSessions = $bucket['planned_sessions'] > 0;
                 $hasActualLoad = $bucket['completed_sessions'] > 0
                     || $bucket['actual_duration_minutes'] > 0
                     || $bucket['actual_tss'] > 0;
+                $snapshot = $weeklySnapshots[$bucket['week_start']] ?? null;
 
                 return [
                     'week_start' => $bucket['week_start'],
@@ -202,8 +210,16 @@ class AthleteProgressController extends Controller
                     'actual_tss' => $hasActualLoad
                         ? $bucket['actual_tss']
                         : null,
-                    'planned_sessions' => $bucket['planned_sessions'],
-                    'completed_sessions' => $bucket['completed_sessions'],
+                    'planned_sessions' => $snapshot !== null
+                        ? (int) $snapshot['planned_sessions_count']
+                        : $bucket['planned_sessions'],
+                    'completed_sessions' => $snapshot !== null
+                        ? (int) $snapshot['planned_completed_count']
+                        : $bucket['completed_sessions'],
+                    'load_state' => (string) ($snapshot['load_state'] ?? 'insufficient'),
+                    'load_state_ratio' => $snapshot !== null && $snapshot['load_state_ratio'] !== null
+                        ? (float) $snapshot['load_state_ratio']
+                        : null,
                 ];
             },
             array_values($weeklyBuckets),
@@ -257,6 +273,7 @@ class AthleteProgressController extends Controller
         }
 
         return Inertia::render('progress/index', [
+            'load_metrics_enabled' => (bool) $user->enable_load_metrics,
             'range' => [
                 'weeks' => $selectedWeeks,
                 'options' => $rangeOptions,

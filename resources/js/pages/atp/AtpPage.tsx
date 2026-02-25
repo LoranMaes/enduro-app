@@ -15,7 +15,6 @@ export function AtpPage({
     year,
     plan,
     weekTypeOptions,
-    priorityOptions,
 }: AtpPageProps) {
     const navigation = useAtpNavigation(year);
     const {
@@ -84,7 +83,6 @@ export function AtpPage({
                 <AtpWeekTable
                     weeks={weeks}
                     weekTypeOptions={weekTypeOptions}
-                    priorityOptions={priorityOptions}
                     updatingWeekStart={updatingWeekStart}
                     onOpenWeek={openCalendarWeek}
                     onUpdateWeek={(weekStart, payload) => {

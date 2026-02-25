@@ -7,6 +7,8 @@ export type ProgressWeek = {
     actual_tss: number | null;
     planned_sessions: number;
     completed_sessions: number;
+    load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    load_state_ratio: number | null;
 };
 
 export type ProgressRange = {
@@ -35,6 +37,11 @@ export type ProgressComplianceWeek = {
     compliance_ratio: number;
     planned_duration_minutes_total: number;
     completed_duration_minutes_total: number;
+    planned_tss_total: number;
+    completed_tss_total: number;
+    load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    load_state_ratio: number | null;
+    load_state_source: string;
     actual_minutes_total: number;
     recommendation_band: {
         min_minutes: number;
@@ -56,18 +63,50 @@ export type ProgressCompliancePayload = {
 };
 
 export type ProgressPageProps = {
+    load_metrics_enabled: boolean;
     range: ProgressRange;
     summary: ProgressSummary;
     weeks: ProgressWeek[];
     compliance: ProgressCompliancePayload;
 };
 
+export type LoadSeriesPoint = {
+    date: string;
+    sport: 'combined' | 'run' | 'bike' | 'swim' | 'other' | string;
+    tss: number;
+    atl: number;
+    ctl: number;
+    tsb: number;
+};
+
+export type ProgressLoadHistoryPayload = {
+    from: string;
+    to: string;
+    combined: LoadSeriesPoint[];
+    per_sport: {
+        run: LoadSeriesPoint[];
+        bike: LoadSeriesPoint[];
+        swim: LoadSeriesPoint[];
+        other: LoadSeriesPoint[];
+    };
+    latest: {
+        date: string;
+        atl: number;
+        ctl: number;
+        tsb: number;
+    } | null;
+};
+
 export type ProgressPoint = {
     x: number;
     plannedTss: number | null;
     actualTss: number | null;
+    suggestedMinTss: number | null;
+    suggestedMaxTss: number | null;
     plannedY: number | null;
     actualY: number | null;
+    suggestedMinY: number | null;
+    suggestedMaxY: number | null;
     label: string;
 };
 
@@ -77,6 +116,14 @@ export type ProgressTrend = {
     actualSegments: string[];
     plannedSegments: string[];
     targetBands: string[];
+    targetBandUpperSegments: string[];
+    targetBandLowerSegments: string[];
+    targetBandColumns: Array<{
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    }>;
     chartWidth: number;
     chartHeight: number;
     chartPaddingX: number;

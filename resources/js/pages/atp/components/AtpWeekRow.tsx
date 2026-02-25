@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import {
     Select,
@@ -7,21 +8,20 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ATP_TSS_PLACEHOLDER } from '../constants';
+import type { SharedData } from '@/types';
+import { ATP_WEEK_TYPE_STYLES } from '../constants';
 import type { AtpWeek } from '../types';
-import { minutesToHourLabel } from '../utils';
+import { formatAtpDate, minutesToHourLabel } from '../utils';
 
 type AtpWeekRowProps = {
     week: AtpWeek;
     weekTypeOptions: string[];
-    priorityOptions: string[];
     isUpdating: boolean;
     onOpenWeek: (weekStart: string) => void;
     onUpdateWeek: (
         weekStart: string,
         payload: {
             week_type?: string;
-            priority?: string;
         },
     ) => void;
 };
@@ -36,13 +36,31 @@ function optionLabel(value: string): string {
 export function AtpWeekRow({
     week,
     weekTypeOptions,
-    priorityOptions,
     isUpdating,
     onOpenWeek,
     onUpdateWeek,
 }: AtpWeekRowProps) {
+    const { auth } = usePage<SharedData>().props;
+    const timezone =
+        typeof auth.user.timezone === 'string' ? auth.user.timezone : null;
+    const weekTypeStyle =
+        ATP_WEEK_TYPE_STYLES[week.week_type] ?? ATP_WEEK_TYPE_STYLES.default;
+    const loadStateClass =
+        week.load_state === 'in_range'
+            ? 'border-emerald-500/40 text-emerald-300'
+            : week.load_state === 'high'
+              ? 'border-amber-500/40 text-amber-300'
+              : week.load_state === 'low'
+                ? 'border-zinc-700 text-zinc-300'
+                : 'border-zinc-800 text-zinc-500';
+
     return (
-        <tr className="border-b border-border/70 text-sm text-zinc-300 last:border-b-0">
+        <tr
+            className={cn(
+                'border-b border-border/70 text-sm text-zinc-300 last:border-b-0',
+                week.is_current_week && 'bg-zinc-900/35',
+            )}
+        >
             <td className="px-3 py-2 align-middle">
                 <button
                     type="button"
@@ -51,61 +69,58 @@ export function AtpWeekRow({
                         onOpenWeek(week.week_start_date);
                     }}
                 >
-                    <span className="block font-medium">{week.week_start_date}</span>
-                    <span className="text-zinc-500">{week.week_end_date}</span>
+                    <span className="block font-medium">
+                        {formatAtpDate(week.week_start_date, timezone)}
+                    </span>
+                    <span className="text-zinc-500">
+                        {formatAtpDate(week.week_end_date, timezone)}
+                    </span>
+                    {week.is_current_week ? (
+                        <span className="mt-0.5 block text-[0.625rem] text-zinc-400">
+                            Current week
+                        </span>
+                    ) : null}
                 </button>
             </td>
-            <td className="px-3 py-2 align-middle text-xs text-zinc-400">
-                {week.weeks_to_goal !== null ? `${week.weeks_to_goal}` : '—'}
-                {week.primary_goal !== null ? (
-                    <span className="mt-1 block truncate text-zinc-500" title={week.primary_goal.title}>
-                        {week.primary_goal.title}
-                    </span>
-                ) : null}
-            </td>
             <td className="px-3 py-2 align-middle">
-                <Select
-                    value={week.week_type}
-                    onValueChange={(value) => {
-                        onUpdateWeek(week.week_start_date, {
-                            week_type: value,
-                        });
-                    }}
-                    disabled={isUpdating}
-                >
-                    <SelectTrigger className="h-8 w-full border-border bg-background text-xs">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-border bg-surface text-zinc-200">
-                        {weekTypeOptions.map((option) => (
-                            <SelectItem key={option} value={option} className="text-xs">
-                                {optionLabel(option)}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </td>
-            <td className="px-3 py-2 align-middle">
-                <Select
-                    value={week.priority}
-                    onValueChange={(value) => {
-                        onUpdateWeek(week.week_start_date, {
-                            priority: value,
-                        });
-                    }}
-                    disabled={isUpdating}
-                >
-                    <SelectTrigger className="h-8 w-full border-border bg-background text-xs">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-border bg-surface text-zinc-200">
-                        {priorityOptions.map((option) => (
-                            <SelectItem key={option} value={option} className="text-xs">
-                                {optionLabel(option)}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                    <span
+                        className={cn(
+                            'h-2 w-2 rounded-full',
+                            weekTypeStyle.dotClassName,
+                        )}
+                        aria-hidden="true"
+                    />
+                    <Select
+                        value={week.week_type}
+                        onValueChange={(value) => {
+                            onUpdateWeek(week.week_start_date, {
+                                week_type: value,
+                            });
+                        }}
+                        disabled={isUpdating}
+                    >
+                        <SelectTrigger className="h-8 w-full border-border bg-background text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="border-border bg-surface text-zinc-200">
+                            {weekTypeOptions.map((option) => (
+                                <SelectItem key={option} value={option} className="text-xs">
+                                    {optionLabel(option)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Badge
+                        variant="outline"
+                        className={cn(
+                            'text-[0.625rem] capitalize',
+                            weekTypeStyle.chipClassName,
+                        )}
+                    >
+                        {week.week_type.replace('_', ' ')}
+                    </Badge>
+                </div>
             </td>
             <td className="px-3 py-2 align-middle text-xs text-zinc-300">
                 {minutesToHourLabel(week.planned_minutes)}
@@ -114,26 +129,43 @@ export function AtpWeekRow({
                 {minutesToHourLabel(week.completed_minutes)}
             </td>
             <td className="px-3 py-2 align-middle text-xs text-zinc-500">
-                {week.planned_tss !== null ? week.planned_tss : ATP_TSS_PLACEHOLDER}
+                <span className="font-mono">
+                    {week.planned_tss !== null ? week.planned_tss : '—'}
+                </span>
             </td>
             <td className="px-3 py-2 align-middle text-xs text-zinc-500">
-                {week.completed_tss !== null ? week.completed_tss : ATP_TSS_PLACEHOLDER}
+                <div className="flex items-center gap-2">
+                    {week.completed_tss !== null ? (
+                        <span className="font-mono">{week.completed_tss}</span>
+                    ) : null}
+                    <Badge
+                        variant="outline"
+                        className={cn('text-[0.625rem] capitalize', loadStateClass)}
+                    >
+                        {week.load_state.replace('_', ' ')}
+                    </Badge>
+                </div>
             </td>
             <td className="px-3 py-2 align-middle">
                 {week.primary_goal !== null ? (
-                    <Badge
-                        variant="outline"
-                        className={cn(
-                            'text-[0.625rem]',
-                            week.primary_goal.priority === 'high'
-                                ? 'border-amber-600/60 text-amber-300'
-                                : week.primary_goal.priority === 'normal'
-                                  ? 'border-zinc-700 text-zinc-300'
-                                  : 'border-zinc-800 text-zinc-500',
-                        )}
-                    >
-                        {week.primary_goal.priority}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <span className="max-w-44 truncate text-xs text-zinc-300" title={week.primary_goal.title}>
+                            {week.primary_goal.title}
+                        </span>
+                        <Badge
+                            variant="outline"
+                            className={cn(
+                                'text-[0.625rem]',
+                                week.primary_goal.priority === 'high'
+                                    ? 'border-amber-600/60 text-amber-300'
+                                    : week.primary_goal.priority === 'normal'
+                                      ? 'border-zinc-700 text-zinc-300'
+                                      : 'border-zinc-800 text-zinc-500',
+                            )}
+                        >
+                            {week.primary_goal.priority}
+                        </Badge>
+                    </div>
                 ) : (
                     <span className="text-xs text-zinc-600">—</span>
                 )}

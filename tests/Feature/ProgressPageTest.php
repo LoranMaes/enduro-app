@@ -88,7 +88,7 @@ it('uses linked activity payload TSS for actual trend when session actual_tss is
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('progress/index')
             ->where('summary.actual_tss_total', 88)
-            ->where('summary.completed_sessions_total', 1));
+            ->where('summary.completed_sessions_total', 0));
 });
 
 it('estimates actual tss from linked activity power and ftp when payload tss is missing', function () {
@@ -127,7 +127,7 @@ it('estimates actual tss from linked activity power and ftp when payload tss is 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('progress/index')
-            ->where('summary.completed_sessions_total', 1)
+            ->where('summary.completed_sessions_total', 0)
             ->where('summary.actual_tss_total', 64));
 });
 

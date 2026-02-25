@@ -4,6 +4,137 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 17 — ATP + Progress + Session Detail Hardening (COMPLETE)
+
+- Goals:
+  - apply final ATP readability fixes (week-type scanning, localized dates, goal marker placement, no placeholder cells)
+  - fix session-detail hover/crosshair alignment regression
+  - improve progress target-band visibility and make compliance states easier to scan
+  - correct ATP planned/completed aggregation semantics for planned vs unplanned sessions
+  - decompose oversized ATP service into maintainable collaborators
+- Boundaries:
+  - no route changes
+  - no API key removals/renames
+  - no visual redesign
+  - behavior preserved except locked correctness fixes
+- Completed:
+  - ATP UI:
+    - fixed week-type palette usage across chart/table/legend
+    - moved goal flag below week number
+    - localized ATP date rendering using browser locale + user timezone
+    - replaced TSS “Coming soon” cells with value-or-dash rendering
+  - session detail:
+    - chart hover dotted line now snaps to hovered sample index (same source as point/map sync)
+  - calendar:
+    - removed calendar session-row auto-completed badge/text
+  - progress:
+    - target-range band visibility increased (stronger fill + upper/lower bounds)
+    - compliance grid alignment fixed
+    - compliance actual/recommended display switched to TSS
+    - reusable load-state pill component introduced and reused in compliance + weekly logs
+  - ATP backend:
+    - split ATP service responsibilities:
+      - `AtpWeekDefinitionFactory`
+      - `AtpWeekSessionMetricsResolver`
+      - `AtpWeekGoalResolver`
+      - thin orchestrator `AthleteAnnualTrainingPlanService`
+    - corrected ATP metric semantics:
+      - planned totals: planned sessions only
+      - completed totals: completed planned + unplanned sessions
+  - tests and validation:
+    - ATP API feature coverage extended for planned/unplanned metric correctness
+    - wayfinder generation, types, feature tests, full tests, and pint all green
+
+---
+
+## Phase 16 — ATP + Load/Progress Hardening (COMPLETE)
+
+- Goals:
+  - establish persisted/reusable weekly metrics shared by ATP, Progress, and Calendar week headers
+  - improve ATP weekly readability and hover detail without changing click-to-calendar behavior
+  - fix session-detail chart interaction bugs (crosshair alignment + double-click reset scope)
+  - replace progress/compliance placeholder messaging with concrete ratio-source semantics
+  - centralize athlete preference normalization and improve timezone UX input constraints
+  - scaffold Stripe subscription syncing without adding checkout UX in this wave
+- Boundaries:
+  - no breaking route/API contract changes
+  - no reconciliation flow regressions
+  - no visual redesign
+  - billing remains scaffold-level only
+- Completed:
+  - weekly metrics persistence/services:
+    - added `athlete_week_metrics` persistence model
+    - added `WeeklyMetricsCalculator`, `WeeklyLoadStateClassifier`, `WeeklyMetricsSnapshotService`
+    - added weekly recalc jobs and nightly schedule
+    - integrated weekly recalc dispatch into load/sync command and sync pipeline paths
+  - ATP integration:
+    - week payload now includes `is_current_week`, `load_state`, `load_state_ratio`, `goal_marker`
+    - ATP chart/table now render current-week emphasis, hover detail, goal markers, and load-state badges
+  - session-detail fixes:
+    - snapped hover/crosshair alignment in interactive chart
+    - moved zoom reset to chart double-click and removed map-level reset
+  - progress/compliance updates:
+    - compliance payload now carries snapshot load-state metadata and planned/completed TSS totals
+    - progress compliance/week rows consume load-state data and show clear indicators
+  - preferences/settings/billing:
+    - introduced `AthletePerformanceProfileResolver` and applied it in metrics/settings paths
+    - replaced timezone free-text with searchable IANA selector
+    - added Stripe webhook scaffold endpoint + user subscription sync fields
+  - test hardening:
+    - added weekly classifier unit tests
+    - added Stripe webhook feature tests
+    - expanded compliance and ATP API tests for new fields
+    - updated progress feature assertions for strict planned-completion semantics
+
+---
+
+## Phase 15 — Training Load Engine Foundation (COMPLETE)
+
+- Goals:
+  - implement coach-grade ATL/CTL/TSB computation infrastructure without breaking existing contracts
+  - add queue-safe recalculation pathways for event-driven and scheduled backfills
+  - expose load history via API and render a dedicated performance-management chart in progress UI
+  - keep implementation multi-athlete safe and free of `auth()` coupling in services
+- Boundaries:
+  - no breaking changes to existing API contracts
+  - no reconciliation flow regressions
+  - no controller orchestration bloat
+- Completed:
+  - database/model:
+    - added `training_load_snapshots` table with unique (`user_id`, `date`, `sport`)
+    - added `users.enable_load_metrics` (default true)
+    - added `TrainingLoadSnapshot` model + user relation
+  - calculator service:
+    - `TrainingLoadCalculator::recalculateForUser(User $user, Carbon $from, Carbon $to)`
+    - day-by-day EWMA walk with seed-from-previous-snapshot fallback
+    - per-sport + combined daily series persisted via idempotent upsert
+  - jobs/scheduling:
+    - `RecalculateUserLoadJob`
+    - `RecalculateRecentLoadJob` (90-day nightly backfill, chunked users)
+    - scheduler registration added in `routes/console.php`
+    - `DispatchRecentLoadRecalculation` action used by write paths
+  - command:
+    - `load:recompute` added with `--user=`, `--all`, `--from=`
+    - command dispatches jobs only
+  - sync/backfill:
+    - `StravaFullHistoryImportJob` added
+    - imports activities-only and dispatches recalculation per imported batch
+  - progress API:
+    - new `GET /api/progress`
+    - `LoadHistoryService` + `LoadHistoryResource` return combined + per-sport ATL/CTL/TSB series
+  - frontend:
+    - `PerformanceManagementChart` added to progress page
+    - combined/per-sport toggle supported
+    - chart data fetched from `/api/progress` via Wayfinder route helper
+    - load widgets hidden when `load_metrics_enabled` is false
+  - dispatch hooks added to required mutation points:
+    - session completion
+    - session unlink
+    - session planned TSS change
+    - activity sync reconciliation completion
+
+---
+
 ## Phase 14 — Calendar Creation UX + Workout Library DnD Hardening (COMPLETE)
 
 - Goals:

@@ -2,6 +2,7 @@
 
 namespace App\Actions\TrainingSession;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
 use App\Enums\TrainingSessionCompletionSource;
 use App\Enums\TrainingSessionStatus;
 use App\Models\Activity;
@@ -14,6 +15,7 @@ class CompleteSessionAction
 {
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
     ) {}
 
     public function execute(
@@ -60,6 +62,8 @@ class CompleteSessionAction
                 ? now()
                 : null,
         ]);
+
+        $this->dispatchRecentLoadRecalculation->execute($user, 60);
 
         return $trainingSession->refresh()->loadMissing('activity');
     }

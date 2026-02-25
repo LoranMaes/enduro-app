@@ -70,4 +70,10 @@ return [
         'webhook_subscription_id' => env('STRAVA_WEBHOOK_SUBSCRIPTION_ID'),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

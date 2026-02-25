@@ -12,9 +12,11 @@ use App\Http\Controllers\Api\Admin\TicketStatusController;
 use App\Http\Controllers\Api\Admin\TicketUserSearchController;
 use App\Http\Controllers\Api\AtpController;
 use App\Http\Controllers\Api\AtpWeekController;
+use App\Http\Controllers\Api\Billing\StripeWebhookController;
 use App\Http\Controllers\Api\CalendarEntryController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\ProgressComplianceController;
+use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\StravaWebhookEventController;
 use App\Http\Controllers\Api\StravaWebhookVerificationController;
 use App\Http\Controllers\Api\TrainingPlanController;
@@ -30,6 +32,9 @@ Route::prefix('webhooks/strava')->name('webhooks.strava.')->group(function (): v
     Route::get('/', StravaWebhookVerificationController::class)->name('verify');
     Route::post('/', StravaWebhookEventController::class)->name('event');
 });
+
+Route::post('webhooks/stripe', StripeWebhookController::class)
+    ->name('webhooks.stripe.event');
 
 Route::middleware([
     EncryptCookies::class,
@@ -85,6 +90,8 @@ Route::middleware([
             'show',
             'update',
         ]);
+    Route::get('progress', ProgressController::class)
+        ->name('api.progress.index');
     Route::get('progress/compliance', ProgressComplianceController::class)
         ->name('progress.compliance');
     Route::get('atp/{year}', AtpController::class)

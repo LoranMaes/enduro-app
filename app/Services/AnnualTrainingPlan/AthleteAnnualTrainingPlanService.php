@@ -2,22 +2,25 @@
 
 namespace App\Services\AnnualTrainingPlan;
 
-use App\Enums\GoalPriority;
-use App\Enums\TrainingSessionStatus;
 use App\Models\AnnualTrainingPlan;
 use App\Models\AnnualTrainingPlanWeek;
-use App\Models\Goal;
-use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Metrics\WeeklyMetricsSnapshotService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 class AthleteAnnualTrainingPlanService
 {
     private const CACHE_KEY_PREFIX = 'atp.payload.v2';
+
+    public function __construct(
+        private readonly AtpWeekDefinitionFactory $atpWeekDefinitionFactory,
+        private readonly AtpWeekSessionMetricsResolver $atpWeekSessionMetricsResolver,
+        private readonly AtpWeekGoalResolver $atpWeekGoalResolver,
+        private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
+    ) {}
 
     /**
      * @return array{
@@ -36,7 +39,17 @@ class AthleteAnnualTrainingPlanService
      *         completed_minutes: int,
      *         planned_tss: int|null,
      *         completed_tss: int|null,
+     *         load_state: string,
+     *         load_state_ratio: float|null,
+     *         is_current_week: bool,
      *         primary_goal: array{
+     *             id: int,
+     *             title: string,
+     *             target_date: string|null,
+     *             priority: string,
+     *             status: string
+     *         }|null,
+     *         goal_marker: array{
      *             id: int,
      *             title: string,
      *             target_date: string|null,
@@ -70,7 +83,17 @@ class AthleteAnnualTrainingPlanService
      *     completed_minutes: int,
      *     planned_tss: int|null,
      *     completed_tss: int|null,
+     *     load_state: string,
+     *     load_state_ratio: float|null,
+     *     is_current_week: bool,
      *     primary_goal: array{
+     *         id: int,
+     *         title: string,
+     *         target_date: string|null,
+     *         priority: string,
+     *         status: string
+     *     }|null,
+     *     goal_marker: array{
      *         id: int,
      *         title: string,
      *         target_date: string|null,
@@ -86,7 +109,7 @@ class AthleteAnnualTrainingPlanService
         string $weekStartDate,
         array $attributes,
     ): array {
-        $weekMap = $this->weeksForYear($year);
+        $weekMap = $this->atpWeekDefinitionFactory->forYear($year)['weeks'];
 
         if (! array_key_exists($weekStartDate, $weekMap)) {
             throw ValidationException::withMessages([
@@ -112,15 +135,7 @@ class AthleteAnnualTrainingPlanService
 
         Cache::forget($this->cacheKey($user, $year));
 
-        /** @var array{
-         *     id: int,
-         *     user_id: int,
-         *     year: int,
-         *     weeks: array<int, array{
-         *         week_start_date: string
-         *     }>
-         * } $payload
-         */
+        /** @var array{id: int, user_id: int, year: int, weeks: array<int, array{week_start_date: string}>} $payload */
         $payload = $this->forYear($user, $year);
         $week = collect($payload['weeks'])->first(
             fn (array $item): bool => $item['week_start_date'] === $weekStartDate,
@@ -197,7 +212,17 @@ class AthleteAnnualTrainingPlanService
      *         completed_minutes: int,
      *         planned_tss: int|null,
      *         completed_tss: int|null,
+     *         load_state: string,
+     *         load_state_ratio: float|null,
+     *         is_current_week: bool,
      *         primary_goal: array{
+     *             id: int,
+     *             title: string,
+     *             target_date: string|null,
+     *             priority: string,
+     *             status: string
+     *         }|null,
+     *         goal_marker: array{
      *             id: int,
      *             title: string,
      *             target_date: string|null,
@@ -211,33 +236,30 @@ class AthleteAnnualTrainingPlanService
     private function buildPayload(User $user, int $year): array
     {
         $plan = $this->firstOrCreatePlan($user, $year);
-        $weekMap = $this->weeksForYear($year);
-        $weekStarts = array_keys($weekMap);
-        $weekDefinitions = array_values($weekMap);
-        $firstWeekStart = $weekStarts[0] ?? CarbonImmutable::create($year, 1, 1)->toDateString();
-        $lastWeekEnd = $weekDefinitions !== []
-            ? ($weekDefinitions[count($weekDefinitions) - 1]['end'] ?? CarbonImmutable::create($year, 12, 31))
-            : CarbonImmutable::create($year, 12, 31);
+        $weekDefinition = $this->atpWeekDefinitionFactory->forYear($year);
+        $weekMap = $weekDefinition['weeks'];
+        $firstWeekStart = $weekDefinition['first_week_start'];
+        $lastWeekEnd = $weekDefinition['last_week_end'];
+        $firstWeekStartDate = CarbonImmutable::parse($firstWeekStart);
 
-        $sessions = TrainingSession::query()
-            ->where('user_id', $user->id)
-            ->whereDate('scheduled_date', '>=', $firstWeekStart)
-            ->whereDate('scheduled_date', '<=', $lastWeekEnd->toDateString())
-            ->get([
-                'scheduled_date',
-                'status',
-                'duration_minutes',
-                'actual_duration_minutes',
-                'planned_tss',
-                'actual_tss',
-                'completed_at',
-            ]);
-
-        $metricsByWeek = $this->buildSessionMetrics($sessions);
-        $goalMap = $this->buildGoalMap($user, $firstWeekStart, $lastWeekEnd->toDateString());
+        $metricsByWeek = $this->atpWeekSessionMetricsResolver->resolve(
+            $user,
+            $firstWeekStartDate,
+            $lastWeekEnd,
+        );
+        $snapshotMetricsByWeek = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $firstWeekStartDate,
+            $lastWeekEnd,
+        );
+        $goalMap = $this->atpWeekGoalResolver->resolve(
+            $user,
+            $firstWeekStartDate,
+            $lastWeekEnd,
+        );
         $metadataMap = AnnualTrainingPlanWeek::query()
             ->where('annual_training_plan_id', $plan->id)
-            ->whereDate('week_start_date', '>=', $firstWeekStart)
+            ->whereDate('week_start_date', '>=', $firstWeekStartDate->toDateString())
             ->whereDate('week_start_date', '<=', $lastWeekEnd->toDateString())
             ->get([
                 'week_start_date',
@@ -248,6 +270,9 @@ class AthleteAnnualTrainingPlanService
             ->keyBy(fn (AnnualTrainingPlanWeek $week): string => $week->week_start_date->toDateString());
 
         $weeks = [];
+        $currentWeekStart = CarbonImmutable::now()
+            ->startOfWeek(CarbonInterface::MONDAY)
+            ->toDateString();
 
         foreach ($weekMap as $weekStart => $definition) {
             $metadata = $metadataMap->get($weekStart);
@@ -258,6 +283,7 @@ class AthleteAnnualTrainingPlanService
                 'completed_tss' => 0,
             ];
             $goal = $goalMap[$weekStart] ?? null;
+            $snapshot = $snapshotMetricsByWeek[$weekStart] ?? null;
 
             $weeks[] = [
                 'week_index' => $definition['week_index'],
@@ -275,9 +301,15 @@ class AthleteAnnualTrainingPlanService
                 'completed_tss' => $metrics['completed_tss'] > 0
                     ? $metrics['completed_tss']
                     : null,
+                'load_state' => (string) ($snapshot['load_state'] ?? 'insufficient'),
+                'load_state_ratio' => $snapshot !== null && $snapshot['load_state_ratio'] !== null
+                    ? (float) $snapshot['load_state_ratio']
+                    : null,
+                'is_current_week' => $weekStart === $currentWeekStart,
                 'primary_goal' => $goal,
+                'goal_marker' => $goal,
                 'weeks_to_goal' => $goal !== null
-                    ? $this->weeksBetween($weekStart, $goal['target_date'])
+                    ? $this->atpWeekGoalResolver->weeksToGoal($weekStart, $goal['target_date'])
                     : null,
             ];
         }
@@ -296,168 +328,6 @@ class AthleteAnnualTrainingPlanService
             'user_id' => $user->id,
             'year' => $year,
         ]);
-    }
-
-    /**
-     * @return array<string, array{
-     *     week_index: int,
-     *     iso_week: int,
-     *     end: CarbonImmutable
-     * }>
-     */
-    private function weeksForYear(int $year): array
-    {
-        $yearStart = CarbonImmutable::create($year, 1, 1, 0, 0, 0);
-        $yearEnd = CarbonImmutable::create($year, 12, 31, 0, 0, 0);
-        $cursor = $yearStart->startOfWeek(CarbonInterface::MONDAY);
-        $weeks = [];
-        $index = 1;
-
-        while ($cursor->lessThanOrEqualTo($yearEnd)) {
-            $weeks[$cursor->toDateString()] = [
-                'week_index' => $index,
-                'iso_week' => (int) $cursor->isoWeek(),
-                'end' => $cursor->endOfWeek(CarbonInterface::SUNDAY),
-            ];
-
-            $cursor = $cursor->addWeek();
-            $index++;
-        }
-
-        return $weeks;
-    }
-
-    /**
-     * @param  Collection<int, TrainingSession>  $sessions
-     * @return array<string, array{
-     *     planned_minutes: int,
-     *     completed_minutes: int,
-     *     planned_tss: int,
-     *     completed_tss: int
-     * }>
-     */
-    private function buildSessionMetrics(Collection $sessions): array
-    {
-        $metricsByWeek = [];
-
-        foreach ($sessions as $session) {
-            if ($session->scheduled_date === null) {
-                continue;
-            }
-
-            $weekStart = CarbonImmutable::parse($session->scheduled_date->toDateString())
-                ->startOfWeek(CarbonInterface::MONDAY)
-                ->toDateString();
-            $metricsByWeek[$weekStart] ??= [
-                'planned_minutes' => 0,
-                'completed_minutes' => 0,
-                'planned_tss' => 0,
-                'completed_tss' => 0,
-            ];
-            $metricsByWeek[$weekStart]['planned_minutes'] += max(0, (int) $session->duration_minutes);
-            $metricsByWeek[$weekStart]['planned_tss'] += max(0, (int) ($session->planned_tss ?? 0));
-
-            $isCompleted = $session->completed_at !== null
-                || $session->status === TrainingSessionStatus::Completed;
-
-            if (! $isCompleted) {
-                continue;
-            }
-
-            $metricsByWeek[$weekStart]['completed_minutes'] += max(
-                0,
-                (int) ($session->actual_duration_minutes ?? $session->duration_minutes),
-            );
-            $metricsByWeek[$weekStart]['completed_tss'] += max(0, (int) ($session->actual_tss ?? 0));
-        }
-
-        return $metricsByWeek;
-    }
-
-    /**
-     * @return array<string, array{
-     *     id: int,
-     *     title: string,
-     *     target_date: string|null,
-     *     priority: string,
-     *     status: string
-     * }>
-     */
-    private function buildGoalMap(User $user, string $from, string $to): array
-    {
-        $goalsByWeek = [];
-
-        /** @var Collection<int, Goal> $goals */
-        $goals = Goal::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('target_date')
-            ->whereDate('target_date', '>=', $from)
-            ->whereDate('target_date', '<=', $to)
-            ->orderBy('target_date')
-            ->get([
-                'id',
-                'title',
-                'target_date',
-                'priority',
-                'status',
-            ]);
-
-        foreach ($goals as $goal) {
-            if ($goal->target_date === null) {
-                continue;
-            }
-
-            $weekStart = CarbonImmutable::parse($goal->target_date->toDateString())
-                ->startOfWeek(CarbonInterface::MONDAY)
-                ->toDateString();
-
-            $candidate = [
-                'id' => $goal->id,
-                'title' => $goal->title,
-                'target_date' => $goal->target_date->toDateString(),
-                'priority' => $goal->priority?->value ?? (string) $goal->priority,
-                'status' => $goal->status?->value ?? (string) $goal->status,
-            ];
-
-            $current = $goalsByWeek[$weekStart] ?? null;
-
-            if ($current === null) {
-                $goalsByWeek[$weekStart] = $candidate;
-
-                continue;
-            }
-
-            if (
-                $this->priorityWeight($candidate['priority'])
-                > $this->priorityWeight($current['priority'])
-            ) {
-                $goalsByWeek[$weekStart] = $candidate;
-            }
-        }
-
-        return $goalsByWeek;
-    }
-
-    private function priorityWeight(string $priority): int
-    {
-        return match ($priority) {
-            GoalPriority::High->value => 3,
-            GoalPriority::Normal->value => 2,
-            GoalPriority::Low->value => 1,
-            default => 0,
-        };
-    }
-
-    private function weeksBetween(string $weekStart, ?string $goalDate): ?int
-    {
-        if ($goalDate === null) {
-            return null;
-        }
-
-        $from = CarbonImmutable::parse($weekStart)->startOfWeek(CarbonInterface::MONDAY);
-        $to = CarbonImmutable::parse($goalDate)->startOfWeek(CarbonInterface::MONDAY);
-
-        return (int) floor($from->diffInDays($to, false) / 7);
     }
 
     private function cacheKey(User $user, int $year): string

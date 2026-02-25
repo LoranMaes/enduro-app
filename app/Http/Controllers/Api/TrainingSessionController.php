@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
 use App\Actions\TrainingSession\CompleteSessionAction;
 use App\Actions\TrainingSession\LinkActivityAction;
 use App\Actions\TrainingSession\RevertCompletionAction;
@@ -39,6 +40,7 @@ class TrainingSessionController extends Controller
         private readonly CompleteSessionAction $completeSessionAction,
         private readonly RevertCompletionAction $revertCompletionAction,
         private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
     ) {}
 
     /**
@@ -123,6 +125,12 @@ class TrainingSessionController extends Controller
             'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
+        $owner = User::query()->find($ownerId);
+
+        if ($owner instanceof User && $owner->isAthlete()) {
+            $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+        }
+
         return (new TrainingSessionResource($trainingSession))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
@@ -197,6 +205,19 @@ class TrainingSessionController extends Controller
             'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
+        if ($trainingSession->wasChanged([
+            'training_week_id',
+            'scheduled_date',
+            'duration_minutes',
+            'planned_tss',
+        ])) {
+            $owner = User::query()->find($ownerId);
+
+            if ($owner instanceof User && $owner->isAthlete()) {
+                $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+            }
+        }
+
         return new TrainingSessionResource($trainingSession->refresh());
     }
 
@@ -206,8 +227,13 @@ class TrainingSessionController extends Controller
     public function destroy(TrainingSession $trainingSession): \Illuminate\Http\Response
     {
         $this->authorize('delete', $trainingSession);
+        $owner = User::query()->find($trainingSession->user_id);
 
         $trainingSession->delete();
+
+        if ($owner instanceof User && $owner->isAthlete()) {
+            $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+        }
 
         return response()->noContent();
     }
