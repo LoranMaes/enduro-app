@@ -5,6 +5,7 @@ use App\Models\Activity;
 use App\Models\AthleteProfile;
 use App\Models\TrainingSession;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 
 it('requires authentication for progress page', function () {
@@ -151,4 +152,56 @@ it('includes unlinked activities in weekly actual progress totals', function () 
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('progress/index')
             ->where('summary.actual_tss_total', 95));
+});
+
+it('includes today snapshot and seeded trend weeks props', function () {
+    CarbonImmutable::setTestNow('2026-03-18 09:00:00');
+
+    $athlete = User::factory()->athlete()->create();
+    $today = CarbonImmutable::today();
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => $today->toDateString(),
+        'status' => TrainingSessionStatus::Planned->value,
+        'planned_tss' => 70,
+        'actual_tss' => null,
+    ]);
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => $today->toDateString(),
+        'status' => TrainingSessionStatus::Completed->value,
+        'planned_tss' => 80,
+        'actual_tss' => 60,
+        'completed_at' => $today->toDateTimeString(),
+    ]);
+
+    foreach ([1, 2, 3, 4] as $weeksBack) {
+        TrainingSession::factory()->create([
+            'user_id' => $athlete->id,
+            'training_week_id' => null,
+            'scheduled_date' => $today->subWeeks($weeksBack)->toDateString(),
+            'status' => TrainingSessionStatus::Completed->value,
+            'planned_tss' => 50,
+            'actual_tss' => 50 + $weeksBack,
+            'completed_at' => $today->subWeeks($weeksBack)->toDateTimeString(),
+        ]);
+    }
+
+    $this
+        ->actingAs($athlete)
+        ->get('/progress?weeks=4')
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('progress/index')
+            ->where('todaySnapshot.date', $today->toDateString())
+            ->where('todaySnapshot.actual_tss_today', 60)
+            ->where('todaySnapshot.planned_tss_today', 150)
+            ->has('trendSeedWeeks', 4)
+            ->where('trendSeedWeeks.0', fn (int $value): bool => $value >= 0));
+
+    CarbonImmutable::setTestNow();
 });

@@ -6,6 +6,7 @@ use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -13,6 +14,7 @@ class WeeklyMetricsCalculator
 {
     public function __construct(
         private readonly WeeklyLoadStateClassifier $weeklyLoadStateClassifier,
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
     ) {}
 
     /**
@@ -45,9 +47,13 @@ class WeeklyMetricsCalculator
             ->where('user_id', $user->id)
             ->whereDate('scheduled_date', '>=', $rangeStart->toDateString())
             ->whereDate('scheduled_date', '<=', $rangeEnd->toDateString())
+            ->with([
+                'activity:id,training_session_id,athlete_id,provider,raw_payload,duration_seconds',
+            ])
             ->orderBy('scheduled_date')
             ->orderBy('id')
             ->get([
+                'id',
                 'scheduled_date',
                 'status',
                 'planning_source',
@@ -100,9 +106,13 @@ class WeeklyMetricsCalculator
                 0,
                 (int) ($session->actual_duration_minutes ?? $session->duration_minutes),
             );
+            $resolvedCompletedTss = $this->actualMetricsResolver->resolveActualTss(
+                $session,
+                $user,
+            );
             $weeks[$weekStart]['completed_tss_total'] += max(
                 0,
-                (int) ($session->actual_tss ?? $session->planned_tss ?? 0),
+                (int) ($resolvedCompletedTss ?? 0),
             );
         }
 

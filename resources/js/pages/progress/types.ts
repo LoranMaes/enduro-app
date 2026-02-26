@@ -68,6 +68,14 @@ export type ProgressPageProps = {
     summary: ProgressSummary;
     weeks: ProgressWeek[];
     compliance: ProgressCompliancePayload;
+    trendSeedWeeks: number[];
+    todaySnapshot: {
+        date: string;
+        actual_tss_today: number;
+        planned_tss_today: number;
+        suggested_min_tss_today: number;
+        suggested_max_tss_today: number;
+    };
 };
 
 export type LoadSeriesPoint = {
@@ -77,6 +85,7 @@ export type LoadSeriesPoint = {
     atl: number;
     ctl: number;
     tsb: number;
+    isProjected?: boolean;
 };
 
 export type ProgressLoadHistoryPayload = {
@@ -132,3 +141,13 @@ export type ProgressTrend = {
     stepX: number;
     gridLines: number;
 };
+
+export type PerformanceSeriesSnapshot = {
+    date: string;
+    atl: number;
+    ctl: number;
+    tsb: number;
+    source: 'today' | 'last_real';
+};
+
+export type PerformanceLineKey = 'ctl' | 'atl' | 'tsb';

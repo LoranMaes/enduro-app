@@ -7,11 +7,12 @@ use App\Http\Controllers\Settings\ActivityProviderDisconnectController;
 use App\Http\Controllers\Settings\AthleteProfileSettingsController;
 use App\Http\Controllers\Settings\AthleteSettingsOverviewController;
 use App\Http\Controllers\Settings\AthleteTrainingPreferencesController;
+use App\Http\Controllers\Settings\BillingCheckoutController;
+use App\Http\Controllers\Settings\BillingPortalController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware(['auth', 'log_activity'])->group(function () {
     Route::redirect('settings', '/settings/overview');
@@ -27,6 +28,10 @@ Route::middleware(['auth', 'verified', 'approved_coach', 'log_activity'])->group
         ->name('settings.overview.profile.update');
     Route::patch('settings/overview/training-preferences', AthleteTrainingPreferencesController::class)
         ->name('settings.overview.training-preferences.update');
+    Route::get('settings/overview/billing/subscribe', BillingCheckoutController::class)
+        ->name('settings.overview.billing.subscribe');
+    Route::get('settings/overview/billing/portal', BillingPortalController::class)
+        ->name('settings.overview.billing.portal');
 
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
@@ -36,9 +41,8 @@ Route::middleware(['auth', 'verified', 'approved_coach', 'log_activity'])->group
         ->middleware('throttle:6,1')
         ->name('user-password.update');
 
-    Route::get('settings/appearance', function () {
-        return Inertia::render('settings/appearance');
-    })->name('appearance.edit');
+    Route::redirect('settings/appearance', '/settings/overview?tab=theme')
+        ->name('appearance.edit');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');

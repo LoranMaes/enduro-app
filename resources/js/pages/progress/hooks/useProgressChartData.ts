@@ -3,7 +3,10 @@ import { progressChartDimensions } from '../constants';
 import type { ProgressTrend, ProgressWeek } from '../types';
 import { buildLineSegments, formatShortDate } from '../utils';
 
-export function useProgressChartData(weeks: ProgressWeek[]): ProgressTrend {
+export function useProgressChartData(
+    weeks: ProgressWeek[],
+    trendSeedWeeks: number[],
+): ProgressTrend {
     return useMemo(() => {
         const { chartWidth, chartHeight, chartPaddingX, chartPaddingY, gridLines } =
             progressChartDimensions;
@@ -11,18 +14,23 @@ export function useProgressChartData(weeks: ProgressWeek[]): ProgressTrend {
         const innerWidth = chartWidth - chartPaddingX * 2;
         const innerHeight = chartHeight - chartPaddingY * 2;
         const suggestedBounds = weeks.map((_, index) => {
-            const historyActualTss = weeks
-                .slice(Math.max(0, index - 4), index)
-                .map((week) => week.actual_tss)
-                .filter((value): value is number => value !== null && value > 0);
+            const historicalActualTss = [
+                ...trendSeedWeeks,
+                ...weeks
+                    .slice(0, index + 1)
+                    .map((week) => week.actual_tss)
+                    .filter((value): value is number => value !== null),
+            ]
+                .filter((value): value is number => value > 0)
+                .slice(-4);
 
-            if (historyActualTss.length < 2) {
+            if (historicalActualTss.length < 1) {
                 return null;
             }
 
             const averageHistoryTss =
-                historyActualTss.reduce((total, value) => total + value, 0)
-                / historyActualTss.length;
+                historicalActualTss.reduce((total, value) => total + value, 0)
+                / historicalActualTss.length;
             const minSuggestedTss = Math.max(
                 0,
                 Math.round(averageHistoryTss * 0.85),
@@ -199,5 +207,5 @@ export function useProgressChartData(weeks: ProgressWeek[]): ProgressTrend {
             stepX,
             gridLines,
         };
-    }, [weeks]);
+    }, [trendSeedWeeks, weeks]);
 }

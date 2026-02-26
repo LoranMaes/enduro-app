@@ -17,10 +17,10 @@ export function useSettingsTabs({ activeTab, role }: UseSettingsTabsParams) {
 
     const availableTabs = useMemo((): SettingsTab[] => {
         if (role === 'athlete') {
-            return ['profile', 'training', 'integrations', 'billing'];
+            return ['profile', 'theme', 'training', 'integrations', 'billing'];
         }
 
-        return ['profile', 'integrations', 'billing'];
+        return ['profile', 'theme', 'integrations', 'billing'];
     }, [role]);
 
     const changeTab = (tab: SettingsTab): void => {

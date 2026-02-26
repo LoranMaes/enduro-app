@@ -2,6 +2,7 @@ import {
     Activity,
     CreditCard,
     Link2,
+    Monitor,
     User,
     type LucideIcon,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ export const settingsBreadcrumbs: BreadcrumbItem[] = [
 
 export const tabLabels: Record<SettingsTab, string> = {
     profile: 'Profile',
+    theme: 'Theme',
     training: 'Training Preferences',
     integrations: 'Integrations',
     billing: 'Billing & Plans',
@@ -25,6 +27,7 @@ export const tabLabels: Record<SettingsTab, string> = {
 
 export const tabIcons: Record<SettingsTab, LucideIcon> = {
     profile: User,
+    theme: Monitor,
     training: Activity,
     integrations: Link2,
     billing: CreditCard,

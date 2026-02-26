@@ -5,9 +5,15 @@ use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
 
-it('returns opaque identifiers for training sessions in dual mode', function () {
+beforeEach(function () {
     config()->set('id_migration.ids.mode', 'dual');
+});
 
+afterEach(function () {
+    config()->set('id_migration.ids.mode', 'legacy');
+});
+
+it('returns opaque identifiers for training sessions in dual mode', function () {
     $athlete = User::factory()->athlete()->create([
         'is_subscribed' => true,
     ]);
@@ -29,8 +35,6 @@ it('returns opaque identifiers for training sessions in dual mode', function () 
 });
 
 it('accepts training week public identifiers on training session creation in dual mode', function () {
-    config()->set('id_migration.ids.mode', 'dual');
-
     $athlete = User::factory()->athlete()->create([
         'is_subscribed' => true,
     ]);
@@ -65,8 +69,6 @@ it('accepts training week public identifiers on training session creation in dua
 });
 
 it('keeps numeric fallback working in dual mode for training session routes', function () {
-    config()->set('id_migration.ids.mode', 'dual');
-
     $athlete = User::factory()->athlete()->create();
     $plan = TrainingPlan::factory()->for($athlete)->create();
     $week = TrainingWeek::factory()->for($plan)->create([

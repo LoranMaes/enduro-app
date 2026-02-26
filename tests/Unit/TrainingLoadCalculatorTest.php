@@ -2,6 +2,7 @@
 
 use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
+use App\Models\Activity;
 use App\Models\TrainingLoadSnapshot;
 use App\Models\TrainingSession;
 use App\Models\User;
@@ -156,4 +157,44 @@ it('is idempotent when recalculating the same window repeatedly', function () {
 
     expect($firstPass)->toBe($secondPass);
     expect(TrainingLoadSnapshot::query()->count())->toBe(10);
+});
+
+it('uses resolved activity tss for completed sessions when actual tss is missing', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    $session = TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => '2026-05-10',
+        'sport' => 'run',
+        'status' => TrainingSessionStatus::Completed->value,
+        'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+        'planned_tss' => null,
+        'actual_tss' => null,
+        'completed_at' => '2026-05-10 10:00:00',
+    ]);
+
+    Activity::factory()->linkedToTrainingSession($session)->create([
+        'athlete_id' => $athlete->id,
+        'sport' => 'run',
+        'started_at' => '2026-05-10 09:00:00',
+        'duration_seconds' => 3600,
+        'raw_payload' => [
+            'relative_effort' => 88,
+        ],
+    ]);
+
+    app(TrainingLoadCalculator::class)->recalculateForUser(
+        $athlete,
+        Carbon::parse('2026-05-10'),
+        Carbon::parse('2026-05-10'),
+    );
+
+    $snapshot = TrainingLoadSnapshot::query()
+        ->where('user_id', $athlete->id)
+        ->whereDate('date', '2026-05-10')
+        ->where('sport', 'combined')
+        ->firstOrFail();
+
+    expect($snapshot->tss)->toBe(88.0);
 });

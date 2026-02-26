@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\Billing;
 
+use App\Events\BillingSubscriptionStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Billing\StripeWebhookRequest;
 use App\Models\User;
+use App\Support\Ids\BlindIndex;
 use Illuminate\Http\JsonResponse;
 
 class StripeWebhookController extends Controller
@@ -46,15 +48,41 @@ class StripeWebhookController extends Controller
                 true,
             )
         ) {
-            User::query()
-                ->where('stripe_customer_id', $customerId)
-                ->update([
-                    'is_subscribed' => $isSubscribed,
-                    'stripe_subscription_status' => $subscriptionStatus !== ''
-                        ? $subscriptionStatus
-                        : null,
-                    'stripe_subscription_synced_at' => now(),
+            $customerBlindIndex = app(BlindIndex::class)->forGeneric($customerId);
+            $users = User::query()
+                ->where(function ($query) use ($customerId, $customerBlindIndex): void {
+                    $query->where('stripe_customer_id_bidx', $customerBlindIndex)
+                        ->orWhere('stripe_customer_id', $customerId)
+                        ->orWhere('stripe_id', $customerId);
+                })
+                ->get([
+                    'id',
                 ]);
+
+            if ($users->isNotEmpty()) {
+                $syncedAt = now();
+
+                User::query()
+                    ->whereIn('id', $users->pluck('id'))
+                    ->update([
+                        'is_subscribed' => $isSubscribed,
+                        'stripe_subscription_status' => $subscriptionStatus !== ''
+                            ? $subscriptionStatus
+                            : null,
+                        'stripe_subscription_synced_at' => $syncedAt,
+                    ]);
+
+                foreach ($users as $user) {
+                    event(new BillingSubscriptionStatusUpdated(
+                        userId: (int) $user->id,
+                        isSubscribed: $isSubscribed,
+                        subscriptionStatus: $subscriptionStatus !== ''
+                            ? $subscriptionStatus
+                            : null,
+                        syncedAt: $syncedAt->toIso8601String(),
+                    ));
+                }
+            }
         }
 
         return response()->json(['received' => true]);

@@ -6,6 +6,7 @@ use App\Enums\TrainingSessionStatus;
 use App\Models\TrainingLoadSnapshot;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 
@@ -25,6 +26,10 @@ class TrainingLoadCalculator
         'other',
         'combined',
     ];
+
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
 
     public function recalculateForUser(User $user, Carbon $from, Carbon $to): void
     {
@@ -110,9 +115,13 @@ class TrainingLoadCalculator
             ->where('user_id', $user->id)
             ->whereDate('scheduled_date', '>=', $from->toDateString())
             ->whereDate('scheduled_date', '<=', $to->toDateString())
+            ->with([
+                'activity:id,training_session_id,athlete_id,provider,raw_payload,duration_seconds',
+            ])
             ->orderBy('scheduled_date')
             ->orderBy('id')
             ->get([
+                'id',
                 'scheduled_date',
                 'sport',
                 'status',
@@ -129,7 +138,7 @@ class TrainingLoadCalculator
             }
 
             $dateKey = $session->scheduled_date->toDateString();
-            $tss = $this->resolveSessionTss($session);
+            $tss = $this->resolveSessionTss($session, $user);
 
             if ($tss <= 0) {
                 continue;
@@ -148,7 +157,7 @@ class TrainingLoadCalculator
         return $dailyTotals;
     }
 
-    private function resolveSessionTss(TrainingSession $session): float
+    private function resolveSessionTss(TrainingSession $session, User $user): float
     {
         $isCompleted = $session->completed_at !== null
             || (
@@ -158,7 +167,10 @@ class TrainingLoadCalculator
             || $session->status === TrainingSessionStatus::Completed->value;
 
         if ($isCompleted) {
-            $actualTss = (float) ($session->actual_tss ?? 0);
+            $actualTss = (float) (
+                $this->actualMetricsResolver->resolveActualTss($session, $user)
+                ?? 0
+            );
 
             if ($actualTss > 0) {
                 return $actualTss;

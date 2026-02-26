@@ -2,10 +2,32 @@
 
 ## Current Phase
 
-Phase 18 is complete: UUID/opaque-ID dual-mode hardening for training session APIs and calendar payload identifiers, with explicit dual-mode feature-test coverage.
+Phase 19 is in progress: progress/performance hardening + settings theme integration + Cashier scaffold readiness, alongside ongoing UUID/opaque-ID migration stabilization.
 
 ## Current Wave Focus
 
+- Phase 19 in progress:
+    - progress/performance:
+        - forecast seeding now avoids synthetic zero tails before projection
+        - load trend includes today snapshot (actual/planned/suggested)
+        - performance management includes today snapshot, legend tooltips, series toggles, and improved hover readability
+        - suggested range warm-up now uses seed history and appears earlier in-window when data exists
+    - settings/theme:
+        - settings overview includes a dedicated `Theme` tab
+        - `/settings/appearance` now redirects to `/settings/overview?tab=theme`
+    - light mode:
+        - root light palette and dark palette separation is in place
+        - progress surfaces now rely on semantic token classes for better dual-theme readability
+    - billing scaffold:
+        - Cashier installed/published and User is billable
+        - CSRF exemption added for `stripe/*` webhook path
+        - legacy `/api/webhooks/stripe` compatibility endpoint remains active
+        - settings billing tab now displays real synced subscription state
+        - Reverb live update event wired for subscription status changes
+        - billing tab now presents user-facing plan UI with subscribe/manage actions (technical Stripe fields hidden)
+    - known validation status:
+        - targeted tests for this wave are green
+        - global TS/tests remain red due broader UUID/encryption migration expectations outside this wave
 - Phase 18 delivered end-to-end:
     - training-session write flows now resolve `training_week_id` from opaque route keys in dual mode
     - training-session API serialization now preloads relation keys for route-key-safe ID output

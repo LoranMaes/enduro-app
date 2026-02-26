@@ -133,6 +133,7 @@ class ActivityToSessionReconciler
             $athlete,
             $session,
             TrainingSessionCompletionSource::ProviderAuto,
+            false,
         );
     }
 

@@ -42,6 +42,8 @@ class AthleteProgressController extends Controller
             $windowStart,
             $windowEnd,
         );
+        $trendSeedWeeks = $this->resolveTrendSeedWeeks($user, $windowStart);
+        $todaySnapshot = $this->resolveTodaySnapshot($user);
 
         $sessions = TrainingSession::query()
             ->where('user_id', $user->id)
@@ -300,6 +302,175 @@ class AthleteProgressController extends Controller
                 $windowStart,
                 $windowEnd,
             ),
+            'trendSeedWeeks' => $trendSeedWeeks,
+            'todaySnapshot' => $todaySnapshot,
         ]);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function resolveTrendSeedWeeks(User $user, CarbonImmutable $windowStart): array
+    {
+        $seedRangeStart = $windowStart->subWeeks(4);
+        $seedRangeEnd = $windowStart->subDay();
+        $seedSnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $seedRangeStart,
+            $seedRangeEnd,
+        );
+
+        return array_values(array_map(
+            static fn (array $snapshot): int => (int) ($snapshot['completed_tss_total'] ?? 0),
+            $seedSnapshots,
+        ));
+    }
+
+    /**
+     * @return array{
+     *     date: string,
+     *     actual_tss_today: int,
+     *     planned_tss_today: int,
+     *     suggested_min_tss_today: int,
+     *     suggested_max_tss_today: int
+     * }
+     */
+    private function resolveTodaySnapshot(User $user): array
+    {
+        $today = CarbonImmutable::today();
+        $todayKey = $today->toDateString();
+        $dailyActualTss = $this->resolveActualTssByDate(
+            $user,
+            $today->subDays(27),
+            $today,
+        );
+        $averageDailyActualTss = (int) round(
+            collect($dailyActualTss)->sum() / max(1, count($dailyActualTss)),
+        );
+        $suggestedMinTss = max(
+            0,
+            (int) round($averageDailyActualTss * 0.85),
+        );
+        $suggestedMaxTss = max(
+            $suggestedMinTss,
+            (int) round($averageDailyActualTss * 1.15),
+        );
+
+        return [
+            'date' => $todayKey,
+            'actual_tss_today' => (int) ($dailyActualTss[$todayKey] ?? 0),
+            'planned_tss_today' => $this->resolvePlannedTssForDate($user, $today),
+            'suggested_min_tss_today' => $suggestedMinTss,
+            'suggested_max_tss_today' => $suggestedMaxTss,
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function resolveActualTssByDate(
+        User $user,
+        CarbonImmutable $from,
+        CarbonImmutable $to,
+    ): array {
+        $dateTotals = [];
+        $cursor = $from;
+
+        while ($cursor->lessThanOrEqualTo($to)) {
+            $dateTotals[$cursor->toDateString()] = 0;
+            $cursor = $cursor->addDay();
+        }
+
+        $sessions = TrainingSession::query()
+            ->where('user_id', $user->id)
+            ->whereDate('scheduled_date', '>=', $from->toDateString())
+            ->whereDate('scheduled_date', '<=', $to->toDateString())
+            ->with([
+                'activity:id,training_session_id,duration_seconds,raw_payload',
+            ])
+            ->orderBy('scheduled_date')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'scheduled_date',
+                'status',
+                'actual_tss',
+            ]);
+
+        foreach ($sessions as $session) {
+            if ($session->scheduled_date === null) {
+                continue;
+            }
+
+            $resolvedTss = $this->actualMetricsResolver->resolveActualTss($session, $user);
+            $isCompleted = (
+                ($session->status instanceof TrainingSessionStatus
+                    ? $session->status
+                    : TrainingSessionStatus::tryFrom((string) $session->status))
+                === TrainingSessionStatus::Completed
+            );
+            $hasActualExecution = $isCompleted
+                || $session->activity !== null
+                || $resolvedTss !== null;
+
+            if (! $hasActualExecution || $resolvedTss === null || $resolvedTss <= 0) {
+                continue;
+            }
+
+            $sessionDate = $session->scheduled_date->toDateString();
+
+            if (! array_key_exists($sessionDate, $dateTotals)) {
+                continue;
+            }
+
+            $dateTotals[$sessionDate] += $resolvedTss;
+        }
+
+        $activities = Activity::query()
+            ->where('athlete_id', $user->id)
+            ->whereNull('training_session_id')
+            ->whereDate('started_at', '>=', $from->toDateString())
+            ->whereDate('started_at', '<=', $to->toDateString())
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'started_at',
+                'raw_payload',
+                'duration_seconds',
+            ]);
+
+        foreach ($activities as $activity) {
+            if ($activity->started_at === null) {
+                continue;
+            }
+
+            $activityDate = $activity->started_at->toDateString();
+
+            if (! array_key_exists($activityDate, $dateTotals)) {
+                continue;
+            }
+
+            $resolvedTss = $this->actualMetricsResolver->resolveActivityTss($activity, $user);
+
+            if ($resolvedTss === null || $resolvedTss <= 0) {
+                continue;
+            }
+
+            $dateTotals[$activityDate] += $resolvedTss;
+        }
+
+        return $dateTotals;
+    }
+
+    private function resolvePlannedTssForDate(User $user, CarbonImmutable $date): int
+    {
+        return (int) TrainingSession::query()
+            ->where('user_id', $user->id)
+            ->whereDate('scheduled_date', $date->toDateString())
+            ->whereIn('planning_source', [
+                TrainingSessionPlanningSource::Planned->value,
+            ])
+            ->sum('planned_tss');
     }
 }

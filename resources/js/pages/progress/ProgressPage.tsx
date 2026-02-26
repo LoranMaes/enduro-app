@@ -19,11 +19,13 @@ export function ProgressPage({
     weeks,
     compliance,
     load_metrics_enabled,
+    trendSeedWeeks,
+    todaySnapshot,
 }: ProgressPageProps) {
     const { isSwitchingRange, hoveredIndex, setHoveredIndex, switchRange } =
         useProgressState(range.weeks);
 
-    const trend = useProgressChartData(weeks);
+    const trend = useProgressChartData(weeks, trendSeedWeeks);
     const performanceLoad = usePerformanceManagementData(
         weeks,
         load_metrics_enabled,
@@ -57,12 +59,14 @@ export function ProgressPage({
                                 activePointIndex={activePointIndex}
                                 activePoint={activePoint}
                                 weeksCount={weeks.length}
+                                todaySnapshot={todaySnapshot}
                                 onSetHoveredIndex={setHoveredIndex}
                             />
                             <PerformanceManagementChart
                                 data={performanceLoad.data}
                                 loading={performanceLoad.loading}
                                 error={performanceLoad.error}
+                                selectedWeeks={range.weeks}
                             />
                         </>
                     ) : null}

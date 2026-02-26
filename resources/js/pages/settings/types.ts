@@ -15,7 +15,7 @@ export type ZoneRange = {
     max: number;
 };
 
-export type SettingsTab = 'profile' | 'training' | 'integrations' | 'billing';
+export type SettingsTab = 'profile' | 'theme' | 'training' | 'integrations' | 'billing';
 
 export type SettingsOverviewProps = {
     activeTab: SettingsTab;
@@ -52,9 +52,17 @@ export type SettingsOverviewProps = {
         heart_rate_zones: ZoneRange[];
     };
     providers: ProviderConnection[];
+    billing: {
+        is_subscribed: boolean;
+        subscription_status: string | null;
+        stripe_customer_id: string | null;
+        stripe_id: string | null;
+        subscription_synced_at: string | null;
+    };
     canManageConnections: boolean;
     settingsStatus: string | null;
     connectionStatusMessage: string | null;
+    billingStatusMessage: string | null;
 };
 
 export type SyncMessagesByProvider = Record<string, string>;
@@ -63,4 +71,11 @@ export type SyncStatusEvent = {
     provider?: string;
     status?: string;
     reason?: string | null;
+};
+
+export type BillingSubscriptionStatusEvent = {
+    user_id?: number;
+    is_subscribed?: boolean;
+    subscription_status?: string | null;
+    synced_at?: string | null;
 };

@@ -1,8 +1,13 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import AppearanceTabs from '@/components/appearance-tabs';
 import AppLayout from '@/layouts/app-layout';
 import { initializeEcho } from '@/lib/echo';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
+import {
+    portal as billingPortal,
+    subscribe as subscribeBilling,
+} from '@/routes/settings/overview/billing';
 import type { SharedData } from '@/types';
 import { BillingPanel } from './components/BillingPanel';
 import { IntegrationsPanel } from './components/IntegrationsPanel';
@@ -15,6 +20,7 @@ import { useProfileSettings } from './hooks/useProfileSettings';
 import { useSettingsTabs } from './hooks/useSettingsTabs';
 import { useTrainingPreferences } from './hooks/useTrainingPreferences';
 import type {
+    BillingSubscriptionStatusEvent,
     SettingsOverviewProps,
     SyncMessagesByProvider,
     SyncStatusEvent,
@@ -28,11 +34,13 @@ export function SettingsPage({
     activeTab,
     role,
     profile,
+    billing,
     trainingPreferences,
     providers,
     canManageConnections,
     settingsStatus,
     connectionStatusMessage,
+    billingStatusMessage,
 }: SettingsOverviewProps) {
     const { auth } = usePage<SharedData>().props;
     const { selectedTab, availableTabs, changeTab } = useSettingsTabs({
@@ -49,13 +57,18 @@ export function SettingsPage({
     } = useTrainingPreferences({ trainingPreferences });
 
     const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
+    const [billingState, setBillingState] = useState(billing);
     const [syncMessageByProvider, setSyncMessageByProvider] =
         useState<SyncMessagesByProvider>({});
     const [syncErrorByProvider, setSyncErrorByProvider] =
         useState<SyncMessagesByProvider>({});
 
     useEffect(() => {
-        if (!canManageConnections || auth.user?.id === undefined) {
+        setBillingState(billing);
+    }, [billing]);
+
+    useEffect(() => {
+        if (auth.user?.id === undefined) {
             return;
         }
 
@@ -66,49 +79,79 @@ export function SettingsPage({
         }
 
         const channelName = `App.Models.User.${auth.user.id}`;
-        const eventName = '.activity-provider.sync-status-updated';
+        const providerSyncEventName = '.activity-provider.sync-status-updated';
+        const billingEventName = '.billing.subscription-status-updated';
         const channel = echo.private(channelName);
 
-        channel.listen(eventName, (event: SyncStatusEvent) => {
-            if (typeof event.provider !== 'string' || event.provider === '') {
-                return;
-            }
-
-            const provider = event.provider;
-            const status =
-                typeof event.status === 'string' ? event.status.toLowerCase() : null;
-
-            setSyncingProvider((current) =>
-                current === provider ? null : current,
-            );
-
-            if (status !== null) {
-                setSyncMessageByProvider((current) => ({
-                    ...current,
-                    [provider]: resolveSyncStatusMessage(status),
-                }));
-
-                if (status === 'failed' || status === 'rate_limited') {
-                    setSyncErrorByProvider((current) => ({
-                        ...current,
-                        [provider]:
-                            typeof event.reason === 'string' ? event.reason : '',
-                    }));
-                } else {
-                    setSyncErrorByProvider((current) => ({
-                        ...current,
-                        [provider]: '',
-                    }));
+        if (canManageConnections) {
+            channel.listen(providerSyncEventName, (event: SyncStatusEvent) => {
+                if (typeof event.provider !== 'string' || event.provider === '') {
+                    return;
                 }
-            }
 
-            router.reload({
-                only: ['providers'],
+                const provider = event.provider;
+                const status =
+                    typeof event.status === 'string' ? event.status.toLowerCase() : null;
+
+                setSyncingProvider((current) =>
+                    current === provider ? null : current,
+                );
+
+                if (status !== null) {
+                    setSyncMessageByProvider((current) => ({
+                        ...current,
+                        [provider]: resolveSyncStatusMessage(status),
+                    }));
+
+                    if (status === 'failed' || status === 'rate_limited') {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]:
+                                typeof event.reason === 'string' ? event.reason : '',
+                        }));
+                    } else {
+                        setSyncErrorByProvider((current) => ({
+                            ...current,
+                            [provider]: '',
+                        }));
+                    }
+                }
+
+                router.reload({
+                    only: ['providers'],
+                });
             });
-        });
+        }
+        channel.listen(
+            billingEventName,
+            (event: BillingSubscriptionStatusEvent) => {
+                setBillingState((current) => ({
+                    ...current,
+                    is_subscribed:
+                        typeof event.is_subscribed === 'boolean'
+                            ? event.is_subscribed
+                            : current.is_subscribed,
+                    subscription_status:
+                        typeof event.subscription_status === 'string'
+                            ? event.subscription_status
+                            : event.subscription_status === null
+                                ? null
+                                : current.subscription_status,
+                    subscription_synced_at:
+                        typeof event.synced_at === 'string'
+                            ? event.synced_at
+                            : event.synced_at === null
+                                ? null
+                                : current.subscription_synced_at,
+                }));
+            },
+        );
 
         return () => {
-            channel.stopListening(eventName);
+            if (canManageConnections) {
+                channel.stopListening(providerSyncEventName);
+            }
+            channel.stopListening(billingEventName);
             echo.leave(channelName);
         };
     }, [auth.user?.id, canManageConnections]);
@@ -210,6 +253,15 @@ export function SettingsPage({
                             </SettingsSectionCard>
                         ) : null}
 
+                        {selectedTab === 'theme' ? (
+                            <SettingsSectionCard
+                                title="Theme"
+                                description="Choose system, dark, or light mode preference."
+                            >
+                                <AppearanceTabs />
+                            </SettingsSectionCard>
+                        ) : null}
+
                         {selectedTab === 'training' && role === 'athlete' ? (
                             <SettingsSectionCard
                                 title="Training Preferences"
@@ -249,6 +301,10 @@ export function SettingsPage({
                                 <BillingPanel
                                     name={profile.name}
                                     email={profile.email}
+                                    billing={billingState}
+                                    subscribeUrl={subscribeBilling().url}
+                                    portalUrl={billingPortal().url}
+                                    billingStatusMessage={billingStatusMessage}
                                 />
                             </SettingsSectionCard>
                         ) : null}

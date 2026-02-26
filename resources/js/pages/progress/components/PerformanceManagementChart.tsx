@@ -5,14 +5,23 @@ import {
 } from '@/components/ui/toggle-group';
 import type {
     LoadSeriesPoint,
+    PerformanceLineKey,
     ProgressLoadHistoryPayload,
 } from '../types';
+import { usePerformanceChartModel } from '../hooks/usePerformanceChartModel';
+import { usePerformanceForecast } from '../hooks/usePerformanceForecast';
+import {
+    PerformanceSnapshotRow,
+    resolveTodaySnapshot,
+} from './PerformanceSnapshotRow';
+import { PerformanceManagementLegend } from './PerformanceManagementLegend';
 import { ProgressEmptyState } from './ProgressEmptyState';
 
 type PerformanceManagementChartProps = {
     data: ProgressLoadHistoryPayload | null;
     loading: boolean;
     error: string | null;
+    selectedWeeks: number;
 };
 
 type SeriesKey = 'combined' | 'run' | 'bike' | 'swim' | 'other';
@@ -25,15 +34,27 @@ const seriesLabels: Record<SeriesKey, string> = {
     other: 'Other',
 };
 
+const lineColors: Record<PerformanceLineKey, string> = {
+    ctl: 'rgb(34,211,238)',
+    atl: 'rgb(251,191,36)',
+    tsb: 'rgb(232,121,249)',
+};
+
 export function PerformanceManagementChart({
     data,
     loading,
     error,
+    selectedWeeks,
 }: PerformanceManagementChartProps) {
     const [seriesKey, setSeriesKey] = useState<SeriesKey>('combined');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [visibleLineKeys, setVisibleLineKeys] = useState<PerformanceLineKey[]>([
+        'ctl',
+        'atl',
+        'tsb',
+    ]);
 
-    const series = useMemo(() => {
+    const historicalSeries = useMemo(() => {
         if (data === null) {
             return [] as LoadSeriesPoint[];
         }
@@ -44,84 +65,31 @@ export function PerformanceManagementChart({
 
         return data.per_sport[seriesKey];
     }, [data, seriesKey]);
-
-    const chart = useMemo(() => {
-        const width = 960;
-        const height = 320;
-        const paddingX = 28;
-        const paddingY = 26;
-        const innerWidth = width - paddingX * 2;
-        const innerHeight = height - paddingY * 2;
-        const stepX = series.length > 1 ? innerWidth / (series.length - 1) : 0;
-
-        const values = series.flatMap((point) => [
-            point.ctl,
-            point.atl,
-            point.tsb,
-        ]);
-        const rawMin = values.length > 0 ? Math.min(...values) : -10;
-        const rawMax = values.length > 0 ? Math.max(...values) : 10;
-        const span = Math.max(20, rawMax - rawMin);
-        const paddedMin = rawMin - span * 0.18;
-        const paddedMax = rawMax + span * 0.18;
-        const range = Math.max(1, paddedMax - paddedMin);
-
-        const toY = (value: number): number => {
-            return paddingY + innerHeight - ((value - paddedMin) / range) * innerHeight;
-        };
-
-        const points = series.map((point, index) => ({
-            ...point,
-            x: paddingX + stepX * index,
-            ctlY: toY(point.ctl),
-            atlY: toY(point.atl),
-            tsbY: toY(point.tsb),
-        }));
-
-        return {
-            width,
-            height,
-            paddingX,
-            paddingY,
-            innerHeight,
-            points,
-            yTopLabel: Math.round(paddedMax),
-            yBottomLabel: Math.round(paddedMin),
-            ctlPath: buildLinePath(
-                points.map((point) => ({
-                    x: point.x,
-                    y: point.ctlY,
-                })),
-            ),
-            atlPath: buildLinePath(
-                points.map((point) => ({
-                    x: point.x,
-                    y: point.atlY,
-                })),
-            ),
-            tsbPath: buildLinePath(
-                points.map((point) => ({
-                    x: point.x,
-                    y: point.tsbY,
-                })),
-            ),
-            gridLines: 4,
-            stepX,
-        };
-    }, [series]);
-
+    const {
+        points: series,
+        historicalCount,
+    } = usePerformanceForecast(historicalSeries, selectedWeeks);
+    const chart = usePerformanceChartModel(
+        series,
+        historicalCount,
+        visibleLineKeys,
+    );
     const activePoint = hoveredIndex === null
         ? undefined
         : chart.points[hoveredIndex];
+    const todaySnapshot = useMemo(
+        () => resolveTodaySnapshot(historicalSeries),
+        [historicalSeries],
+    );
 
     return (
         <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-[1.875rem] font-medium text-zinc-200">
+                    <h2 className="text-[1.875rem] font-medium text-foreground">
                         Performance Management
                     </h2>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                         CTL, ATL and TSB from daily load snapshots.
                     </p>
                 </div>
@@ -147,7 +115,7 @@ export function PerformanceManagementChart({
                         <ToggleGroupItem
                             key={key}
                             value={key}
-                            className="h-auto rounded-md px-2.5 py-1 text-xs text-zinc-400 data-[state=on]:bg-zinc-800 data-[state=on]:text-zinc-100"
+                            className="h-auto rounded-md px-2.5 py-1 text-xs text-muted-foreground data-[state=on]:bg-accent/20 data-[state=on]:text-foreground"
                             aria-label={`View ${label} load series`}
                         >
                             {label}
@@ -156,25 +124,29 @@ export function PerformanceManagementChart({
                 </ToggleGroup>
             </div>
 
-            <div className="mt-4 flex items-center gap-5 text-[0.6875rem] text-zinc-500 uppercase">
-                <span className="inline-flex items-center gap-2">
-                    <span className="h-0.5 w-4 bg-cyan-400" />
-                    CTL
-                </span>
-                <span className="inline-flex items-center gap-2">
-                    <span className="h-0.5 w-4 bg-amber-400" />
-                    ATL
-                </span>
-                <span className="inline-flex items-center gap-2">
-                    <span className="h-0.5 w-4 bg-fuchsia-400" />
-                    TSB
-                </span>
-            </div>
+            <PerformanceManagementLegend
+                visibleSeries={visibleLineKeys}
+                onToggleSeries={(lineKey) => {
+                    setVisibleLineKeys((current) => {
+                        if (current.includes(lineKey)) {
+                            if (current.length === 1) {
+                                return current;
+                            }
 
-            <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/70 bg-background/60">
+                            return current.filter((key) => key !== lineKey);
+                        }
+
+                        return [...current, lineKey];
+                    });
+                }}
+            />
+
+            <PerformanceSnapshotRow snapshot={todaySnapshot} />
+
+            <div className="relative mt-5 h-[27rem] overflow-hidden rounded-xl border border-border/80 bg-background/70">
                 {loading ? (
                     <div className="flex h-full items-center justify-center">
-                        <p className="text-sm text-zinc-500">Loading performance metrics...</p>
+                        <p className="text-sm text-muted-foreground">Loading performance metrics...</p>
                     </div>
                 ) : error !== null ? (
                     <div className="flex h-full items-center justify-center">
@@ -185,12 +157,32 @@ export function PerformanceManagementChart({
                 ) : (
                     <>
                         {activePoint !== undefined ? (
-                            <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[0.6875rem]">
-                                <p className="text-zinc-400">{activePoint.date}</p>
-                                <div className="mt-1 grid grid-cols-3 gap-3 text-zinc-200">
-                                    <span className="font-mono">CTL {Math.round(activePoint.ctl)}</span>
-                                    <span className="font-mono">ATL {Math.round(activePoint.atl)}</span>
-                                    <span className="font-mono">TSB {Math.round(activePoint.tsb)}</span>
+                            <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-[0.6875rem] shadow-sm">
+                                <p className="text-muted-foreground">{activePoint.date}</p>
+                                {activePoint.isProjected ? (
+                                    <p className="mt-1 text-[0.625rem] text-muted-foreground">
+                                        Projected (no workouts)
+                                    </p>
+                                ) : null}
+                                <div className="mt-1 space-y-1 text-foreground">
+                                    <ValueWithDot
+                                        visible={visibleLineKeys.includes('ctl')}
+                                        dotClassName="bg-cyan-400"
+                                        label="CTL"
+                                        value={Math.round(activePoint.ctl)}
+                                    />
+                                    <ValueWithDot
+                                        visible={visibleLineKeys.includes('atl')}
+                                        dotClassName="bg-amber-400"
+                                        label="ATL"
+                                        value={Math.round(activePoint.atl)}
+                                    />
+                                    <ValueWithDot
+                                        visible={visibleLineKeys.includes('tsb')}
+                                        dotClassName="bg-fuchsia-400"
+                                        label="TSB"
+                                        value={Math.round(activePoint.tsb)}
+                                    />
                                 </div>
                             </div>
                         ) : null}
@@ -214,11 +206,23 @@ export function PerformanceManagementChart({
                                         y1={y}
                                         x2={chart.width - chart.paddingX}
                                         y2={y}
-                                        stroke="rgba(39,39,42,0.6)"
+                                        stroke="rgba(113,113,122,0.35)"
                                         strokeWidth={1}
                                     />
                                 );
                             })}
+
+                            {chart.zeroY !== null ? (
+                                <line
+                                    x1={chart.paddingX}
+                                    y1={chart.zeroY}
+                                    x2={chart.width - chart.paddingX}
+                                    y2={chart.zeroY}
+                                    stroke="rgba(113,113,122,0.55)"
+                                    strokeWidth={1}
+                                    strokeDasharray="4 4"
+                                />
+                            ) : null}
 
                             {chart.points.map((point, index) => {
                                 const hitWidth = chart.points.length > 1
@@ -227,7 +231,7 @@ export function PerformanceManagementChart({
 
                                 return (
                                     <rect
-                                        key={`hover-${point.date}`}
+                                        key={`hover-${point.date}-${point.isProjected ? 'projected' : 'historical'}`}
                                         x={Math.max(chart.paddingX, point.x - hitWidth / 2)}
                                         y={chart.paddingY}
                                         width={hitWidth}
@@ -238,9 +242,29 @@ export function PerformanceManagementChart({
                                 );
                             })}
 
-                            <path d={chart.ctlPath} fill="none" stroke="rgb(34,211,238)" strokeWidth={2} />
-                            <path d={chart.atlPath} fill="none" stroke="rgb(251,191,36)" strokeWidth={2} />
-                            <path d={chart.tsbPath} fill="none" stroke="rgb(232,121,249)" strokeWidth={2} />
+                            {visibleLineKeys.includes('ctl') ? (
+                                <path d={chart.historicalCtlPath} fill="none" stroke={lineColors.ctl} strokeWidth={2.2} />
+                            ) : null}
+                            {visibleLineKeys.includes('atl') ? (
+                                <path d={chart.historicalAtlPath} fill="none" stroke={lineColors.atl} strokeWidth={2.2} />
+                            ) : null}
+                            {visibleLineKeys.includes('tsb') ? (
+                                <path d={chart.historicalTsbPath} fill="none" stroke={lineColors.tsb} strokeWidth={2.2} />
+                            ) : null}
+
+                            {chart.hasProjection ? (
+                                <>
+                                    {visibleLineKeys.includes('ctl') ? (
+                                        <path d={chart.projectedCtlPath} fill="none" stroke={lineColors.ctl} strokeOpacity={0.8} strokeDasharray="4 4" strokeWidth={2.1} />
+                                    ) : null}
+                                    {visibleLineKeys.includes('atl') ? (
+                                        <path d={chart.projectedAtlPath} fill="none" stroke={lineColors.atl} strokeOpacity={0.8} strokeDasharray="4 4" strokeWidth={2.1} />
+                                    ) : null}
+                                    {visibleLineKeys.includes('tsb') ? (
+                                        <path d={chart.projectedTsbPath} fill="none" stroke={lineColors.tsb} strokeOpacity={0.8} strokeDasharray="4 4" strokeWidth={2.1} />
+                                    ) : null}
+                                </>
+                            ) : null}
 
                             {activePoint !== undefined ? (
                                 <line
@@ -248,7 +272,7 @@ export function PerformanceManagementChart({
                                     y1={chart.paddingY}
                                     x2={activePoint.x}
                                     y2={chart.paddingY + chart.innerHeight}
-                                    stroke="rgba(113,113,122,0.7)"
+                                    stroke="rgba(113,113,122,0.8)"
                                     strokeDasharray="3 3"
                                     strokeWidth={1}
                                 />
@@ -268,12 +292,25 @@ export function PerformanceManagementChart({
     );
 }
 
-function buildLinePath(points: Array<{ x: number; y: number }>): string {
-    if (points.length === 0) {
-        return '';
+function ValueWithDot({
+    visible,
+    dotClassName,
+    label,
+    value,
+}: {
+    visible: boolean;
+    dotClassName: string;
+    label: string;
+    value: number;
+}) {
+    if (!visible) {
+        return null;
     }
 
-    return points
-        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-        .join(' ');
+    return (
+        <span className="inline-flex items-center gap-1 font-mono">
+            <span className={`h-1.5 w-1.5 rounded-full ${dotClassName}`} />
+            {label} {value}
+        </span>
+    );
 }

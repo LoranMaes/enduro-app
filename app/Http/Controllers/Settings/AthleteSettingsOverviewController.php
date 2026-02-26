@@ -58,9 +58,21 @@ class AthleteSettingsOverviewController extends Controller
             'providers' => collect($this->providerManager->allowedProviders())
                 ->map(fn (string $provider): array => $this->providerPayload($user, $provider))
                 ->values(),
+            'billing' => [
+                'is_subscribed' => (bool) $user->is_subscribed,
+                'subscription_status' => $user->stripe_subscription_status,
+                'stripe_customer_id' => trim((string) $user->stripe_customer_id) !== ''
+                    ? trim((string) $user->stripe_customer_id)
+                    : null,
+                'stripe_id' => trim((string) $user->stripe_id) !== ''
+                    ? trim((string) $user->stripe_id)
+                    : null,
+                'subscription_synced_at' => $user->stripe_subscription_synced_at?->toIso8601String(),
+            ],
             'canManageConnections' => $user->canManageActivityProviderConnections(),
             'settingsStatus' => $request->session()->get('settings_status'),
             'connectionStatusMessage' => $request->session()->get('activity_provider_connection_message'),
+            'billingStatusMessage' => $request->session()->get('billing_status_message'),
         ]);
     }
 
@@ -97,7 +109,7 @@ class AthleteSettingsOverviewController extends Controller
     private function resolveActiveTab(Request $request, User $user): string
     {
         $requestedTab = strtolower(trim((string) $request->query('tab', 'profile')));
-        $allowedTabs = ['profile', 'integrations', 'billing'];
+        $allowedTabs = ['profile', 'theme', 'integrations', 'billing'];
 
         if ($user->isAthlete()) {
             $allowedTabs[] = 'training';

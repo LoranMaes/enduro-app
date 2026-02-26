@@ -1,5 +1,82 @@
 # Endure — Progress Log
 
+## 2026-02-26 (Billing UX Polish + Subscribe CTA)
+
+- Reworked billing tab from technical status readout back to user-facing card design:
+    - hides internal Stripe technical fields from athlete-facing UI
+    - plan card now shows clear state (`Advanced Athlete` / `Free Athlete`)
+    - free users now get a visible `Subscribe` action
+    - subscribed users get a `Manage subscription` action
+    - still keeps live status updates via Reverb after webhook sync
+- Added billing action endpoints:
+    - `GET /settings/overview/billing/subscribe`
+    - `GET /settings/overview/billing/portal`
+    - both return to billing tab with user-facing status messages on configuration/link failures
+- Added Stripe config key for checkout:
+    - `services.stripe.default_price_id` (`STRIPE_DEFAULT_PRICE_ID`)
+- Added/updated tests:
+    - `tests/Feature/Settings/BillingActionsTest.php`
+    - `tests/Feature/Settings/SettingsOverviewTabsTest.php`
+    - `tests/Feature/Api/Billing/StripeWebhookApiTest.php`
+    - `tests/Feature/Billing/CashierWebhookRouteTest.php`
+
+## 2026-02-26 (Billing Panel Live State + Reverb Updates)
+
+- Replaced settings billing shell with real subscription status surface:
+    - now shows `is_subscribed`, Stripe status, customer id, and last sync timestamp
+    - retains current no-checkout scope (state visibility only)
+- Added live subscription updates on settings without manual reload:
+    - new broadcast event `BillingSubscriptionStatusUpdated`
+    - Stripe webhook now dispatches user-scoped billing update events after status sync
+    - settings page listens on user private channel and updates billing panel state in-place
+- Stripe webhook matching hardened for encrypted/blind-indexed customer ids:
+    - supports `stripe_customer_id_bidx`, fallback `stripe_customer_id`, fallback `stripe_id`
+- Validation:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/Billing/StripeWebhookApiTest.php tests/Feature/Settings/SettingsOverviewTabsTest.php tests/Feature/Billing/CashierWebhookRouteTest.php` ✅
+    - `vendor/bin/sail bin pint --dirty --format agent` ✅
+
+## 2026-02-26 (Wave: Progress/Performance Corrections + Theme Tab + Cashier Scaffold)
+
+- Completed the current wave scope with additive, behavior-preserving changes:
+    - progress/performance corrections:
+        - fixed performance forecast seeding to avoid anchoring on synthetic zero tail points
+        - performance chart now trims trailing synthetic zero snapshots before projection
+        - kept no-workout decay forecast and range-based horizon behavior
+        - load trend suggested-range warm-up now uses seeded history + immediate in-window context
+        - added one-shot snapshot rows:
+            - load trend: today actual/planned/suggested TSS range
+            - performance management: today (or latest real) CTL/ATL/TSB
+        - improved performance chart usability:
+            - legend tooltips for CTL/ATL/TSB interpretation
+            - series visibility toggles (CTL/ATL/TSB)
+            - colored-dot hover values
+            - taller chart and improved contrast
+        - improved target-range visibility in load trend with stronger range fill + boundaries
+    - settings/theme integration:
+        - added `Theme` tab in settings overview (system/light/dark)
+        - wired `/settings/appearance` compatibility route to `/settings/overview?tab=theme`
+        - extended allowed backend settings tabs accordingly
+    - light-mode hardening baseline:
+        - light palette now defined in `:root`, dark palette under `.dark`
+        - added utility compatibility overrides for dark-coded zinc classes under light mode
+        - adjusted progress chart surfaces to semantic theme tokens for light/dark readability
+    - cashier/stripe scaffold:
+        - installed `laravel/cashier`
+        - published cashier config + migrations
+        - enabled `Billable` on `User`
+        - added CSRF exception for `stripe/*` (Cashier webhook path)
+        - retained existing `/api/webhooks/stripe` compatibility endpoint
+- Added test coverage:
+    - `tests/Feature/Settings/SettingsOverviewTabsTest.php` (theme tab + fallback + appearance redirect)
+    - `tests/Feature/Billing/CashierWebhookRouteTest.php` (Cashier webhook path accepted without CSRF token)
+    - updated `tests/Feature/ProgressPageTest.php` for additive progress props resilience
+- Validation:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction` ✅
+    - `vendor/bin/sail npm run types` ❌ (blocked by existing repo-wide UUID/opaque-ID TS type migration mismatches outside this wave)
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/Settings/SettingsOverviewTabsTest.php tests/Feature/Billing/CashierWebhookRouteTest.php` ✅
+    - `vendor/bin/sail artisan test --compact` ❌ (existing repo-wide failures from ongoing UUID/encryption migration expectations; not introduced by this wave)
+    - `vendor/bin/sail bin pint --dirty --format agent` ✅
+
 ## 2026-02-26 (UUID/Opaque ID Dual-Mode Hardening Continued)
 
 - Continued the UUID + opaque public ID migration pass with dual-mode safety hardening (behavior-preserving):

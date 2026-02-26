@@ -8,6 +8,13 @@ type ProgressLoadTrendChartProps = {
     activePointIndex: number;
     activePoint: ProgressTrend['points'][number] | undefined;
     weeksCount: number;
+    todaySnapshot: {
+        date: string;
+        actual_tss_today: number;
+        planned_tss_today: number;
+        suggested_min_tss_today: number;
+        suggested_max_tss_today: number;
+    };
     onSetHoveredIndex: (index: number | null) => void;
 };
 
@@ -18,13 +25,21 @@ export function ProgressLoadTrendChart({
     activePointIndex,
     activePoint,
     weeksCount,
+    todaySnapshot,
     onSetHoveredIndex,
 }: ProgressLoadTrendChartProps) {
+    const todayLabel = new Date(`${todaySnapshot.date}T00:00:00`)
+        .toLocaleDateString(undefined, {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        });
+
     return (
         <section className="rounded-2xl border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-[1.875rem] font-medium text-zinc-200">Load Trend</h2>
-                <div className="flex items-center gap-5 text-[0.6875rem] text-zinc-500 uppercase">
+                <h2 className="text-[1.875rem] font-medium text-foreground">Load Trend</h2>
+                <div className="flex items-center gap-5 text-[0.6875rem] text-muted-foreground uppercase">
                     <span className="inline-flex items-center gap-2">
                         <span className="h-0.5 w-4 bg-emerald-500" />
                         Actual
@@ -40,10 +55,42 @@ export function ProgressLoadTrendChart({
                 </div>
             </div>
 
-            <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
+            <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 md:grid-cols-3">
+                <div className="space-y-1">
+                    <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
+                        Today Actual TSS
+                    </p>
+                    <p className="font-mono text-sm text-foreground">
+                        {todaySnapshot.actual_tss_today}
+                    </p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
+                        Today Planned TSS
+                    </p>
+                    <p className="font-mono text-sm text-foreground">
+                        {todaySnapshot.planned_tss_today}
+                    </p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[0.625rem] tracking-wide text-muted-foreground uppercase">
+                        Suggested Today Range
+                    </p>
+                    <p className="font-mono text-sm text-foreground">
+                        {todaySnapshot.suggested_min_tss_today}
+                        {' - '}
+                        {todaySnapshot.suggested_max_tss_today}
+                        {' '}
+                        TSS
+                    </p>
+                    <p className="text-[0.625rem] text-muted-foreground">{todayLabel}</p>
+                </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                 <p>
                     Planned vs completed:
-                    <span className="ml-1 font-mono text-zinc-300">
+                    <span className="ml-1 font-mono text-foreground">
                         {summary.planned_tss_total > 0
                             ? `${summary.actual_tss_total} / ${summary.planned_tss_total} TSS`
                             : '—'}
@@ -51,23 +98,23 @@ export function ProgressLoadTrendChart({
                 </p>
                 <p>
                     Sessions:
-                    <span className="ml-1 font-mono text-zinc-300">
+                    <span className="ml-1 font-mono text-foreground">
                         {summary.planned_sessions_total > 0
                             ? `${summary.completed_sessions_total} / ${summary.planned_sessions_total}`
                             : '—'}
                     </span>
                 </p>
             </div>
-            <p className="mt-1 text-[0.6875rem] text-zinc-600">
+            <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                 Suggested range: trailing 4-week average actual TSS (±15%).
             </p>
 
-            <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/70 bg-background/60">
+            <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/80 bg-background/70">
                 {activePoint !== undefined ? (
-                    <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-zinc-800 bg-zinc-950/85 px-2.5 py-1.5 text-[0.6875rem]">
-                        <p className="text-zinc-400">{activePoint.label}</p>
+                    <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-[0.6875rem] shadow-sm">
+                        <p className="text-muted-foreground">{activePoint.label}</p>
                         <div className="mt-1 flex items-center gap-3">
-                            <span className="inline-flex items-center gap-1 text-zinc-300">
+                            <span className="inline-flex items-center gap-1 text-foreground">
                                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                                 <span>Actual</span>
                                 <span className="font-mono">{activePoint.actualTss ?? '—'}</span>
@@ -79,7 +126,7 @@ export function ProgressLoadTrendChart({
                             </span>
                             {activePoint.suggestedMinTss !== null
                             && activePoint.suggestedMaxTss !== null ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-300">
+                                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
                                     <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
                                     <span>Range</span>
                                     <span className="font-mono">
@@ -150,7 +197,7 @@ export function ProgressLoadTrendChart({
                             <polygon
                                 key={index}
                                 points={segment}
-                                fill="rgba(74,222,128,0.2)"
+                                fill="rgba(74,222,128,0.32)"
                             />
                         ))}
 
@@ -161,8 +208,8 @@ export function ProgressLoadTrendChart({
                                 y={column.y}
                                 width={column.width}
                                 height={column.height}
-                                fill="rgba(74,222,128,0.2)"
-                                stroke="rgba(74,222,128,0.55)"
+                                fill="rgba(74,222,128,0.32)"
+                                stroke="rgba(74,222,128,0.85)"
                                 strokeWidth={0.8}
                                 rx={1}
                             />
@@ -173,8 +220,8 @@ export function ProgressLoadTrendChart({
                                 key={`target-upper-${index}`}
                                 d={segment}
                                 fill="none"
-                                stroke="rgba(74,222,128,0.8)"
-                                strokeWidth={1.2}
+                                stroke="rgba(74,222,128,0.95)"
+                                strokeWidth={1.4}
                             />
                         ))}
 
@@ -183,8 +230,8 @@ export function ProgressLoadTrendChart({
                                 key={`target-lower-${index}`}
                                 d={segment}
                                 fill="none"
-                                stroke="rgba(74,222,128,0.8)"
-                                strokeWidth={1.2}
+                                stroke="rgba(74,222,128,0.95)"
+                                strokeWidth={1.4}
                             />
                         ))}
 
@@ -233,7 +280,7 @@ export function ProgressLoadTrendChart({
                                     cy={point.actualY}
                                     r={4}
                                     fill="rgb(16,185,129)"
-                                    stroke="rgb(24,24,27)"
+                                    stroke="var(--background)"
                                     strokeWidth={2}
                                 />
                             );
@@ -245,7 +292,7 @@ export function ProgressLoadTrendChart({
                                 cy={activePoint.actualY}
                                 r={5}
                                 fill="rgb(16,185,129)"
-                                stroke="rgb(24,24,27)"
+                                stroke="var(--background)"
                                 strokeWidth={2}
                             />
                         ) : null}
@@ -256,7 +303,7 @@ export function ProgressLoadTrendChart({
                                 cy={activePoint.plannedY}
                                 r={4}
                                 fill="rgb(14,116,144)"
-                                stroke="rgb(24,24,27)"
+                                stroke="var(--background)"
                                 strokeWidth={1.5}
                             />
                         ) : null}

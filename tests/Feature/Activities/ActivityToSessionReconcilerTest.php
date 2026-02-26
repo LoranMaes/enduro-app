@@ -1,12 +1,15 @@
 <?php
 
 use App\Enums\TrainingSessionPlanningSource;
+use App\Jobs\RecalculateUserLoadJob;
+use App\Jobs\RecalculateWeeklyMetricsJob;
 use App\Models\Activity;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
 use App\Services\Training\ActivityToSessionReconciler;
+use Illuminate\Support\Facades\Bus;
 
 it('auto links and auto completes a matching planned session', function () {
     $athlete = User::factory()->athlete()->create();
@@ -229,4 +232,37 @@ it('creates an unplanned workout when a single planned session is outside tolera
     expect($resolvedSession?->planning_source->value)->toBe('unplanned');
     expect($resolvedSession?->title)->toBe('Free Workout');
     expect($activity->fresh()->training_session_id)->toBe($resolvedSession?->id);
+});
+
+it('does not dispatch load recalculation jobs per activity during reconciliation', function () {
+    Bus::fake([
+        RecalculateUserLoadJob::class,
+        RecalculateWeeklyMetricsJob::class,
+    ]);
+
+    $athlete = User::factory()->athlete()->create();
+
+    $firstActivity = Activity::factory()->create([
+        'athlete_id' => $athlete->id,
+        'training_session_id' => null,
+        'sport' => 'run',
+        'started_at' => '2026-03-10 07:00:00',
+        'duration_seconds' => 1800,
+        'raw_payload' => ['tss' => 35],
+    ]);
+    $secondActivity = Activity::factory()->create([
+        'athlete_id' => $athlete->id,
+        'training_session_id' => null,
+        'sport' => 'bike',
+        'started_at' => '2026-03-11 07:00:00',
+        'duration_seconds' => 2400,
+        'raw_payload' => ['tss' => 45],
+    ]);
+
+    app(ActivityToSessionReconciler::class)->reconcileMany(
+        Activity::query()->whereIn('id', [$firstActivity->id, $secondActivity->id])->get(),
+    );
+
+    Bus::assertNotDispatched(RecalculateUserLoadJob::class);
+    Bus::assertNotDispatched(RecalculateWeeklyMetricsJob::class);
 });

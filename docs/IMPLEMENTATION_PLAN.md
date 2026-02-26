@@ -4,6 +4,54 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 19 — Progress/Performance + Theme/Cashier Hardening (IN PROGRESS)
+
+- Goals:
+  - stabilize performance forecast behavior when trailing synthetic zero snapshots are present
+  - expose one-shot “today” load snapshots in both progress charts
+  - improve performance chart readability (legend education, toggles, contrast, hover clarity)
+  - ensure suggested load range appears from the beginning of the selected range when historical seeds exist
+  - add settings-level theme control tab and keep appearance route compatibility
+  - scaffold Laravel Cashier/Stripe webhook readiness without breaking existing billing compatibility endpoint
+- Boundaries:
+  - no route removals
+  - no endpoint key removals
+  - additive props/interfaces only
+  - no visual redesign; slicing density preserved
+- Completed in this phase:
+  - performance forecast:
+    - clamped fetch to present-day range
+    - trimmed trailing synthetic zero points before projection
+    - retained no-workout EWMA decay horizon logic
+  - load trend:
+    - added today snapshot row (actual/planned/suggested)
+    - seeded suggested-range warm-up from prior seed history and immediate range context
+    - increased suggested-range visual contrast
+  - performance management chart:
+    - added CTL/ATL/TSB legend tooltips
+    - added series visibility toggles
+    - added colored-dot hover values
+    - added snapshot row and taller chart surface
+  - settings/theme:
+    - added `theme` tab to settings overview flow
+    - routed legacy `/settings/appearance` to `overview?tab=theme`
+  - cashier scaffold:
+    - installed and published Cashier assets/migrations
+    - enabled `Billable` on `User`
+    - added CSRF exclusion for `stripe/*` webhook path
+    - kept existing `/api/webhooks/stripe` endpoint as compatibility bridge
+    - replaced settings billing shell with live subscription-state panel
+    - added Reverb billing event stream from Stripe webhook to settings UI (`no reload` updates)
+    - billing UX polish:
+      - moved back to user-facing plan card presentation
+      - added subscribe/manage actions in billing tab
+      - added graceful messaging for missing checkout config or missing Stripe customer link
+- Remaining follow-up (outside this phase boundary):
+  - repo-wide TS + feature test normalization for UUID/opaque-ID migration assertions (numeric ID assumptions still present in many tests/pages)
+  - full billing subscription source-of-truth cutover from legacy `is_subscribed` toggle to Cashier subscription checks
+
+---
+
 ## Phase 18 — UUID/Opaque ID Dual-Mode Hardening (COMPLETE)
 
 - Goals:

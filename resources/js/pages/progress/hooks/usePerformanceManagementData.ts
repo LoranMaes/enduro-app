@@ -28,9 +28,14 @@ export function usePerformanceManagementData(
             return null;
         }
 
+        const todayDate = new Date().toISOString().slice(0, 10);
+        const clampedTo = lastWeek.week_end <= todayDate
+            ? lastWeek.week_end
+            : todayDate;
+
         return {
             from: firstWeek.week_start,
-            to: lastWeek.week_end,
+            to: clampedTo,
         };
     }, [weeks]);
 

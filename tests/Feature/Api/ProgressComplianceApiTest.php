@@ -2,6 +2,7 @@
 
 use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
+use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\User;
 
@@ -183,4 +184,42 @@ it('forbids compliance access for admins unless impersonating an athlete', funct
     $this
         ->getJson('/api/progress/compliance?from=2026-02-09&to=2026-02-22')
         ->assertOk();
+});
+
+it('uses linked activity fallback tss for completed weekly totals when actual tss is missing', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    $session = TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => '2026-04-06',
+        'status' => TrainingSessionStatus::Completed->value,
+        'planning_source' => TrainingSessionPlanningSource::Planned->value,
+        'completed_at' => now(),
+        'duration_minutes' => 60,
+        'actual_duration_minutes' => 60,
+        'planned_tss' => 90,
+        'actual_tss' => null,
+    ]);
+
+    Activity::factory()->linkedToTrainingSession($session)->create([
+        'athlete_id' => $athlete->id,
+        'sport' => 'run',
+        'duration_seconds' => 3600,
+        'raw_payload' => [
+            'relative_effort' => 77,
+        ],
+    ]);
+
+    $response = $this
+        ->actingAs($athlete)
+        ->getJson('/api/progress/compliance?from=2026-04-06&to=2026-04-12')
+        ->assertOk()
+        ->json();
+
+    expect($response['weeks'])->toHaveCount(1);
+    expect($response['weeks'][0]['planned_tss_total'])->toBe(90);
+    expect($response['weeks'][0]['completed_tss_total'])->toBe(77);
+    expect(abs($response['weeks'][0]['load_state_ratio'] - (77 / 90)))->toBeLessThan(0.0001);
+    expect($response['weeks'][0]['load_state'])->toBe('in_range');
 });

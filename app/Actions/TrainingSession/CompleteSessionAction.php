@@ -22,6 +22,7 @@ class CompleteSessionAction
         User $user,
         TrainingSession $trainingSession,
         TrainingSessionCompletionSource $completionSource = TrainingSessionCompletionSource::Manual,
+        bool $dispatchRecentLoadRecalculation = true,
     ): TrainingSession {
         $trainingSession->loadMissing('activity');
 
@@ -63,7 +64,9 @@ class CompleteSessionAction
                 : null,
         ]);
 
-        $this->dispatchRecentLoadRecalculation->execute($user, 60);
+        if ($dispatchRecentLoadRecalculation) {
+            $this->dispatchRecentLoadRecalculation->execute($user, 60);
+        }
 
         return $trainingSession->refresh()->loadMissing('activity');
     }

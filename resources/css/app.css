@@ -74,26 +74,26 @@
 }
 
 :root {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --card: #18181b;
-    --card-foreground: #f4f4f5;
-    --surface: #18181b;
-    --popover: #18181b;
-    --popover-foreground: #f4f4f5;
-    --primary: #f4f4f5;
-    --primary-foreground: #09090b;
-    --secondary: #18181b;
-    --secondary-foreground: #f4f4f5;
-    --muted: #18181b;
-    --muted-foreground: #a1a1aa;
-    --accent: #3b82f6;
-    --accent-foreground: #f4f4f5;
+    --background: #f4f4f5;
+    --foreground: #18181b;
+    --card: #ffffff;
+    --card-foreground: #18181b;
+    --surface: #ffffff;
+    --popover: #ffffff;
+    --popover-foreground: #18181b;
+    --primary: #18181b;
+    --primary-foreground: #f8fafc;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+    --muted: #e4e4e7;
+    --muted-foreground: #52525b;
+    --accent: #2563eb;
+    --accent-foreground: #f8fafc;
     --destructive: #ef4444;
-    --destructive-foreground: #f4f4f5;
-    --border: #27272a;
-    --input: #27272a;
-    --ring: #3b82f6;
+    --destructive-foreground: #f8fafc;
+    --border: #d4d4d8;
+    --input: #d4d4d8;
+    --ring: #2563eb;
     --chart-1: #3b82f6;
     --chart-2: #10b981;
     --chart-3: #f59e0b;
@@ -108,14 +108,14 @@
     --sport-run: #fb7185;
     --sport-gym: #fbbf24;
     --radius: 0.5rem;
-    --sidebar: #18181b;
-    --sidebar-foreground: #f4f4f5;
-    --sidebar-primary: #f4f4f5;
-    --sidebar-primary-foreground: #18181b;
-    --sidebar-accent: #27272a;
-    --sidebar-accent-foreground: #f4f4f5;
-    --sidebar-border: #27272a;
-    --sidebar-ring: #3b82f6;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #18181b;
+    --sidebar-primary: #18181b;
+    --sidebar-primary-foreground: #f8fafc;
+    --sidebar-accent: #e4e4e7;
+    --sidebar-accent-foreground: #18181b;
+    --sidebar-border: #d4d4d8;
+    --sidebar-ring: #2563eb;
 }
 
 .dark {
@@ -169,5 +169,59 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+@layer utilities {
+    :root:not(.dark) .text-zinc-100 {
+        color: #111827;
+    }
+
+    :root:not(.dark) .text-zinc-200 {
+        color: #1f2937;
+    }
+
+    :root:not(.dark) .text-zinc-300 {
+        color: #374151;
+    }
+
+    :root:not(.dark) .text-zinc-400 {
+        color: #4b5563;
+    }
+
+    :root:not(.dark) .text-zinc-500 {
+        color: #6b7280;
+    }
+
+    :root:not(.dark) .text-zinc-600 {
+        color: #9ca3af;
+    }
+
+    :root:not(.dark) .bg-zinc-950,
+    :root:not(.dark) .bg-zinc-950\/85,
+    :root:not(.dark) .bg-zinc-950\/20,
+    :root:not(.dark) .bg-zinc-900,
+    :root:not(.dark) .bg-zinc-900\/80,
+    :root:not(.dark) .bg-zinc-900\/70,
+    :root:not(.dark) .bg-zinc-900\/65,
+    :root:not(.dark) .bg-zinc-900\/60,
+    :root:not(.dark) .bg-zinc-900\/50,
+    :root:not(.dark) .bg-zinc-900\/40,
+    :root:not(.dark) .bg-zinc-900\/30,
+    :root:not(.dark) .bg-zinc-900\/20,
+    :root:not(.dark) .bg-zinc-900\/10,
+    :root:not(.dark) .bg-zinc-800,
+    :root:not(.dark) .bg-zinc-800\/70,
+    :root:not(.dark) .bg-zinc-800\/50,
+    :root:not(.dark) .bg-zinc-800\/40 {
+        background-color: rgba(229, 231, 235, 0.8);
+    }
+
+    :root:not(.dark) .border-zinc-950,
+    :root:not(.dark) .border-zinc-900,
+    :root:not(.dark) .border-zinc-800,
+    :root:not(.dark) .border-zinc-700,
+    :root:not(.dark) .border-zinc-600 {
+        border-color: #d1d5db;
     }
 }

@@ -1,9 +1,14 @@
 <?php
 
+use App\Events\BillingSubscriptionStatusUpdated;
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 
 it('updates subscription fields for a valid stripe webhook payload', function () {
     config()->set('services.stripe.webhook_secret', 'whsec_test_secret');
+    Event::fake([
+        BillingSubscriptionStatusUpdated::class,
+    ]);
 
     $athlete = User::factory()->athlete()->create([
         'is_subscribed' => false,
@@ -49,6 +54,12 @@ it('updates subscription fields for a valid stripe webhook payload', function ()
     expect($athlete->is_subscribed)->toBeTrue();
     expect($athlete->stripe_subscription_status)->toBe('active');
     expect($athlete->stripe_subscription_synced_at)->not->toBeNull();
+    Event::assertDispatched(
+        BillingSubscriptionStatusUpdated::class,
+        fn (BillingSubscriptionStatusUpdated $event): bool => $event->userId === $athlete->id
+            && $event->isSubscribed === true
+            && $event->subscriptionStatus === 'active',
+    );
 });
 
 it('rejects invalid stripe webhook signatures', function () {
