@@ -48,6 +48,8 @@ it('allows athletes to view training progress derived from sessions', function (
             ->where('summary.completed_sessions_total', 1)
             ->where('summary.planned_tss_total', 120)
             ->where('summary.actual_tss_total', 74)
+            ->where('weeks.0.recommended_tss_source', 'actual_tss_trailing_4w')
+            ->where('weeks.0.recommended_tss_state', 'insufficient')
             ->has('weeks', 4));
 });
 
@@ -200,6 +202,10 @@ it('includes today snapshot and seeded trend weeks props', function () {
             ->where('todaySnapshot.date', $today->toDateString())
             ->where('todaySnapshot.actual_tss_today', 60)
             ->where('todaySnapshot.planned_tss_today', 150)
+            ->where(
+                'weeks.3.recommended_tss_source',
+                'actual_tss_trailing_4w',
+            )
             ->has('trendSeedWeeks', 4)
             ->where('trendSeedWeeks.0', fn (int $value): bool => $value >= 0));
 

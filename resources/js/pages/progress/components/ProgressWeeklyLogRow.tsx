@@ -15,10 +15,10 @@ export function ProgressWeeklyLogRow({ week }: ProgressWeeklyLogRowProps) {
     const actualTss = week.actual_tss ?? 0;
     const compliance = calculateCompliance(plannedTss, actualTss);
     const loadState =
-        week.load_state === 'in_range'
-        || week.load_state === 'high'
-        || week.load_state === 'low'
-            ? week.load_state
+        week.recommended_tss_state === 'in_range'
+        || week.recommended_tss_state === 'high'
+        || week.recommended_tss_state === 'low'
+            ? week.recommended_tss_state
             : 'insufficient';
 
     return (

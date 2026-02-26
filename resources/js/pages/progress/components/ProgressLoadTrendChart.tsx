@@ -106,7 +106,7 @@ export function ProgressLoadTrendChart({
                 </p>
             </div>
             <p className="mt-1 text-[0.6875rem] text-muted-foreground">
-                Suggested range: trailing 4-week average actual TSS (±15%).
+                Suggested range: trailing 4-week actual TSS band (±15%).
             </p>
 
             <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/80 bg-background/70">

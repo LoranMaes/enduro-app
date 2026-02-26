@@ -36,6 +36,7 @@ class ActivityController extends Controller
                 fn (Builder $query) => $query->whereDate('started_at', '<=', $validated['to']),
             )
             ->orderByDesc('started_at')
+            ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 

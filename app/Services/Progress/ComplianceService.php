@@ -12,6 +12,7 @@ class ComplianceService
     public function __construct(
         private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
         private readonly WeeklyRecommendationBandService $weeklyRecommendationBandService,
+        private readonly ActualTssRecommendationService $actualTssRecommendationService,
     ) {}
 
     /**
@@ -31,6 +32,9 @@ class ComplianceService
      *         load_state_source: string,
      *         actual_minutes_total: int,
      *         recommendation_band: array{min_minutes: int, max_minutes: int}|null
+     *         recommendation_tss_band: array{min_tss: int, max_tss: int}|null,
+     *         recommended_tss_state: 'low'|'in_range'|'high'|'insufficient',
+     *         recommended_tss_source: 'actual_tss_trailing_4w'
      *     }>,
      *     summary: array{
      *         total_planned_sessions_count: int,
@@ -53,11 +57,20 @@ class ComplianceService
             $rangeStartsAt,
             $rangeEndsAt,
         );
+        $historySnapshotMetrics = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $historyStartsAt,
+            $rangeEndsAt,
+        );
 
         $actualMinutesByWeek = [];
+        $actualTssByWeek = [];
 
         foreach ($historyWeekStartsAt as $weekStartsAt) {
             $actualMinutesByWeek[$weekStartsAt] = 0;
+            $actualTssByWeek[$weekStartsAt] = (int) (
+                $historySnapshotMetrics[$weekStartsAt]['completed_tss_total'] ?? 0
+            );
         }
 
         $sessions = TrainingSession::query()
@@ -99,6 +112,10 @@ class ComplianceService
 
         $bands = $this->weeklyRecommendationBandService->resolve(
             $actualMinutesByWeek,
+            $rangeWeekStartsAt,
+        );
+        $tssRecommendations = $this->actualTssRecommendationService->resolve(
+            $actualTssByWeek,
             $rangeWeekStartsAt,
         );
 
@@ -145,6 +162,17 @@ class ComplianceService
                 'load_state_source' => (string) $snapshot['load_state_source'],
                 'actual_minutes_total' => $actualMinutesByWeek[$weekStartsAt] ?? 0,
                 'recommendation_band' => $bands[$weekStartsAt] ?? null,
+                'recommendation_tss_band' => (
+                    ($tssRecommendations[$weekStartsAt]['min_tss'] ?? null) !== null
+                    && ($tssRecommendations[$weekStartsAt]['max_tss'] ?? null) !== null
+                )
+                    ? [
+                        'min_tss' => (int) $tssRecommendations[$weekStartsAt]['min_tss'],
+                        'max_tss' => (int) $tssRecommendations[$weekStartsAt]['max_tss'],
+                    ]
+                    : null,
+                'recommended_tss_state' => (string) ($tssRecommendations[$weekStartsAt]['state'] ?? 'insufficient'),
+                'recommended_tss_source' => (string) ($tssRecommendations[$weekStartsAt]['source'] ?? 'actual_tss_trailing_4w'),
             ];
 
             $totalPlannedSessions += $plannedSessionsCount;

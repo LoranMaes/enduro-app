@@ -255,9 +255,8 @@ export function WeekSection({
             : 0;
     const compliancePercentage = Math.round(complianceRatio * 100);
     const recommendationState = resolveRecommendationState(
+        compliance?.recommended_tss_state ?? null,
         compliance?.load_state ?? null,
-        compliance?.recommendation_band ?? null,
-        compliance?.actual_minutes_total ?? actualDurationMinutes,
     );
     const hasPlannedSessions = plannedSessionsForCompliance.length > 0;
     const isCurrentWeek = isDateInWeek(weekStart, new Date());
@@ -437,10 +436,21 @@ function sportSortOrder(sport: string): number {
 }
 
 function resolveRecommendationState(
+    recommendedTssState: string | null,
     loadState: string | null,
-    recommendationBand: { min_minutes: number; max_minutes: number } | null,
-    actualMinutes: number,
 ): 'too_low' | 'in_range' | 'too_high' {
+    if (recommendedTssState === 'in_range') {
+        return 'in_range';
+    }
+
+    if (recommendedTssState === 'high') {
+        return 'too_high';
+    }
+
+    if (recommendedTssState === 'low') {
+        return 'too_low';
+    }
+
     if (loadState === 'in_range') {
         return 'in_range';
     }
@@ -453,17 +463,5 @@ function resolveRecommendationState(
         return 'too_low';
     }
 
-    if (recommendationBand === null) {
-        return 'too_low';
-    }
-
-    if (actualMinutes < recommendationBand.min_minutes) {
-        return 'too_low';
-    }
-
-    if (actualMinutes > recommendationBand.max_minutes) {
-        return 'too_high';
-    }
-
-    return 'in_range';
+    return 'too_low';
 }

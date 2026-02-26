@@ -20,6 +20,8 @@ export type AtpWeek = {
     completed_tss: number | null;
     load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
     load_state_ratio: number | null;
+    recommended_tss_state?: 'low' | 'in_range' | 'high' | 'insufficient';
+    recommended_tss_source?: string;
     is_current_week: boolean;
     primary_goal: AtpPrimaryGoal | null;
     goal_marker: AtpPrimaryGoal | null;

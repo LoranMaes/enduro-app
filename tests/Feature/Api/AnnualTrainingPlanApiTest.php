@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TrainingSessionPlanningSource;
+use App\Models\Activity;
 use App\Models\AnnualTrainingPlan;
 use App\Models\AnnualTrainingPlanWeek;
 use App\Models\Goal;
@@ -209,6 +210,31 @@ it('only counts planned sessions in planned metrics and includes unplanned sessi
         'actual_tss' => 28,
     ]);
 
+    $resolvedByActivitySession = TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => CarbonImmutable::parse($scheduledDate)->addDays(3)->toDateString(),
+        'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+        'duration_minutes' => 50,
+        'planned_tss' => 30,
+        'status' => 'completed',
+        'completed_at' => $completedAt->addHours(2),
+        'actual_duration_minutes' => 50,
+        'actual_tss' => null,
+    ]);
+
+    Activity::factory()
+        ->linkedToTrainingSession($resolvedByActivitySession)
+        ->create([
+            'athlete_id' => $athlete->id,
+            'provider' => 'strava',
+            'sport' => 'run',
+            'duration_seconds' => 3000,
+            'raw_payload' => [
+                'relative_effort' => 45,
+            ],
+        ]);
+
     $week = collect(
         $this
             ->actingAs($athlete)
@@ -222,6 +248,156 @@ it('only counts planned sessions in planned metrics and includes unplanned sessi
     expect($week)->toBeArray();
     expect($week['planned_minutes'])->toBe(135);
     expect($week['planned_tss'])->toBe(105);
-    expect($week['completed_minutes'])->toBe(115);
-    expect($week['completed_tss'])->toBe(100);
+    expect($week['completed_minutes'])->toBe(165);
+    expect($week['completed_tss'])->toBe(145);
+});
+
+it('includes actual-based recommendation state in atp payload weeks', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-20 10:00:00'));
+
+    try {
+        $athlete = User::factory()->athlete()->create();
+        $targetWeekStart = CarbonImmutable::parse('2026-03-02')
+            ->startOfWeek(CarbonInterface::MONDAY);
+
+        foreach ([4, 3, 2, 1] as $offsetWeeks) {
+            TrainingSession::factory()->create([
+                'user_id' => $athlete->id,
+                'training_week_id' => null,
+                'scheduled_date' => $targetWeekStart->subWeeks($offsetWeeks)->addDay()->toDateString(),
+                'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+                'duration_minutes' => 60,
+                'status' => 'completed',
+                'completed_at' => $targetWeekStart->subWeeks($offsetWeeks)->addDay()->setTime(8, 0),
+                'actual_duration_minutes' => 60,
+                'actual_tss' => 100,
+            ]);
+        }
+
+        TrainingSession::factory()->create([
+            'user_id' => $athlete->id,
+            'training_week_id' => null,
+            'scheduled_date' => $targetWeekStart->addDay()->toDateString(),
+            'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+            'duration_minutes' => 55,
+            'status' => 'completed',
+            'completed_at' => $targetWeekStart->addDay()->setTime(9, 0),
+            'actual_duration_minutes' => 55,
+            'actual_tss' => 95,
+        ]);
+
+        $week = collect(
+            $this
+                ->actingAs($athlete)
+                ->getJson('/api/atp/2026')
+                ->assertOk()
+                ->json('data.weeks'),
+        )->first(
+            fn (array $item): bool => ($item['week_start_date'] ?? null) === $targetWeekStart->toDateString(),
+        );
+
+        expect($week)->toBeArray();
+        expect($week['recommended_tss_source'])->toBe('actual_tss_trailing_4w');
+        expect($week['recommended_tss_state'])->toBe('in_range');
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});
+
+it('uses prior-year history for the first atp week recommendation', function () {
+    $athlete = User::factory()->athlete()->create();
+    $firstWeekStart = CarbonImmutable::parse('2025-12-29')
+        ->startOfWeek(CarbonInterface::MONDAY);
+
+    foreach ([4, 3, 2, 1] as $offsetWeeks) {
+        TrainingSession::factory()->create([
+            'user_id' => $athlete->id,
+            'training_week_id' => null,
+            'scheduled_date' => $firstWeekStart->subWeeks($offsetWeeks)->addDay()->toDateString(),
+            'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+            'duration_minutes' => 60,
+            'status' => 'completed',
+            'completed_at' => $firstWeekStart->subWeeks($offsetWeeks)->addDay()->setTime(8, 0),
+            'actual_duration_minutes' => 60,
+            'actual_tss' => 100,
+        ]);
+    }
+
+    TrainingSession::factory()->create([
+        'user_id' => $athlete->id,
+        'training_week_id' => null,
+        'scheduled_date' => $firstWeekStart->addDay()->toDateString(),
+        'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+        'duration_minutes' => 55,
+        'status' => 'completed',
+        'completed_at' => $firstWeekStart->addDay()->setTime(9, 0),
+        'actual_duration_minutes' => 55,
+        'actual_tss' => 95,
+    ]);
+
+    $week = collect(
+        $this
+            ->actingAs($athlete)
+            ->getJson('/api/atp/2026')
+            ->assertOk()
+            ->json('data.weeks'),
+    )->first(
+        fn (array $item): bool => ($item['week_start_date'] ?? null) === $firstWeekStart->toDateString(),
+    );
+
+    expect($week)->toBeArray();
+    expect($week['recommended_tss_source'])->toBe('actual_tss_trailing_4w');
+    expect($week['recommended_tss_state'])->toBe('in_range');
+});
+
+it('marks future atp weeks as insufficient recommendation state', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-02-11 10:00:00'));
+
+    try {
+        $athlete = User::factory()->athlete()->create();
+        $currentWeekStart = CarbonImmutable::now()->startOfWeek(CarbonInterface::MONDAY);
+        $futureWeekStart = $currentWeekStart->addWeek();
+
+        foreach ([4, 3, 2, 1] as $offsetWeeks) {
+            TrainingSession::factory()->create([
+                'user_id' => $athlete->id,
+                'training_week_id' => null,
+                'scheduled_date' => $currentWeekStart->subWeeks($offsetWeeks)->addDay()->toDateString(),
+                'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+                'duration_minutes' => 60,
+                'status' => 'completed',
+                'completed_at' => $currentWeekStart->subWeeks($offsetWeeks)->addDay()->setTime(8, 0),
+                'actual_duration_minutes' => 60,
+                'actual_tss' => 100,
+            ]);
+        }
+
+        TrainingSession::factory()->create([
+            'user_id' => $athlete->id,
+            'training_week_id' => null,
+            'scheduled_date' => $currentWeekStart->addDay()->toDateString(),
+            'planning_source' => TrainingSessionPlanningSource::Unplanned->value,
+            'duration_minutes' => 60,
+            'status' => 'completed',
+            'completed_at' => $currentWeekStart->addDay()->setTime(9, 0),
+            'actual_duration_minutes' => 60,
+            'actual_tss' => 90,
+        ]);
+
+        $week = collect(
+            $this
+                ->actingAs($athlete)
+                ->getJson('/api/atp/2026')
+                ->assertOk()
+                ->json('data.weeks'),
+        )->first(
+            fn (array $item): bool => ($item['week_start_date'] ?? null) === $futureWeekStart->toDateString(),
+        );
+
+        expect($week)->toBeArray();
+        expect($week['recommended_tss_state'])->toBe('insufficient');
+        expect($week['recommended_tss_source'])->toBe('actual_tss_trailing_4w');
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
 });

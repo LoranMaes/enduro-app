@@ -9,6 +9,10 @@ export type ProgressWeek = {
     completed_sessions: number;
     load_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
     load_state_ratio: number | null;
+    recommended_tss_min: number | null;
+    recommended_tss_max: number | null;
+    recommended_tss_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    recommended_tss_source: string;
 };
 
 export type ProgressRange = {
@@ -47,6 +51,12 @@ export type ProgressComplianceWeek = {
         min_minutes: number;
         max_minutes: number;
     } | null;
+    recommendation_tss_band: {
+        min_tss: number;
+        max_tss: number;
+    } | null;
+    recommended_tss_state: 'low' | 'in_range' | 'high' | 'insufficient' | string;
+    recommended_tss_source: string;
 };
 
 export type ProgressComplianceSummary = {

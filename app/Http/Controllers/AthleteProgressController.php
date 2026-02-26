@@ -10,6 +10,7 @@ use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use App\Services\Metrics\WeeklyMetricsSnapshotService;
+use App\Services\Progress\ActualTssRecommendationService;
 use App\Services\Progress\ComplianceService;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
@@ -21,6 +22,7 @@ class AthleteProgressController extends Controller
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
         private readonly ComplianceService $complianceService,
         private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
+        private readonly ActualTssRecommendationService $actualTssRecommendationService,
     ) {}
 
     public function __invoke(IndexRequest $request): Response
@@ -189,13 +191,57 @@ class AthleteProgressController extends Controller
             $weeklyBuckets[$weekKey]['actual_tss'] += $resolvedActivityTss ?? 0;
         }
 
+        $recommendationHistoryStart = $windowStart->subWeeks(4);
+        $recommendationHistoryEnd = $windowStart->subWeek()->endOfWeek();
+        $historicalRecommendationSnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $recommendationHistoryStart,
+            $recommendationHistoryEnd,
+        );
+        $weeklyActualTss = array_reduce(
+            $weeklyBuckets,
+            static function (array $carry, array $bucket): array {
+                $carry[(string) $bucket['week_start']] = max(
+                    0,
+                    (int) ($bucket['actual_tss'] ?? 0),
+                );
+
+                return $carry;
+            },
+            array_reduce(
+                $historicalRecommendationSnapshots,
+                static function (array $carry, array $snapshot): array {
+                    $carry[(string) $snapshot['week_start_date']] = max(
+                        0,
+                        (int) ($snapshot['completed_tss_total'] ?? 0),
+                    );
+
+                    return $carry;
+                },
+                [],
+            ),
+        );
+        $weekRecommendations = $this->actualTssRecommendationService->resolve(
+            $weeklyActualTss,
+            array_values(array_map(
+                static fn (array $bucket): string => (string) $bucket['week_start'],
+                $weeklyBuckets,
+            )),
+        );
+
         $progressWeeks = array_map(
-            function (array $bucket) use ($weeklySnapshots): array {
+            function (array $bucket) use ($weeklySnapshots, $weekRecommendations): array {
                 $hasPlannedSessions = $bucket['planned_sessions'] > 0;
                 $hasActualLoad = $bucket['completed_sessions'] > 0
                     || $bucket['actual_duration_minutes'] > 0
                     || $bucket['actual_tss'] > 0;
                 $snapshot = $weeklySnapshots[$bucket['week_start']] ?? null;
+                $recommendation = $weekRecommendations[$bucket['week_start']] ?? [
+                    'min_tss' => null,
+                    'max_tss' => null,
+                    'state' => 'insufficient',
+                    'source' => 'actual_tss_trailing_4w',
+                ];
 
                 return [
                     'week_start' => $bucket['week_start'],
@@ -222,6 +268,10 @@ class AthleteProgressController extends Controller
                     'load_state_ratio' => $snapshot !== null && $snapshot['load_state_ratio'] !== null
                         ? (float) $snapshot['load_state_ratio']
                         : null,
+                    'recommended_tss_min' => $recommendation['min_tss'],
+                    'recommended_tss_max' => $recommendation['max_tss'],
+                    'recommended_tss_state' => $recommendation['state'],
+                    'recommended_tss_source' => $recommendation['source'],
                 ];
             },
             array_values($weeklyBuckets),

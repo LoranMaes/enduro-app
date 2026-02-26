@@ -1,6 +1,10 @@
 import { usePage } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import {
+    LoadStatePill,
+    type LoadStatePillState,
+} from '@/components/ui/load-state-pill';
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -45,23 +49,29 @@ export function AtpWeekRow({
         typeof auth.user.timezone === 'string' ? auth.user.timezone : null;
     const weekTypeStyle =
         ATP_WEEK_TYPE_STYLES[week.week_type] ?? ATP_WEEK_TYPE_STYLES.default;
-    const loadStateClass =
-        week.load_state === 'in_range'
-            ? 'border-emerald-500/40 text-emerald-300'
-            : week.load_state === 'high'
-              ? 'border-amber-500/40 text-amber-300'
-              : week.load_state === 'low'
-                ? 'border-zinc-700 text-zinc-300'
-                : 'border-zinc-800 text-zinc-500';
+    const recommendationLoadState = isLoadStatePillState(
+        week.recommended_tss_state ?? '',
+    )
+        ? week.recommended_tss_state
+        : null;
+    const fallbackLoadState = isLoadStatePillState(week.load_state)
+        ? week.load_state
+        : null;
+    const loadState = recommendationLoadState ?? fallbackLoadState ?? 'insufficient';
 
     return (
         <tr
             className={cn(
                 'border-b border-border/70 text-sm text-zinc-300 last:border-b-0',
-                week.is_current_week && 'bg-zinc-900/35',
+                week.is_current_week && 'bg-emerald-500/10',
             )}
         >
-            <td className="px-3 py-2 align-middle">
+            <td
+                className={cn(
+                    'px-3 py-2 align-middle',
+                    week.is_current_week && 'border-l-4 border-l-emerald-400 pl-2',
+                )}
+            >
                 <button
                     type="button"
                     className="text-left text-xs text-zinc-300 transition-colors hover:text-zinc-100"
@@ -75,11 +85,6 @@ export function AtpWeekRow({
                     <span className="text-zinc-500">
                         {formatAtpDate(week.week_end_date, timezone)}
                     </span>
-                    {week.is_current_week ? (
-                        <span className="mt-0.5 block text-[0.625rem] text-zinc-400">
-                            Current week
-                        </span>
-                    ) : null}
                 </button>
             </td>
             <td className="px-3 py-2 align-middle">
@@ -138,12 +143,9 @@ export function AtpWeekRow({
                     {week.completed_tss !== null ? (
                         <span className="font-mono">{week.completed_tss}</span>
                     ) : null}
-                    <Badge
-                        variant="outline"
-                        className={cn('text-[0.625rem] capitalize', loadStateClass)}
-                    >
-                        {week.load_state.replace('_', ' ')}
-                    </Badge>
+                    {loadState !== 'insufficient' ? (
+                        <LoadStatePill state={loadState} />
+                    ) : null}
                 </div>
             </td>
             <td className="px-3 py-2 align-middle">
@@ -171,5 +173,14 @@ export function AtpWeekRow({
                 )}
             </td>
         </tr>
+    );
+}
+
+function isLoadStatePillState(value: string): value is LoadStatePillState {
+    return (
+        value === 'low'
+        || value === 'in_range'
+        || value === 'high'
+        || value === 'insufficient'
     );
 }

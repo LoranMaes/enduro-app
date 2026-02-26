@@ -80,12 +80,16 @@ it('returns weekly compliance using planned sessions only', function () {
     expect($firstWeek['load_state_source'])->toBe('planned_completed_tss_ratio');
     expect($firstWeek['actual_minutes_total'])->toBe(50);
     expect($firstWeek['recommendation_band'])->toBeNull();
+    expect($firstWeek['recommendation_tss_band'])->toBeNull();
+    expect($firstWeek['recommended_tss_state'])->toBe('insufficient');
+    expect($firstWeek['recommended_tss_source'])->toBe('actual_tss_trailing_4w');
 
     expect($secondWeek['week_starts_at'])->toBe('2026-02-16');
     expect($secondWeek['planned_sessions_count'])->toBe(1);
     expect($secondWeek['planned_completed_count'])->toBe(1);
     expect($secondWeek['compliance_ratio'])->toBe(1);
     expect($secondWeek['actual_minutes_total'])->toBe(40);
+    expect($secondWeek['recommended_tss_state'])->toBe('insufficient');
 
     expect($response['summary']['total_planned_sessions_count'])->toBe(3);
     expect($response['summary']['total_planned_completed_count'])->toBe(2);
@@ -155,9 +159,13 @@ it('classifies weekly load states from planned/completed tss ratio', function ()
     expect(abs($lowWeek['load_state_ratio'] - 0.8))->toBeLessThan(0.0001);
     expect($lowWeek['planned_tss_total'])->toBe(100);
     expect($lowWeek['completed_tss_total'])->toBe(80);
+    expect($lowWeek['recommended_tss_state'])->toBe('insufficient');
+    expect($lowWeek['recommendation_tss_band'])->toBeNull();
 
     expect($inRangeWeek['load_state'])->toBe('in_range');
     expect(abs($inRangeWeek['load_state_ratio'] - 0.95))->toBeLessThan(0.0001);
+    expect($inRangeWeek['recommended_tss_state'])->toBe('insufficient');
+    expect($inRangeWeek['recommendation_tss_band'])->toBeNull();
 
     expect($highWeek['load_state'])->toBe('high');
     expect(abs($highWeek['load_state_ratio'] - 4.3))->toBeLessThan(0.0001);
@@ -165,6 +173,12 @@ it('classifies weekly load states from planned/completed tss ratio', function ()
     expect($highWeek['planned_completed_count'])->toBe(1);
     expect($highWeek['planned_tss_total'])->toBe(100);
     expect($highWeek['completed_tss_total'])->toBe(430);
+    expect($highWeek['recommended_tss_state'])->toBe('high');
+    expect($highWeek['recommended_tss_source'])->toBe('actual_tss_trailing_4w');
+    expect($highWeek['recommendation_tss_band'])->toBe([
+        'min_tss' => 74,
+        'max_tss' => 101,
+    ]);
 });
 
 it('forbids compliance access for admins unless impersonating an athlete', function () {

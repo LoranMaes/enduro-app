@@ -6,6 +6,7 @@ use App\Models\AnnualTrainingPlan;
 use App\Models\AnnualTrainingPlanWeek;
 use App\Models\User;
 use App\Services\Metrics\WeeklyMetricsSnapshotService;
+use App\Services\Progress\ActualTssRecommendationService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +21,7 @@ class AthleteAnnualTrainingPlanService
         private readonly AtpWeekSessionMetricsResolver $atpWeekSessionMetricsResolver,
         private readonly AtpWeekGoalResolver $atpWeekGoalResolver,
         private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
+        private readonly ActualTssRecommendationService $actualTssRecommendationService,
     ) {}
 
     /**
@@ -41,6 +43,8 @@ class AthleteAnnualTrainingPlanService
      *         completed_tss: int|null,
      *         load_state: string,
      *         load_state_ratio: float|null,
+     *         recommended_tss_state: 'low'|'in_range'|'high'|'insufficient',
+     *         recommended_tss_source: 'actual_tss_trailing_4w',
      *         is_current_week: bool,
      *         primary_goal: array{
      *             id: int,
@@ -85,6 +89,8 @@ class AthleteAnnualTrainingPlanService
      *     completed_tss: int|null,
      *     load_state: string,
      *     load_state_ratio: float|null,
+     *     recommended_tss_state: 'low'|'in_range'|'high'|'insufficient',
+     *     recommended_tss_source: 'actual_tss_trailing_4w',
      *     is_current_week: bool,
      *     primary_goal: array{
      *         id: int,
@@ -214,6 +220,8 @@ class AthleteAnnualTrainingPlanService
      *         completed_tss: int|null,
      *         load_state: string,
      *         load_state_ratio: float|null,
+     *         recommended_tss_state: 'low'|'in_range'|'high'|'insufficient',
+     *         recommended_tss_source: 'actual_tss_trailing_4w',
      *         is_current_week: bool,
      *         primary_goal: array{
      *             id: int,
@@ -241,16 +249,33 @@ class AthleteAnnualTrainingPlanService
         $firstWeekStart = $weekDefinition['first_week_start'];
         $lastWeekEnd = $weekDefinition['last_week_end'];
         $firstWeekStartDate = CarbonImmutable::parse($firstWeekStart);
+        $recommendationHistoryStart = $firstWeekStartDate->subWeeks(4);
 
         $metricsByWeek = $this->atpWeekSessionMetricsResolver->resolve(
             $user,
-            $firstWeekStartDate,
+            $recommendationHistoryStart,
             $lastWeekEnd,
         );
         $snapshotMetricsByWeek = $this->weeklyMetricsSnapshotService->resolveRange(
             $user,
             $firstWeekStartDate,
             $lastWeekEnd,
+        );
+        $actualTssByWeek = array_map(
+            static fn (array $metrics): int => max(
+                0,
+                (int) ($metrics['completed_tss'] ?? 0),
+            ),
+            $metricsByWeek,
+        );
+
+        foreach (array_keys($weekMap) as $weekStart) {
+            $actualTssByWeek[$weekStart] ??= 0;
+        }
+
+        $tssRecommendations = $this->actualTssRecommendationService->resolve(
+            $actualTssByWeek,
+            array_keys($weekMap),
         );
         $goalMap = $this->atpWeekGoalResolver->resolve(
             $user,
@@ -284,6 +309,14 @@ class AthleteAnnualTrainingPlanService
             ];
             $goal = $goalMap[$weekStart] ?? null;
             $snapshot = $snapshotMetricsByWeek[$weekStart] ?? null;
+            $recommendation = $tssRecommendations[$weekStart] ?? [
+                'state' => 'insufficient',
+                'source' => 'actual_tss_trailing_4w',
+            ];
+
+            if (CarbonImmutable::parse($weekStart)->isAfter(CarbonImmutable::today())) {
+                $recommendation['state'] = 'insufficient';
+            }
 
             $weeks[] = [
                 'week_index' => $definition['week_index'],
@@ -305,6 +338,8 @@ class AthleteAnnualTrainingPlanService
                 'load_state_ratio' => $snapshot !== null && $snapshot['load_state_ratio'] !== null
                     ? (float) $snapshot['load_state_ratio']
                     : null,
+                'recommended_tss_state' => (string) $recommendation['state'],
+                'recommended_tss_source' => (string) $recommendation['source'],
                 'is_current_week' => $weekStart === $currentWeekStart,
                 'primary_goal' => $goal,
                 'goal_marker' => $goal,

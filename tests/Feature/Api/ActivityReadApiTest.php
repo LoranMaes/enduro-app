@@ -29,7 +29,7 @@ it('allows athletes to read only their own activities', function () {
 
     $response->assertOk();
     $response->assertJsonCount(1, 'data');
-    $response->assertJsonPath('data.0.id', $ownActivity->id);
+    $response->assertJsonPath('data.0.id', $ownActivity->getRouteKey());
 });
 
 it('forbids athletes from reading another athletes activity', function () {
@@ -47,9 +47,9 @@ it('forbids athletes from reading another athletes activity', function () {
 });
 
 it('allows admins to read all activities', function () {
-    $admin = User::factory()->admin()->create();
-    $athleteOne = User::factory()->athlete()->create();
-    $athleteTwo = User::factory()->athlete()->create();
+    $admin = User::factory()->admin()->create(['email' => 'admin@example.com']);
+    $athleteOne = User::factory()->athlete()->create(['email' => 'athlete-one@example.com']);
+    $athleteTwo = User::factory()->athlete()->create(['email' => 'athlete-two@example.com']);
 
     Activity::factory()->create([
         'athlete_id' => $athleteOne->id,
@@ -96,7 +96,7 @@ it('allows coaches to read assigned athlete activities only', function () {
 
     $response->assertOk();
     $response->assertJsonCount(1, 'data');
-    $response->assertJsonPath('data.0.id', $assignedActivity->id);
+    $response->assertJsonPath('data.0.id', $assignedActivity->getRouteKey());
 });
 
 it('filters activities by provider and date window', function () {
@@ -130,4 +130,33 @@ it('rejects unsupported provider filters', function () {
         ->getJson('/api/activities?provider=garmin')
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['provider']);
+});
+
+it('paginates activities deterministically when started_at timestamps are equal', function () {
+    $athlete = User::factory()->athlete()->create();
+
+    $createdActivities = Activity::factory()
+        ->count(3)
+        ->create([
+            'athlete_id' => $athlete->id,
+            'provider' => 'strava',
+            'started_at' => '2026-03-15 08:00:00',
+        ])
+        ->sortByDesc('id')
+        ->values();
+
+    $firstPage = $this
+        ->actingAs($athlete)
+        ->getJson('/api/activities?per_page=1&page=1')
+        ->assertOk()
+        ->json('data.0.id');
+    $secondPage = $this
+        ->actingAs($athlete)
+        ->getJson('/api/activities?per_page=1&page=2')
+        ->assertOk()
+        ->json('data.0.id');
+
+    expect((string) $firstPage)->toBe((string) $createdActivities[0]->getRouteKey());
+    expect((string) $secondPage)->toBe((string) $createdActivities[1]->getRouteKey());
+    expect((string) $firstPage)->not->toBe((string) $secondPage);
 });

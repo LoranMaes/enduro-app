@@ -33,7 +33,7 @@ export function ProgressCompliancePanel({
         <section className="mt-10">
             <h2 className="text-2xl font-medium text-zinc-200">Compliance</h2>
             <p className="mt-1 text-xs text-zinc-500">
-                Completed planned sessions only. Recommended TSS range uses planned TSS ±15%.
+                Completed planned sessions only. Recommended TSS range uses trailing 4-week actual TSS ±15%.
             </p>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-[14rem_1fr]">
@@ -154,20 +154,29 @@ function resolveRecommendedTssBand(week: ProgressComplianceWeek): {
     min_tss: number;
     max_tss: number;
 } | null {
-    if (week.planned_tss_total <= 0) {
-        return null;
+    if (
+        week.recommendation_tss_band?.min_tss !== undefined &&
+        week.recommendation_tss_band?.max_tss !== undefined
+    ) {
+        return {
+            min_tss: week.recommendation_tss_band.min_tss,
+            max_tss: week.recommendation_tss_band.max_tss,
+        };
     }
 
-    const minTss = Math.max(0, Math.round(week.planned_tss_total * 0.85));
-    const maxTss = Math.max(minTss, Math.round(week.planned_tss_total * 1.15));
-
-    return {
-        min_tss: minTss,
-        max_tss: maxTss,
-    };
+    return null;
 }
 
 function resolveWeekState(week: ProgressComplianceWeek): LoadStatePillState {
+    if (
+        week.recommended_tss_state === 'in_range'
+        || week.recommended_tss_state === 'high'
+        || week.recommended_tss_state === 'low'
+        || week.recommended_tss_state === 'insufficient'
+    ) {
+        return week.recommended_tss_state;
+    }
+
     if (
         week.load_state === 'in_range'
         || week.load_state === 'high'

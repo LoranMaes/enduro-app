@@ -23,7 +23,7 @@ export function PerformanceSnapshotRow({
                 label="Today TSB"
                 value={Math.round(snapshot.tsb)}
                 dotClassName="bg-fuchsia-400"
-                meta={`${formatSnapshotDate(snapshot.date)}${snapshot.source === 'last_real' ? ' (last real day)' : ''}`}
+                meta={snapshot.source === 'last_real' ? 'Using last real day' : undefined}
             />
         </div>
     );
@@ -80,14 +80,6 @@ function isRealPoint(point: LoadSeriesPoint): boolean {
         && point.ctl === 0
         && point.tsb === 0
     );
-}
-
-function formatSnapshotDate(date: string): string {
-    return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    });
 }
 
 function SnapshotMetric({

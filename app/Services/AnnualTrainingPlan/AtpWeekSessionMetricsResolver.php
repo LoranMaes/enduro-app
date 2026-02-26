@@ -6,12 +6,17 @@ use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Activities\TrainingSessionActualMetricsResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class AtpWeekSessionMetricsResolver
 {
+    public function __construct(
+        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+    ) {}
+
     /**
      * @return array<string, array{
      *     planned_minutes: int,
@@ -26,7 +31,11 @@ class AtpWeekSessionMetricsResolver
             ->where('user_id', $user->id)
             ->whereDate('scheduled_date', '>=', $from->toDateString())
             ->whereDate('scheduled_date', '<=', $to->toDateString())
+            ->with([
+                'activity:id,training_session_id,athlete_id,provider,raw_payload,duration_seconds',
+            ])
             ->get([
+                'id',
                 'scheduled_date',
                 'status',
                 'planning_source',
@@ -37,7 +46,7 @@ class AtpWeekSessionMetricsResolver
                 'completed_at',
             ]);
 
-        return $this->buildSessionMetrics($sessions);
+        return $this->buildSessionMetrics($sessions, $user);
     }
 
     /**
@@ -49,7 +58,7 @@ class AtpWeekSessionMetricsResolver
      *     completed_tss: int
      * }>
      */
-    private function buildSessionMetrics(Collection $sessions): array
+    private function buildSessionMetrics(Collection $sessions, User $user): array
     {
         $metricsByWeek = [];
 
@@ -92,7 +101,14 @@ class AtpWeekSessionMetricsResolver
                 0,
                 (int) ($session->actual_duration_minutes ?? $session->duration_minutes),
             );
-            $metricsByWeek[$weekStart]['completed_tss'] += max(0, (int) ($session->actual_tss ?? 0));
+            $resolvedCompletedTss = $this->actualMetricsResolver->resolveActualTss(
+                $session,
+                $user,
+            );
+            $metricsByWeek[$weekStart]['completed_tss'] += max(
+                0,
+                (int) ($resolvedCompletedTss ?? 0),
+            );
         }
 
         return $metricsByWeek;

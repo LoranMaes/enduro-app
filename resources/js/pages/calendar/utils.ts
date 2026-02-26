@@ -31,6 +31,16 @@ import {
 import type { CalendarViewMode } from './types';
 import type { ProgressCompliancePayload, ProgressComplianceWeek } from './types';
 
+const normalizeEntityId = (id: number | string): string => {
+    return String(id);
+};
+
+const compareEntityIds = (leftId: number | string, rightId: number | string): number => {
+    return normalizeEntityId(leftId).localeCompare(normalizeEntityId(rightId), undefined, {
+        numeric: true,
+    });
+};
+
 export const resolveWeekStartKey = (dateKey: string): string => {
     return formatDateKey(startOfIsoWeek(parseDate(dateKey)));
 };
@@ -118,19 +128,19 @@ export const mergeSessions = (
     existingSessions: TrainingSessionView[],
     incomingSessions: TrainingSessionView[],
 ): TrainingSessionView[] => {
-    const sessionMap = new Map<number, TrainingSessionView>();
+    const sessionMap = new Map<string, TrainingSessionView>();
 
     existingSessions.forEach((session) => {
-        sessionMap.set(session.id, session);
+        sessionMap.set(normalizeEntityId(session.id), session);
     });
 
     incomingSessions.forEach((session) => {
-        sessionMap.set(session.id, session);
+        sessionMap.set(normalizeEntityId(session.id), session);
     });
 
     return Array.from(sessionMap.values()).sort((left, right) => {
         if (left.scheduledDate === right.scheduledDate) {
-            return left.id - right.id;
+            return compareEntityIds(left.id, right.id);
         }
 
         return left.scheduledDate.localeCompare(right.scheduledDate);
@@ -141,19 +151,19 @@ export const mergeActivities = (
     existingActivities: ActivityView[],
     incomingActivities: ActivityView[],
 ): ActivityView[] => {
-    const activityMap = new Map<number, ActivityView>();
+    const activityMap = new Map<string, ActivityView>();
 
     existingActivities.forEach((activity) => {
-        activityMap.set(activity.id, activity);
+        activityMap.set(normalizeEntityId(activity.id), activity);
     });
 
     incomingActivities.forEach((activity) => {
-        activityMap.set(activity.id, activity);
+        activityMap.set(normalizeEntityId(activity.id), activity);
     });
 
     return Array.from(activityMap.values()).sort((left, right) => {
         if (left.startedAt === right.startedAt) {
-            return left.id - right.id;
+            return compareEntityIds(left.id, right.id);
         }
 
         return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
@@ -164,19 +174,19 @@ export const mergeCalendarEntries = (
     existingEntries: CalendarEntryView[],
     incomingEntries: CalendarEntryView[],
 ): CalendarEntryView[] => {
-    const entryMap = new Map<number, CalendarEntryView>();
+    const entryMap = new Map<string, CalendarEntryView>();
 
     existingEntries.forEach((entry) => {
-        entryMap.set(entry.id, entry);
+        entryMap.set(normalizeEntityId(entry.id), entry);
     });
 
     incomingEntries.forEach((entry) => {
-        entryMap.set(entry.id, entry);
+        entryMap.set(normalizeEntityId(entry.id), entry);
     });
 
     return Array.from(entryMap.values()).sort((left, right) => {
         if (left.scheduledDate === right.scheduledDate) {
-            return left.id - right.id;
+            return compareEntityIds(left.id, right.id);
         }
 
         return left.scheduledDate.localeCompare(right.scheduledDate);
@@ -187,19 +197,19 @@ export const mergeGoals = (
     existingGoals: GoalView[],
     incomingGoals: GoalView[],
 ): GoalView[] => {
-    const goalMap = new Map<number, GoalView>();
+    const goalMap = new Map<string, GoalView>();
 
     existingGoals.forEach((goal) => {
-        goalMap.set(goal.id, goal);
+        goalMap.set(normalizeEntityId(goal.id), goal);
     });
 
     incomingGoals.forEach((goal) => {
-        goalMap.set(goal.id, goal);
+        goalMap.set(normalizeEntityId(goal.id), goal);
     });
 
     return Array.from(goalMap.values()).sort((left, right) => {
         if (left.targetDate === right.targetDate) {
-            return left.id - right.id;
+            return compareEntityIds(left.id, right.id);
         }
 
         return (left.targetDate ?? '').localeCompare(right.targetDate ?? '');
@@ -277,7 +287,7 @@ export const fetchWindowActivities = async (
     from: string,
     to: string,
 ): Promise<ActivityView[]> => {
-    const collectedActivities: ActivityView[] = [];
+    const collectedActivitiesById = new Map<string, ActivityView>();
     let page = 1;
     let hasMorePages = true;
 
@@ -309,7 +319,12 @@ export const fetchWindowActivities = async (
         const mappedActivities = mapActivityCollection(
             payload as ApiCollectionResponse<ActivityApi>,
         );
-        collectedActivities.push(...mappedActivities);
+        mappedActivities.forEach((activity) => {
+            collectedActivitiesById.set(
+                normalizeEntityId(activity.id),
+                activity,
+            );
+        });
 
         const meta = payload.meta;
 
@@ -320,7 +335,13 @@ export const fetchWindowActivities = async (
         }
     }
 
-    return collectedActivities;
+    return Array.from(collectedActivitiesById.values()).sort((left, right) => {
+        if (left.startedAt === right.startedAt) {
+            return compareEntityIds(left.id, right.id);
+        }
+
+        return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
+    });
 };
 
 export const fetchWindowCalendarEntries = async (
