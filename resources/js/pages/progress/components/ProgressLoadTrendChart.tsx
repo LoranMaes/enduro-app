@@ -28,17 +28,12 @@ export function ProgressLoadTrendChart({
     todaySnapshot,
     onSetHoveredIndex,
 }: ProgressLoadTrendChartProps) {
-    const todayLabel = new Date(`${todaySnapshot.date}T00:00:00`)
-        .toLocaleDateString(undefined, {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        });
-
     return (
         <section className="rounded-2xl border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-[1.875rem] font-medium text-foreground">Load Trend</h2>
+                <h2 className="text-[1.875rem] font-medium text-foreground">
+                    Load Trend
+                </h2>
                 <div className="flex items-center gap-5 text-[0.6875rem] text-muted-foreground uppercase">
                     <span className="inline-flex items-center gap-2">
                         <span className="h-0.5 w-4 bg-emerald-500" />
@@ -79,11 +74,8 @@ export function ProgressLoadTrendChart({
                     <p className="font-mono text-sm text-foreground">
                         {todaySnapshot.suggested_min_tss_today}
                         {' - '}
-                        {todaySnapshot.suggested_max_tss_today}
-                        {' '}
-                        TSS
+                        {todaySnapshot.suggested_max_tss_today} TSS
                     </p>
-                    <p className="text-[0.625rem] text-muted-foreground">{todayLabel}</p>
                 </div>
             </div>
 
@@ -112,25 +104,32 @@ export function ProgressLoadTrendChart({
             <div className="relative mt-5 h-[21.25rem] overflow-hidden rounded-xl border border-border/80 bg-background/70">
                 {activePoint !== undefined ? (
                     <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-md border border-border bg-popover/95 px-2.5 py-1.5 text-[0.6875rem] shadow-sm">
-                        <p className="text-muted-foreground">{activePoint.label}</p>
+                        <p className="text-muted-foreground">
+                            {activePoint.label}
+                        </p>
                         <div className="mt-1 flex items-center gap-3">
                             <span className="inline-flex items-center gap-1 text-foreground">
                                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                                 <span>Actual</span>
-                                <span className="font-mono">{activePoint.actualTss ?? '—'}</span>
+                                <span className="font-mono">
+                                    {activePoint.actualTss ?? '—'}
+                                </span>
                             </span>
                             <span className="inline-flex items-center gap-1 text-sky-300">
                                 <span className="h-2 w-2 rounded-full bg-sky-500/60" />
                                 <span>Planned</span>
-                                <span className="font-mono">{activePoint.plannedTss ?? '—'}</span>
+                                <span className="font-mono">
+                                    {activePoint.plannedTss ?? '—'}
+                                </span>
                             </span>
-                            {activePoint.suggestedMinTss !== null
-                            && activePoint.suggestedMaxTss !== null ? (
+                            {activePoint.suggestedMinTss !== null &&
+                            activePoint.suggestedMaxTss !== null ? (
                                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
                                     <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
                                     <span>Range</span>
                                     <span className="font-mono">
-                                        {activePoint.suggestedMinTss}–{activePoint.suggestedMaxTss}
+                                        {activePoint.suggestedMinTss}–
+                                        {activePoint.suggestedMaxTss}
                                     </span>
                                 </span>
                             ) : null}
@@ -147,22 +146,30 @@ export function ProgressLoadTrendChart({
                         aria-label="Training load trend chart"
                         onMouseLeave={() => onSetHoveredIndex(null)}
                     >
-                        {Array.from({ length: trend.gridLines + 1 }, (_, index) => {
-                            const y =
-                                trend.chartPaddingY + (trend.innerHeight / trend.gridLines) * index;
+                        {Array.from(
+                            { length: trend.gridLines + 1 },
+                            (_, index) => {
+                                const y =
+                                    trend.chartPaddingY +
+                                    (trend.innerHeight / trend.gridLines) *
+                                        index;
 
-                            return (
-                                <line
-                                    key={index}
-                                    x1={trend.chartPaddingX}
-                                    y1={y}
-                                    x2={trend.chartWidth - trend.chartPaddingX}
-                                    y2={y}
-                                    stroke="rgba(39,39,42,0.6)"
-                                    strokeWidth={1}
-                                />
-                            );
-                        })}
+                                return (
+                                    <line
+                                        key={index}
+                                        x1={trend.chartPaddingX}
+                                        y1={y}
+                                        x2={
+                                            trend.chartWidth -
+                                            trend.chartPaddingX
+                                        }
+                                        y2={y}
+                                        stroke="rgba(39,39,42,0.6)"
+                                        strokeWidth={1}
+                                    />
+                                );
+                            },
+                        )}
 
                         {trend.points.map((point, index) => {
                             if (point === undefined) {
@@ -172,13 +179,16 @@ export function ProgressLoadTrendChart({
                             const hitWidth =
                                 weeksCount > 1
                                     ? Math.max(14, trend.stepX)
-                                    : trend.chartWidth - trend.chartPaddingX * 2;
+                                    : trend.chartWidth -
+                                      trend.chartPaddingX * 2;
                             const startX = Math.max(
                                 trend.chartPaddingX,
                                 point.x - hitWidth / 2,
                             );
                             const maxStartX =
-                                trend.chartWidth - trend.chartPaddingX - hitWidth;
+                                trend.chartWidth -
+                                trend.chartPaddingX -
+                                hitWidth;
 
                             return (
                                 <rect
@@ -188,7 +198,9 @@ export function ProgressLoadTrendChart({
                                     width={hitWidth}
                                     height={trend.innerHeight}
                                     fill="transparent"
-                                    onMouseEnter={() => onSetHoveredIndex(index)}
+                                    onMouseEnter={() =>
+                                        onSetHoveredIndex(index)
+                                    }
                                 />
                             );
                         })}
@@ -286,7 +298,8 @@ export function ProgressLoadTrendChart({
                             );
                         })}
 
-                        {activePoint !== undefined && activePoint.actualY !== null ? (
+                        {activePoint !== undefined &&
+                        activePoint.actualY !== null ? (
                             <circle
                                 cx={activePoint.x}
                                 cy={activePoint.actualY}
@@ -297,7 +310,8 @@ export function ProgressLoadTrendChart({
                             />
                         ) : null}
 
-                        {activePoint !== undefined && activePoint.plannedY !== null ? (
+                        {activePoint !== undefined &&
+                        activePoint.plannedY !== null ? (
                             <circle
                                 cx={activePoint.x}
                                 cy={activePoint.plannedY}

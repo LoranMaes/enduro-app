@@ -57,6 +57,7 @@ class TicketAttachmentController extends Controller
         $attachment = TicketAttachment::query()->create([
             'ticket_id' => $ticket->id,
             'uploaded_by_admin_id' => $admin->id,
+            'uploaded_by_user_id' => null,
             'original_name' => $storedFile['original_name'],
             'display_name' => $displayName,
             'extension' => $storedFile['extension'],

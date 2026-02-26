@@ -31,11 +31,15 @@ class TicketResource extends JsonResource
             'id' => $this->resource->getRouteKey(),
             'title' => $this->title,
             'description' => $this->description,
+            'source' => $this->source?->value ?? null,
             'status' => $this->status?->value,
             'type' => $this->type?->value,
             'importance' => $this->importance?->value,
             'assignee_admin_id' => $this->assigneeAdmin?->getRouteKey() ?? $this->assignee_admin_id,
             'creator_admin_id' => $this->creatorAdmin?->getRouteKey() ?? $this->creator_admin_id,
+            'reporter_user_id' => $this->reporterUser?->getRouteKey() ?? $this->reporter_user_id,
+            'first_admin_response_at' => $this->first_admin_response_at?->toIso8601String(),
+            'has_admin_response' => $this->first_admin_response_at !== null,
             'done_at' => $this->done_at?->toIso8601String(),
             'archived_at' => $this->archived_at?->toIso8601String(),
             'archive_deadline_at' => $archiveDeadline?->toIso8601String(),
@@ -64,7 +68,20 @@ class TicketResource extends JsonResource
                     'email' => $this->assigneeAdmin->email,
                 ];
             }),
+            'reporter_user' => $this->whenLoaded('reporterUser', function (): ?array {
+                if ($this->reporterUser === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->reporterUser->getRouteKey(),
+                    'name' => $this->reporterUser->fullName(),
+                    'email' => $this->reporterUser->email,
+                    'role' => $this->reporterUser->role?->value ?? 'athlete',
+                ];
+            }),
             'attachments' => TicketAttachmentResource::collection($this->whenLoaded('attachments')),
+            'messages' => TicketMessageResource::collection($this->whenLoaded('messages')),
             'internal_note' => $internalNote === null
                 ? null
                 : [

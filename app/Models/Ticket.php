@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\LogsModelActivity;
 use App\Enums\TicketImportance;
+use App\Enums\TicketSource;
 use App\Enums\TicketStatus;
 use App\Enums\TicketType;
 use App\Models\Concerns\UsesDualUuidIdentity;
@@ -27,6 +28,7 @@ class Ticket extends Model
         'public_id',
         'title',
         'description',
+        'source',
         'status',
         'type',
         'importance',
@@ -34,6 +36,9 @@ class Ticket extends Model
         'assignee_admin_uuid_id',
         'creator_admin_id',
         'creator_admin_uuid_id',
+        'reporter_user_id',
+        'reporter_user_uuid_id',
+        'first_admin_response_at',
         'done_at',
         'archived_at',
     ];
@@ -45,9 +50,11 @@ class Ticket extends Model
     {
         return [
             'description' => 'array',
+            'source' => TicketSource::class,
             'status' => TicketStatus::class,
             'type' => TicketType::class,
             'importance' => TicketImportance::class,
+            'first_admin_response_at' => 'datetime',
             'done_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
@@ -61,6 +68,11 @@ class Ticket extends Model
     public function creatorAdmin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_admin_id');
+    }
+
+    public function reporterUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reporter_user_id');
     }
 
     public function attachments(): HasMany
@@ -78,6 +90,11 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class);
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(TicketMessage::class);
+    }
+
     public function mentions(): HasMany
     {
         return $this->hasMany(TicketMention::class);
@@ -91,6 +108,11 @@ class Ticket extends Model
     public function isDone(): bool
     {
         return $this->status === TicketStatus::Done;
+    }
+
+    public function isUserSource(): bool
+    {
+        return $this->source === TicketSource::User;
     }
 
     public function archiveDeadlineHours(int $delayHours): ?CarbonInterface

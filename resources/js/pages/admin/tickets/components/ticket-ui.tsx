@@ -12,6 +12,7 @@ import {
 import type {
     TicketStatusKey,
     TicketImportance,
+    TicketSource,
     TicketType,
 } from '../types';
 
@@ -95,6 +96,22 @@ export function StatusBadge({ status }: { status: TicketStatusKey }) {
             className={`px-1.5 py-0 text-[0.625rem] capitalize ${classes[status]}`}
         >
             {status.replace('_', ' ')}
+        </Badge>
+    );
+}
+
+export function SourceBadge({ source }: { source: TicketSource }) {
+    const classes: Record<TicketSource, string> = {
+        admin: 'border-zinc-700 bg-zinc-800/60 text-zinc-300',
+        user: 'border-emerald-900/60 bg-emerald-950/30 text-emerald-300',
+    };
+
+    return (
+        <Badge
+            variant="outline"
+            className={`px-1.5 py-0 text-[0.625rem] capitalize ${classes[source]}`}
+        >
+            {source === 'user' ? 'User report' : 'Admin'}
         </Badge>
     );
 }

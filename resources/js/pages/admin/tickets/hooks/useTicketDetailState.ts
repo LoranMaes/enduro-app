@@ -46,8 +46,10 @@ type UseTicketDetailStateResult = {
     setTicketAssigneeDraftId: (value: number | null) => void;
     ticketDetailError: string | null;
     ticketDetailFieldErrors: RequestFieldErrors;
-    ticketDetailTab: 'overview' | 'audit';
-    setTicketDetailTab: (value: 'overview' | 'audit') => void;
+    ticketDetailTab: 'overview' | 'conversation' | 'audit';
+    setTicketDetailTab: (
+        value: 'overview' | 'conversation' | 'audit',
+    ) => void;
     ticketInternalNote: string;
     setTicketInternalNote: (value: string) => void;
     ticketDetailDescriptionHtml: string;
@@ -79,7 +81,7 @@ export function useTicketDetailState({
     const [ticketDetailFieldErrors, setTicketDetailFieldErrors] =
         useState<RequestFieldErrors>({});
     const [ticketDetailTab, setTicketDetailTab] = useState<
-        'overview' | 'audit'
+        'overview' | 'conversation' | 'audit'
     >('overview');
     const [ticketInternalNote, setTicketInternalNoteState] = useState('');
     const [ticketDetailDescriptionHtml, setTicketDetailDescriptionHtml] =

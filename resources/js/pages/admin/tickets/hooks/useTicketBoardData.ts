@@ -54,6 +54,10 @@ export function useTicketBoardData({
                             nextFilters.importance === 'all'
                                 ? ''
                                 : nextFilters.importance,
+                        source:
+                            nextFilters.source === 'all'
+                                ? ''
+                                : nextFilters.source,
                         sort: nextFilters.sort,
                         direction: nextFilters.direction,
                     },
@@ -99,6 +103,10 @@ export function useTicketBoardData({
                             nextFilters.importance === 'all'
                                 ? ''
                                 : nextFilters.importance,
+                        source:
+                            nextFilters.source === 'all'
+                                ? ''
+                                : nextFilters.source,
                         sort: nextFilters.sort,
                         direction: nextFilters.direction,
                         page,
@@ -152,6 +160,7 @@ export function useTicketBoardData({
         queryFilters.direction,
         queryFilters.importance,
         queryFilters.search,
+        queryFilters.source,
         queryFilters.sort,
         queryFilters.type,
         refreshArchived,

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\EntryTypeEntitlementController;
 use App\Http\Controllers\Api\Admin\TicketAttachmentController;
 use App\Http\Controllers\Api\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Api\Admin\TicketInternalNoteController;
+use App\Http\Controllers\Api\Admin\TicketMessageController as AdminTicketMessageController;
 use App\Http\Controllers\Api\Admin\TicketNotificationController;
 use App\Http\Controllers\Api\Admin\TicketStatusController;
 use App\Http\Controllers\Api\Admin\TicketUserSearchController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\Api\ProgressComplianceController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\StravaWebhookEventController;
 use App\Http\Controllers\Api\StravaWebhookVerificationController;
+use App\Http\Controllers\Api\Support\SupportTicketAttachmentController;
+use App\Http\Controllers\Api\Support\SupportTicketController;
+use App\Http\Controllers\Api\Support\SupportTicketMessageController;
 use App\Http\Controllers\Api\TrainingPlanController;
 use App\Http\Controllers\Api\TrainingSessionController;
 use App\Http\Controllers\Api\TrainingWeekController;
@@ -105,6 +109,14 @@ Route::middleware([
         ->name('activities.streams');
     Route::post('activity-providers/{provider}/sync', ActivityProviderSyncController::class)
         ->name('activity-providers.sync');
+    Route::prefix('support')->name('support.')->group(function (): void {
+        Route::get('tickets', [SupportTicketController::class, 'index'])->name('tickets.index');
+        Route::post('tickets', [SupportTicketController::class, 'store'])->name('tickets.store');
+        Route::get('tickets/{ticket}', [SupportTicketController::class, 'show'])->name('tickets.show');
+        Route::post('tickets/{ticket}/messages', [SupportTicketMessageController::class, 'store'])->name('tickets.messages.store');
+        Route::post('tickets/{ticket}/attachments', [SupportTicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
+        Route::get('tickets/{ticket}/attachments/{ticketAttachment}', [SupportTicketAttachmentController::class, 'show'])->name('tickets.attachments.show');
+    });
 
     Route::middleware(['admin', 'not_impersonating'])->prefix('admin')->name('admin.api.')->group(function (): void {
         Route::get('entitlements/entry-types', [EntryTypeEntitlementController::class, 'index'])
@@ -120,6 +132,7 @@ Route::middleware([
         Route::delete('tickets/{ticket}', [AdminTicketController::class, 'destroy'])->name('tickets.destroy');
         Route::get('tickets/{ticket}/audit-logs', [AdminTicketController::class, 'auditLogs'])->name('tickets.audit-logs');
         Route::post('tickets/{ticket}/move-status', TicketStatusController::class)->name('tickets.move-status');
+        Route::post('tickets/{ticket}/messages', [AdminTicketMessageController::class, 'store'])->name('tickets.messages.store');
         Route::post('tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
         Route::get('tickets/{ticket}/attachments/{ticketAttachment}', [TicketAttachmentController::class, 'show'])->name('tickets.attachments.show');
         Route::delete('tickets/{ticket}/attachments/{ticketAttachment}', [TicketAttachmentController::class, 'destroy'])->name('tickets.attachments.destroy');

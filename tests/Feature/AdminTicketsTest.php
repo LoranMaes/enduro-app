@@ -166,7 +166,7 @@ it('searches internal notes only for the current admin', function () {
     $this->actingAs($adminA)
         ->getJson('/api/admin/tickets?view=board&search=secret-ops-keyword')
         ->assertOk()
-        ->assertJsonPath('data.todo.0.id', $ticket->id);
+        ->assertJsonPath('data.todo.0.id', (string) $ticket->getRouteKey());
 
     $this->actingAs($adminB)
         ->getJson('/api/admin/tickets?view=board&search=secret-ops-keyword')

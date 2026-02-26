@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\TicketSource;
 use App\Enums\TicketStatus;
 use App\Events\TicketUpdated;
 use App\Http\Controllers\Controller;
@@ -80,12 +81,16 @@ class TicketController extends Controller
         $grouped = [];
 
         foreach ($statuses as $status) {
-            $grouped[$status] = TicketResource::collection(
-                (clone $query)
-                    ->where('status', $status)
-                    ->limit(200)
-                    ->get(),
-            )->resolve();
+            $tickets = (clone $query)
+                ->where('status', $status)
+                ->limit(200)
+                ->get();
+
+            $tickets->loadMissing([
+                'reporterUser:id,public_id,name,first_name,last_name,email,role',
+            ]);
+
+            $grouped[$status] = TicketResource::collection($tickets)->resolve();
         }
 
         return response()->json([
@@ -108,6 +113,7 @@ class TicketController extends Controller
         $ticket = Ticket::query()->create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
+            'source' => TicketSource::Admin->value,
             'status' => $status,
             'type' => $validated['type'],
             'importance' => $validated['importance'],
@@ -127,7 +133,17 @@ class TicketController extends Controller
             'assignee_admin_id' => $ticket->assignee_admin_id,
         ]);
 
-        $ticket->load($this->ticketRelations($admin));
+        $relations = $this->ticketRelations($admin);
+
+        if ($ticket->isUserSource()) {
+            $relations['messages'] = function ($query): void {
+                $query
+                    ->with('authorUser:id,public_id,name,first_name,last_name,email,role')
+                    ->orderBy('id');
+            };
+        }
+
+        $ticket->load($relations);
 
         TicketUpdated::dispatch($ticket->id, 'ticket_created', [
             'status' => $ticket->status?->value,
@@ -149,9 +165,14 @@ class TicketController extends Controller
         $relations = $this->ticketRelations($admin);
         $relations['auditLogs'] = function ($query): void {
             $query
-                ->with('actorAdmin:id,name,first_name,last_name,email')
+                ->with('actorAdmin:id,public_id,name,first_name,last_name,email')
                 ->latest('id')
                 ->limit(50);
+        };
+        $relations['messages'] = function ($query): void {
+            $query
+                ->with('authorUser:id,public_id,name,first_name,last_name,email,role')
+                ->orderBy('id');
         };
         $ticket->load($relations);
 
@@ -226,7 +247,17 @@ class TicketController extends Controller
         $mentionIds = $this->resolveMentionIds($validated, $ticket);
         $this->ticketMentionService->syncDescriptionMentions($ticket, $admin, $mentionIds);
 
-        $ticket->load($this->ticketRelations($admin));
+        $relations = $this->ticketRelations($admin);
+
+        if ($ticket->isUserSource()) {
+            $relations['messages'] = function ($query): void {
+                $query
+                    ->with('authorUser:id,public_id,name,first_name,last_name,email,role')
+                    ->orderBy('id');
+            };
+        }
+
+        $ticket->load($relations);
 
         TicketUpdated::dispatch($ticket->id, 'ticket_updated', [
             'changes' => array_keys($changes),
@@ -268,7 +299,7 @@ class TicketController extends Controller
         $perPage = (int) ($validated['per_page'] ?? 20);
 
         $logs = $ticket->auditLogs()
-            ->with('actorAdmin:id,name,first_name,last_name,email')
+            ->with('actorAdmin:id,public_id,name,first_name,last_name,email')
             ->latest('id')
             ->paginate($perPage)
             ->withQueryString();
@@ -300,6 +331,9 @@ class TicketController extends Controller
             ->when(isset($filters['status']) && (string) $filters['status'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('status', (string) $filters['status']);
             })
+            ->when(isset($filters['source']) && (string) $filters['source'] !== '', function (Builder $query) use ($filters): void {
+                $query->where('source', (string) $filters['source']);
+            })
             ->when($search !== '', function (Builder $query) use ($search, $admin): void {
                 $searchLike = "%{$search}%";
 
@@ -307,6 +341,11 @@ class TicketController extends Controller
                     $nestedQuery
                         ->where('title', 'like', $searchLike)
                         ->orWhereRaw('CAST(description AS CHAR) LIKE ?', [$searchLike])
+                        ->orWhereHas('reporterUser', function (Builder $reporterQuery) use ($searchLike): void {
+                            $reporterQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
                         ->orWhereHas('internalNotes', function (Builder $internalNotesQuery) use ($searchLike, $admin): void {
                             $internalNotesQuery
                                 ->where('admin_id', $admin->id)
@@ -322,9 +361,15 @@ class TicketController extends Controller
     private function ticketRelations(User $admin): array
     {
         return [
-            'creatorAdmin:id,name,first_name,last_name,email',
-            'assigneeAdmin:id,name,first_name,last_name,email',
-            'attachments',
+            'creatorAdmin:id,public_id,name,first_name,last_name,email',
+            'assigneeAdmin:id,public_id,name,first_name,last_name,email',
+            'reporterUser:id,public_id,name,first_name,last_name,email,role',
+            'attachments' => function ($query): void {
+                $query->with([
+                    'uploadedByAdmin:id,public_id,name,first_name,last_name,email,role',
+                    'uploadedByUser:id,public_id,name,first_name,last_name,email,role',
+                ]);
+            },
             'mentions',
             'internalNotes' => function ($query) use ($admin): void {
                 $query->where('admin_id', $admin->id);

@@ -24,7 +24,7 @@ export function TicketFilters({
 
     return (
         <section className="mb-4 rounded-xl border border-border bg-surface px-4 py-3">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_repeat(5,minmax(0,1fr))]">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_repeat(6,minmax(0,1fr))]">
                 <div className="space-y-1">
                     <Label
                         htmlFor="ticket-search"
@@ -113,6 +113,21 @@ export function TicketFilters({
                         { value: 'normal', label: 'Normal' },
                         { value: 'high', label: 'High' },
                         { value: 'urgent', label: 'Urgent' },
+                    ]}
+                />
+
+                <SelectField
+                    label="Source"
+                    value={queryFilters.source}
+                    onChange={(value) => {
+                        updateFilters({
+                            source: value as Filters['source'],
+                        });
+                    }}
+                    options={[
+                        { value: 'all', label: 'All sources' },
+                        { value: 'admin', label: 'Admin' },
+                        { value: 'user', label: 'User' },
                     ]}
                 />
 

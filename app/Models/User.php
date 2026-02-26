@@ -214,6 +214,11 @@ class User extends Authenticatable
         return $this->hasMany(Ticket::class, 'creator_admin_id');
     }
 
+    public function reportedSupportTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'reporter_user_id');
+    }
+
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assignee_admin_id');
@@ -227,6 +232,11 @@ class User extends Authenticatable
     public function ticketComments(): HasMany
     {
         return $this->hasMany(TicketComment::class, 'admin_id');
+    }
+
+    public function ticketMessages(): HasMany
+    {
+        return $this->hasMany(TicketMessage::class, 'author_user_id');
     }
 
     public function receivedTicketMentions(): HasMany

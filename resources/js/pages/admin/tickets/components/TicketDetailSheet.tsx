@@ -4,7 +4,7 @@ import {
     CircleDot,
     LoaderCircle,
 } from 'lucide-react';
-import { useCallback, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -30,6 +30,7 @@ import type {
     UserSearchResult,
 } from '../types';
 import { TicketDetailAuditTab } from './TicketDetailAuditTab';
+import { TicketDetailConversationTab } from './TicketDetailConversationTab';
 import { TicketDetailOverviewTab } from './TicketDetailOverviewTab';
 
 type TicketDetailSheetProps = {
@@ -58,6 +59,10 @@ type TicketDetailSheetProps = {
         ticketId: number,
         attachmentId: number,
     ) => Promise<TicketRecord | null>;
+    onCreateMessage: (
+        ticketId: number,
+        body: string,
+    ) => Promise<TicketMutationResult<TicketRecord>>;
     onLoadAuditLogs: (ticketId: number) => Promise<TicketAudit[]>;
     searchUsers: (query: string) => Promise<UserSearchResult[]>;
 };
@@ -73,6 +78,7 @@ export function TicketDetailSheet({
     onUpsertInternalNote,
     onUploadAttachment,
     onRemoveAttachment,
+    onCreateMessage,
     onLoadAuditLogs,
     searchUsers,
 }: TicketDetailSheetProps) {
@@ -80,6 +86,20 @@ export function TicketDetailSheet({
     const [ticketAuditLoading, setTicketAuditLoading] = useState(false);
     const [ticketAttachmentUploading, setTicketAttachmentUploading] =
         useState(false);
+    const [ticketReplyDraft, setTicketReplyDraft] = useState('');
+    const [ticketReplySending, setTicketReplySending] = useState(false);
+    const [ticketReplyError, setTicketReplyError] = useState<string | null>(
+        null,
+    );
+    const [ticketReplyFieldError, setTicketReplyFieldError] = useState<
+        string | null
+    >(null);
+
+    useEffect(() => {
+        setTicketReplyDraft('');
+        setTicketReplyError(null);
+        setTicketReplyFieldError(null);
+    }, [open, ticket?.id]);
 
     const {
         ticketTitleDraft,
@@ -186,6 +206,34 @@ export function TicketDetailSheet({
         [onMoveStatus, onTicketChange, ticket],
     );
 
+    const handleCreateMessage = useCallback(async (): Promise<void> => {
+        if (ticket === null || ticketReplyDraft.trim() === '') {
+            return;
+        }
+
+        setTicketReplySending(true);
+        setTicketReplyError(null);
+        setTicketReplyFieldError(null);
+
+        try {
+            const response = await onCreateMessage(ticket.id, ticketReplyDraft);
+
+            if (!response.ok) {
+                setTicketReplyError(response.message);
+                setTicketReplyFieldError(response.fieldErrors.body?.[0] ?? null);
+                return;
+            }
+
+            if (response.data !== null) {
+                onTicketChange(response.data);
+            }
+
+            setTicketReplyDraft('');
+        } finally {
+            setTicketReplySending(false);
+        }
+    }, [onCreateMessage, onTicketChange, ticket, ticketReplyDraft]);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
@@ -217,9 +265,11 @@ export function TicketDetailSheet({
                                     value={ticketDetailTab}
                                     onValueChange={(nextTab) => {
                                         const resolvedTab =
-                                            nextTab === 'audit'
-                                                ? 'audit'
-                                                : 'overview';
+                                            nextTab === 'conversation'
+                                                ? 'conversation'
+                                                : nextTab === 'audit'
+                                                  ? 'audit'
+                                                  : 'overview';
 
                                         setTicketDetailTab(resolvedTab);
 
@@ -235,6 +285,14 @@ export function TicketDetailSheet({
                                         >
                                             Overview
                                         </TabsTrigger>
+                                        {ticket.source === 'user' ? (
+                                            <TabsTrigger
+                                                value="conversation"
+                                                className="text-xs"
+                                            >
+                                                Conversation
+                                            </TabsTrigger>
+                                        ) : null}
                                         <TabsTrigger
                                             value="audit"
                                             className="text-xs"
@@ -305,6 +363,30 @@ export function TicketDetailSheet({
                                     void handleRemoveAttachment(attachmentId);
                                 }}
                                 searchUsers={searchUsers}
+                            />
+                        ) : ticketDetailTab === 'conversation' &&
+                          ticket.source === 'user' ? (
+                            <TicketDetailConversationTab
+                                ticket={ticket}
+                                messageDraft={ticketReplyDraft}
+                                messageSubmitting={ticketReplySending}
+                                messageError={ticketReplyError}
+                                messageFieldError={ticketReplyFieldError}
+                                attachmentUploading={ticketAttachmentUploading}
+                                onMessageChange={(value) => {
+                                    setTicketReplyDraft(value);
+                                    setTicketReplyError(null);
+                                    setTicketReplyFieldError(null);
+                                }}
+                                onSendMessage={() => {
+                                    void handleCreateMessage();
+                                }}
+                                onUploadAttachment={(event) => {
+                                    void handleUploadAttachment(event);
+                                }}
+                                onRemoveAttachment={(attachmentId) => {
+                                    void handleRemoveAttachment(attachmentId);
+                                }}
                             />
                         ) : (
                             <TicketDetailAuditTab

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\TicketImportance;
+use App\Enums\TicketSource;
 use App\Enums\TicketStatus;
 use App\Enums\TicketType;
 use App\Models\Ticket;
@@ -56,6 +57,7 @@ class TicketIndexRequest extends FormRequest
             'type' => ['nullable', Rule::in(TicketType::values())],
             'importance' => ['nullable', Rule::in(TicketImportance::values())],
             'status' => ['nullable', Rule::in(TicketStatus::values())],
+            'source' => ['nullable', Rule::in(TicketSource::values())],
             'sort' => ['nullable', Rule::in(self::SORT_OPTIONS)],
             'direction' => ['nullable', Rule::in(self::DIRECTION_OPTIONS)],
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],

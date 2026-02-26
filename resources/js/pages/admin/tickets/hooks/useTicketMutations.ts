@@ -11,6 +11,7 @@ import {
     destroy as adminTicketAttachmentDestroy,
     store as adminTicketAttachmentStore,
 } from '@/routes/admin/api/tickets/attachments';
+import { store as adminTicketMessageStore } from '@/routes/admin/api/tickets/messages';
 import { upsert as adminTicketInternalNoteUpsert } from '@/routes/admin/api/tickets/internal-note';
 import type { DescriptionUserRef } from '../components/ticket-description-editor';
 import type {
@@ -291,6 +292,55 @@ export function useTicketMutations({
         [fetchTicket, refreshArchived, refreshBoard],
     );
 
+    const createAdminMessage = useCallback(
+        async (
+            ticketId: number,
+            body: string,
+        ): Promise<TicketMutationResult<TicketRecord>> => {
+            const route = adminTicketMessageStore(ticketId);
+            const response = await fetch(route.url, {
+                method: route.method.toUpperCase(),
+                headers: {
+                    ...defaultHeaders,
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({ body }),
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => null);
+                const { message, fieldErrors } = parseRequestError(
+                    errorPayload,
+                    'Could not send reply.',
+                );
+
+                return {
+                    ok: false,
+                    data: null,
+                    message,
+                    fieldErrors,
+                };
+            }
+
+            await refreshBoard();
+
+            if (activeTab === 'archived') {
+                await refreshArchived();
+            }
+
+            const refreshedTicket = await fetchTicket(ticketId);
+
+            return {
+                ok: true,
+                data: refreshedTicket,
+                message: null,
+                fieldErrors: {},
+            };
+        },
+        [activeTab, fetchTicket, refreshArchived, refreshBoard],
+    );
+
     const removeAttachment = useCallback(
         async (
             ticketId: number,
@@ -387,6 +437,7 @@ export function useTicketMutations({
         upsertInternalNote,
         uploadAttachment,
         removeAttachment,
+        createAdminMessage,
         loadAuditLogs,
         fetchUserSearch,
     };

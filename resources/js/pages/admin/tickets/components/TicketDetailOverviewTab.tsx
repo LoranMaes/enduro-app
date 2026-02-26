@@ -220,6 +220,24 @@ export function TicketDetailOverviewTab({
             <aside className="flex w-80 shrink-0 flex-col space-y-4 overflow-y-auto rounded-xl border border-border bg-background p-4">
                 <div className="rounded-lg border border-zinc-800 px-3 py-2">
                     <p className="text-[0.6875rem] text-zinc-500 uppercase">
+                        Source
+                    </p>
+                    <p className="text-xs text-zinc-300">
+                        {ticket.source === 'user' ? 'User report' : 'Admin'}
+                    </p>
+                </div>
+
+                <div className="rounded-lg border border-zinc-800 px-3 py-2">
+                    <p className="text-[0.6875rem] text-zinc-500 uppercase">
+                        Reporter
+                    </p>
+                    <p className="text-xs text-zinc-300">
+                        {ticket.reporter_user?.name ?? '—'}
+                    </p>
+                </div>
+
+                <div className="rounded-lg border border-zinc-800 px-3 py-2">
+                    <p className="text-[0.6875rem] text-zinc-500 uppercase">
                         Creator
                     </p>
                     <p className="text-xs text-zinc-300">

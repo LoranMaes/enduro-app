@@ -7,6 +7,8 @@ export type User = {
     role?: 'athlete' | 'coach' | 'admin' | null;
     timezone?: string | null;
     avatar?: string;
+    is_subscribed?: boolean;
+    stripe_subscription_status?: string | null;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;

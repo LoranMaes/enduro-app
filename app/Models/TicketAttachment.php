@@ -22,6 +22,8 @@ class TicketAttachment extends Model
         'ticket_uuid_id',
         'uploaded_by_admin_id',
         'uploaded_by_admin_uuid_id',
+        'uploaded_by_user_id',
+        'uploaded_by_user_uuid_id',
         'original_name',
         'display_name',
         'extension',
@@ -39,5 +41,10 @@ class TicketAttachment extends Model
     public function uploadedByAdmin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by_admin_id');
+    }
+
+    public function uploadedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by_user_id');
     }
 }

@@ -33,9 +33,16 @@ class TicketStatusController extends Controller
 
         if ($previousStatus === $nextStatus) {
             $ticket->load([
-                'creatorAdmin:id,name,first_name,last_name,email',
-                'assigneeAdmin:id,name,first_name,last_name,email',
-                'attachments',
+                'creatorAdmin:id,public_id,name,first_name,last_name,email',
+                'assigneeAdmin:id,public_id,name,first_name,last_name,email',
+                'reporterUser:id,public_id,name,first_name,last_name,email,role',
+                'attachments' => fn ($query) => $query->with([
+                    'uploadedByAdmin:id,public_id,name,first_name,last_name,email,role',
+                    'uploadedByUser:id,public_id,name,first_name,last_name,email,role',
+                ]),
+                'messages' => fn ($query) => $query
+                    ->with('authorUser:id,public_id,name,first_name,last_name,email,role')
+                    ->orderBy('id'),
                 'mentions',
                 'internalNotes' => fn ($query) => $query->where('admin_id', $admin->id),
             ]);
@@ -68,9 +75,16 @@ class TicketStatusController extends Controller
         ]);
 
         $ticket->load([
-            'creatorAdmin:id,name,first_name,last_name,email',
-            'assigneeAdmin:id,name,first_name,last_name,email',
-            'attachments',
+            'creatorAdmin:id,public_id,name,first_name,last_name,email',
+            'assigneeAdmin:id,public_id,name,first_name,last_name,email',
+            'reporterUser:id,public_id,name,first_name,last_name,email,role',
+            'attachments' => fn ($query) => $query->with([
+                'uploadedByAdmin:id,public_id,name,first_name,last_name,email,role',
+                'uploadedByUser:id,public_id,name,first_name,last_name,email,role',
+            ]),
+            'messages' => fn ($query) => $query
+                ->with('authorUser:id,public_id,name,first_name,last_name,email,role')
+                ->orderBy('id'),
             'mentions',
             'internalNotes' => fn ($query) => $query->where('admin_id', $admin->id),
         ]);

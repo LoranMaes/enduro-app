@@ -20,6 +20,7 @@ use App\Http\Controllers\AtpPageController;
 use App\Http\Controllers\Auth\CoachPendingApprovalController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SupportPageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -65,6 +66,10 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
     Route::get('progress', AthleteProgressController::class)
         ->middleware('approved_coach')
         ->name('progress.index');
+
+    Route::get('support', SupportPageController::class)
+        ->middleware('approved_coach')
+        ->name('support.index');
 
     Route::get('sessions/{trainingSession}', AthleteSessionDetailController::class)
         ->middleware('approved_coach')

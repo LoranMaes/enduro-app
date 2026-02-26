@@ -10,7 +10,93 @@ class TicketPolicy
 {
     use DetectsImpersonation;
 
-    public function before(User $user, string $ability): ?bool
+    public function viewAny(User $user): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function view(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function create(User $user): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function update(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function delete(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function moveStatus(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function manageAttachment(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function manageInternalNote(User $user, Ticket $ticket): bool
+    {
+        return $this->canAccessAdminBoard($user);
+    }
+
+    public function viewSupportAny(User $user): bool
+    {
+        return $this->canAccessSupportContext($user);
+    }
+
+    public function createSupport(User $user): bool
+    {
+        return $this->canAccessSupportContext($user);
+    }
+
+    public function viewSupport(User $user, Ticket $ticket): bool
+    {
+        if (! $this->canAccessSupportContext($user)) {
+            return false;
+        }
+
+        return $this->isOwnedSupportTicket($user, $ticket);
+    }
+
+    public function createSupportMessage(User $user, Ticket $ticket): bool
+    {
+        if (! $this->canAccessSupportContext($user)) {
+            return false;
+        }
+
+        return $this->isOwnedSupportTicket($user, $ticket);
+    }
+
+    public function createSupportAttachment(User $user, Ticket $ticket): bool
+    {
+        if (! $this->canAccessSupportContext($user)) {
+            return false;
+        }
+
+        return $this->isOwnedSupportTicket($user, $ticket);
+    }
+
+    public function replySupport(User $user, Ticket $ticket): bool
+    {
+        if (! $this->canAccessAdminBoard($user)) {
+            return false;
+        }
+
+        return $ticket->isUserSource();
+    }
+
+    private function canAccessAdminBoard(User $user): bool
     {
         if (! $user->isAdmin()) {
             return false;
@@ -20,46 +106,32 @@ class TicketPolicy
             return false;
         }
 
-        return null;
+        return true;
     }
 
-    public function viewAny(User $user): bool
+    private function canAccessSupportContext(User $user): bool
     {
-        return $user->isAdmin();
+        if ($user->isAdmin() && ! $this->isImpersonating()) {
+            return false;
+        }
+
+        if ($user->isAthlete()) {
+            return true;
+        }
+
+        if ($user->isCoach()) {
+            return true;
+        }
+
+        return $user->isAdmin() && $this->isImpersonating();
     }
 
-    public function view(User $user, Ticket $ticket): bool
+    private function isOwnedSupportTicket(User $user, Ticket $ticket): bool
     {
-        return $user->isAdmin();
-    }
+        if (! $ticket->isUserSource()) {
+            return false;
+        }
 
-    public function create(User $user): bool
-    {
-        return $user->isAdmin();
-    }
-
-    public function update(User $user, Ticket $ticket): bool
-    {
-        return $user->isAdmin();
-    }
-
-    public function delete(User $user, Ticket $ticket): bool
-    {
-        return $user->isAdmin();
-    }
-
-    public function moveStatus(User $user, Ticket $ticket): bool
-    {
-        return $user->isAdmin();
-    }
-
-    public function manageAttachment(User $user, Ticket $ticket): bool
-    {
-        return $user->isAdmin();
-    }
-
-    public function manageInternalNote(User $user, Ticket $ticket): bool
-    {
-        return $user->isAdmin();
+        return (int) $ticket->reporter_user_id === (int) $user->id;
     }
 }

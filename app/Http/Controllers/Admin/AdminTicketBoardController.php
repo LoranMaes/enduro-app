@@ -28,6 +28,7 @@ class AdminTicketBoardController extends Controller
             'creator_admin_id' => ['nullable', 'integer'],
             'type' => ['nullable', 'in:all,bug,feature,chore,support'],
             'importance' => ['nullable', 'in:all,low,normal,high,urgent'],
+            'source' => ['nullable', 'in:all,admin,user'],
             'sort' => ['nullable', 'in:title,status,type,importance,created_at,updated_at'],
             'direction' => ['nullable', 'in:asc,desc'],
             'archived_page' => ['nullable', 'integer', 'min:1'],
@@ -40,6 +41,7 @@ class AdminTicketBoardController extends Controller
             'creator_admin_id' => (int) ($validated['creator_admin_id'] ?? 0),
             'type' => (string) ($validated['type'] ?? 'all'),
             'importance' => (string) ($validated['importance'] ?? 'all'),
+            'source' => (string) ($validated['source'] ?? 'all'),
             'sort' => (string) ($validated['sort'] ?? 'updated_at'),
             'direction' => (string) ($validated['direction'] ?? 'desc'),
         ];
@@ -107,6 +109,7 @@ class AdminTicketBoardController extends Controller
      *     creator_admin_id: int,
      *     type: string,
      *     importance: string,
+     *     source: string,
      *     sort: string,
      *     direction: string
      * }  $filters
@@ -115,8 +118,9 @@ class AdminTicketBoardController extends Controller
     {
         return Ticket::query()
             ->with([
-                'creatorAdmin:id,name,first_name,last_name,email',
-                'assigneeAdmin:id,name,first_name,last_name,email',
+                'creatorAdmin:id,public_id,name,first_name,last_name,email',
+                'assigneeAdmin:id,public_id,name,first_name,last_name,email',
+                'reporterUser:id,public_id,name,first_name,last_name,email,role',
                 'attachments',
                 'mentions',
                 'internalNotes' => fn ($query) => $query->where('admin_id', $admin->id),
@@ -125,6 +129,7 @@ class AdminTicketBoardController extends Controller
             ->when($filters['creator_admin_id'] > 0, fn (Builder $query) => $query->where('creator_admin_id', $filters['creator_admin_id']))
             ->when($filters['type'] !== 'all', fn (Builder $query) => $query->where('type', $filters['type']))
             ->when($filters['importance'] !== 'all', fn (Builder $query) => $query->where('importance', $filters['importance']))
+            ->when($filters['source'] !== 'all', fn (Builder $query) => $query->where('source', $filters['source']))
             ->when($filters['search'] !== '', function (Builder $query) use ($filters, $admin): void {
                 $searchLike = '%'.$filters['search'].'%';
 
@@ -132,6 +137,11 @@ class AdminTicketBoardController extends Controller
                     $nestedQuery
                         ->where('title', 'like', $searchLike)
                         ->orWhereRaw('CAST(description AS CHAR) LIKE ?', [$searchLike])
+                        ->orWhereHas('reporterUser', function (Builder $reporterQuery) use ($searchLike): void {
+                            $reporterQuery
+                                ->where('name', 'like', $searchLike)
+                                ->orWhere('email', 'like', $searchLike);
+                        })
                         ->orWhereHas('internalNotes', function (Builder $internalNotesQuery) use ($searchLike, $admin): void {
                             $internalNotesQuery
                                 ->where('admin_id', $admin->id)

@@ -1,7 +1,12 @@
 import type { DragEvent } from 'react';
 import { formatDuration, formatRelative } from '../lib/ticket-utils';
 import type { TicketRecord } from '../types';
-import { AssigneeLabel, ImportanceDot, TypeBadge } from './ticket-ui';
+import {
+    AssigneeLabel,
+    ImportanceDot,
+    SourceBadge,
+    TypeBadge,
+} from './ticket-ui';
 
 type TicketCardProps = {
     ticket: TicketRecord;
@@ -40,8 +45,14 @@ export function TicketCard({
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
                 <TypeBadge type={ticket.type} />
+                <SourceBadge source={ticket.source} />
                 <AssigneeLabel name={ticket.assignee_admin?.name ?? null} />
             </div>
+            {ticket.source === 'user' && ticket.reporter_user !== null ? (
+                <p className="mt-1 text-[0.625rem] text-zinc-400">
+                    Reporter: {ticket.reporter_user.name}
+                </p>
+            ) : null}
             <div className="mt-2 flex items-center justify-between text-[0.625rem] text-zinc-500">
                 <span>{formatRelative(ticket.updated_at)}</span>
                 {ticket.status === 'done' &&

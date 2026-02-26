@@ -128,6 +128,7 @@ export default function AdminTickets({
         upsertInternalNote,
         uploadAttachment,
         removeAttachment,
+        createAdminMessage,
         loadAuditLogs,
         fetchUserSearch,
     } = useTicketMutations({
@@ -388,6 +389,7 @@ export default function AdminTickets({
                 onUpsertInternalNote={upsertInternalNote}
                 onUploadAttachment={uploadAttachment}
                 onRemoveAttachment={removeAttachment}
+                onCreateMessage={createAdminMessage}
                 onLoadAuditLogs={loadAuditLogs}
                 searchUsers={fetchUserSearch}
             />

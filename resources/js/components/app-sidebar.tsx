@@ -4,8 +4,10 @@ import {
     CalendarDays,
     CalendarRange,
     ClipboardCheck,
+    Crown,
     Eye,
     FileText,
+    LifeBuoy,
     KanbanSquare,
     LogOut,
     Settings,
@@ -26,6 +28,7 @@ import { show as showAtp } from '@/routes/atp';
 import { index as plansIndex } from '@/routes/plans';
 import { index as progressIndex } from '@/routes/progress';
 import { overview as settingsOverview } from '@/routes/settings';
+import { index as supportIndex } from '@/routes/support';
 import type { SharedData } from '@/types';
 
 type AppRole = 'athlete' | 'coach' | 'admin';
@@ -47,6 +50,15 @@ export function AppSidebar() {
     const { isImpersonating, visualImpersonating } =
         useImpersonationVisualState();
     const isAdminConsoleMode = role === 'admin' && !isImpersonating;
+    const subscriptionStatus =
+        typeof auth.user.stripe_subscription_status === 'string'
+            ? auth.user.stripe_subscription_status.toLowerCase()
+            : null;
+    const hasActiveSubscription =
+        role !== 'admin' &&
+        (auth.user.is_subscribed === true ||
+            subscriptionStatus === 'active' ||
+            subscriptionStatus === 'trialing');
 
     const items: SidebarItem[] = isAdminConsoleMode
         ? [
@@ -138,6 +150,17 @@ export function AppSidebar() {
                         } satisfies SidebarItem,
                     ]
                   : []),
+              ...((role === 'athlete' || role === 'coach')
+                  ? [
+                        {
+                            title: 'Support',
+                            href: supportIndex().url,
+                            icon: LifeBuoy,
+                            isActive: (path: string) =>
+                                path.startsWith('/support'),
+                        } satisfies SidebarItem,
+                    ]
+                  : []),
               {
                   title: 'Settings',
                   href: settingsOverview().url,
@@ -201,21 +224,32 @@ export function AppSidebar() {
             </nav>
 
             <div className="mt-auto mb-4 flex flex-col items-center gap-2">
-                <div
-                    className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[0.625rem] font-bold ${
-                        visualImpersonating
-                            ? 'border-amber-700 bg-amber-900/80 text-amber-100'
-                            : role === 'admin'
-                              ? 'border-amber-800 bg-amber-900/50 text-amber-500'
-                              : 'border-zinc-700 bg-zinc-800 text-zinc-400'
-                    }`}
-                    title={`Current Role: ${role}`}
-                >
-                    {visualImpersonating ? (
-                        <Eye className="h-3 w-3" />
-                    ) : (
-                        roleBadge
-                    )}
+                <div className="relative">
+                    <div
+                        className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[0.625rem] font-bold ${
+                            visualImpersonating
+                                ? 'border-amber-700 bg-amber-900/80 text-amber-100'
+                                : role === 'admin'
+                                  ? 'border-amber-800 bg-amber-900/50 text-amber-500'
+                                  : 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                        }`}
+                        title={`Current Role: ${role}`}
+                    >
+                        {visualImpersonating ? (
+                            <Eye className="h-3 w-3" />
+                        ) : (
+                            roleBadge
+                        )}
+                    </div>
+                    {hasActiveSubscription ? (
+                        <span
+                            className="absolute -top-1.5 -right-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-emerald-800 bg-emerald-500/20 px-0.5 text-emerald-300"
+                            title="Active subscription"
+                            aria-label="Active subscription"
+                        >
+                            <Crown className="h-2.5 w-2.5" />
+                        </span>
+                    ) : null}
                 </div>
                 <Link
                     href={logout()}
