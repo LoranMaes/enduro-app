@@ -2,10 +2,17 @@
 
 ## Current Phase
 
-Phase 17 is complete: ATP/progress/session-detail hardening with week-type visual scanning, localized ATP dates, corrected planned-vs-unplanned ATP aggregation, stronger progress state readability, and ATP service decomposition.
+Phase 18 is complete: UUID/opaque-ID dual-mode hardening for training session APIs and calendar payload identifiers, with explicit dual-mode feature-test coverage.
 
 ## Current Wave Focus
 
+- Phase 18 delivered end-to-end:
+    - training-session write flows now resolve `training_week_id` from opaque route keys in dual mode
+    - training-session API serialization now preloads relation keys for route-key-safe ID output
+    - session link/unlink mutation responses now emit route-key IDs
+    - calendar activity payload IDs now flow through route-key abstraction (`legacy` numeric, `dual` opaque)
+    - explicit dual-mode migration tests added:
+        - `tests/Feature/Api/UuidDualModeApiTest.php`
 - Phase 17 delivered end-to-end:
     - ATP week-type colors are now consistent across chart bars, table indicators, and legend
     - ATP goal flag is now positioned below week labels for unobstructed week-number readability

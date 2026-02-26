@@ -33,9 +33,9 @@ class TrainingSessionResource extends JsonResource
         );
 
         if ($this->relationLoaded('activity') && $this->activity instanceof Activity) {
-            $linkedActivityId = $this->activity->id;
+            $linkedActivityId = $this->activity->getRouteKey();
             $linkedActivitySummary = [
-                'id' => $this->activity->id,
+                'id' => $this->activity->getRouteKey(),
                 'provider' => $this->activity->provider,
                 'started_at' => $this->activity->started_at?->toISOString(),
                 'duration_seconds' => $this->activity->duration_seconds,
@@ -50,7 +50,7 @@ class TrainingSessionResource extends JsonResource
                 ->suggestMatchesForSession($this->resource)
                 ->map(function (Activity $activity): array {
                     return [
-                        'id' => $activity->id,
+                        'id' => $activity->getRouteKey(),
                         'provider' => $activity->provider,
                         'sport' => $activity->sport,
                         'started_at' => $activity->started_at?->toISOString(),
@@ -62,8 +62,8 @@ class TrainingSessionResource extends JsonResource
         }
 
         return [
-            'id' => $this->id,
-            'training_week_id' => $this->training_week_id,
+            'id' => $this->resource->getRouteKey(),
+            'training_week_id' => $this->trainingWeek?->getRouteKey() ?? $this->training_week_id,
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'sport' => $this->sport,
             'title' => $this->title,

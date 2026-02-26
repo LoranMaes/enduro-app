@@ -18,8 +18,8 @@ class TrainingWeekResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'training_plan_id' => $this->training_plan_id,
+            'id' => $this->resource->getRouteKey(),
+            'training_plan_id' => $this->trainingPlan?->getRouteKey() ?? $this->training_plan_id,
             'starts_at' => $this->starts_at?->toDateString(),
             'ends_at' => $this->ends_at?->toDateString(),
             'training_sessions' => TrainingSessionResource::collection($this->whenLoaded('trainingSessions')),

@@ -10,8 +10,8 @@ class GoalResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'user_id' => $this->user_id,
+            'id' => $this->resource->getRouteKey(),
+            'user_id' => $this->user?->getRouteKey() ?? $this->user_id,
             'type' => $this->type?->value ?? $this->type,
             'sport' => $this->sport?->value ?? $this->sport,
             'title' => $this->title,

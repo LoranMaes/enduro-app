@@ -28,14 +28,14 @@ class TicketResource extends JsonResource
         }
 
         return [
-            'id' => $this->id,
+            'id' => $this->resource->getRouteKey(),
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status?->value,
             'type' => $this->type?->value,
             'importance' => $this->importance?->value,
-            'assignee_admin_id' => $this->assignee_admin_id,
-            'creator_admin_id' => $this->creator_admin_id,
+            'assignee_admin_id' => $this->assigneeAdmin?->getRouteKey() ?? $this->assignee_admin_id,
+            'creator_admin_id' => $this->creatorAdmin?->getRouteKey() ?? $this->creator_admin_id,
             'done_at' => $this->done_at?->toIso8601String(),
             'archived_at' => $this->archived_at?->toIso8601String(),
             'archive_deadline_at' => $archiveDeadline?->toIso8601String(),
@@ -48,7 +48,7 @@ class TicketResource extends JsonResource
                 }
 
                 return [
-                    'id' => $this->creatorAdmin->id,
+                    'id' => $this->creatorAdmin->getRouteKey(),
                     'name' => $this->creatorAdmin->fullName(),
                     'email' => $this->creatorAdmin->email,
                 ];
@@ -59,7 +59,7 @@ class TicketResource extends JsonResource
                 }
 
                 return [
-                    'id' => $this->assigneeAdmin->id,
+                    'id' => $this->assigneeAdmin->getRouteKey(),
                     'name' => $this->assigneeAdmin->fullName(),
                     'email' => $this->assigneeAdmin->email,
                 ];
@@ -68,7 +68,7 @@ class TicketResource extends JsonResource
             'internal_note' => $internalNote === null
                 ? null
                 : [
-                    'id' => $internalNote->id,
+                    'id' => $internalNote->getRouteKey(),
                     'content' => $internalNote->content,
                     'updated_at' => $internalNote->updated_at?->toIso8601String(),
                 ],
@@ -76,9 +76,9 @@ class TicketResource extends JsonResource
                 return $this->mentions
                     ->map(function ($mention): array {
                         return [
-                            'id' => $mention->id,
-                            'mentioned_admin_id' => $mention->mentioned_admin_id,
-                            'mentioned_by_admin_id' => $mention->mentioned_by_admin_id,
+                            'id' => $mention->getRouteKey(),
+                            'mentioned_admin_id' => $mention->mentionedAdmin?->getRouteKey() ?? $mention->mentioned_admin_id,
+                            'mentioned_by_admin_id' => $mention->mentionedByAdmin?->getRouteKey() ?? $mention->mentioned_by_admin_id,
                             'source' => $mention->source,
                             'created_at' => $mention->created_at?->toIso8601String(),
                         ];

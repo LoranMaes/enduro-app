@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,13 +10,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TicketAuditLog extends Model
 {
     use HasFactory;
+    use UsesDualUuidIdentity;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'ticket_id',
+        'ticket_uuid_id',
         'actor_admin_id',
+        'actor_admin_uuid_id',
         'event_type',
         'meta',
     ];

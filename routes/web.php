@@ -43,8 +43,6 @@ Route::get(
     CoachApplicationFileShowController::class,
 )
     ->middleware(['auth', 'not_suspended'])
-    ->whereNumber('coachApplication')
-    ->whereNumber('coachApplicationFile')
     ->name('coach.applications.files.show');
 
 Route::post('admin/impersonate/stop', ImpersonationStopController::class)
@@ -89,22 +87,16 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
         Route::get('/analytics', AdminAnalyticsController::class)->name('analytics');
         Route::get('/users', AdminUserIndexController::class)->name('users.index');
         Route::get('/users/{user}', AdminUserShowController::class)
-            ->whereNumber('user')
             ->name('users.show');
         Route::post('/users/{user}/suspend', [AdminUserSuspensionController::class, 'store'])
-            ->whereNumber('user')
             ->name('users.suspend');
         Route::delete('/users/{user}/suspend', [AdminUserSuspensionController::class, 'destroy'])
-            ->whereNumber('user')
             ->name('users.unsuspend');
         Route::get('/coach-applications', CoachApplicationIndexController::class)
             ->name('coach-applications.index');
         Route::post('/coach-applications/{coachApplication}/review', CoachApplicationReviewController::class)
-            ->whereNumber('coachApplication')
             ->name('coach-applications.review');
         Route::get('/coach-applications/{coachApplication}/files/{coachApplicationFile}', CoachApplicationFileShowController::class)
-            ->whereNumber('coachApplication')
-            ->whereNumber('coachApplicationFile')
             ->name('coach-applications.files.show');
         Route::get('/tickets', AdminTicketBoardController::class)
             ->name('tickets.index');
@@ -113,7 +105,6 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
         Route::patch('/settings', [AdminSettingsController::class, 'update'])
             ->name('settings.update');
         Route::post('/impersonate/{user}', ImpersonationStartController::class)
-            ->whereNumber('user')
             ->name('impersonate.start');
     });
 

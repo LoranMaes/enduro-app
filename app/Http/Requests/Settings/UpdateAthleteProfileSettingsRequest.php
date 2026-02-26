@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Settings;
 
 use App\Models\User;
+use App\Rules\UniqueEmailBlindIndex;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,7 +44,7 @@ class UpdateAthleteProfileSettingsRequest extends FormRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique(User::class)->ignore($this->user()?->id),
+                new UniqueEmailBlindIndex($this->user()?->getKey() !== null ? (string) $this->user()?->getKey() : null),
             ],
             'timezone' => ['required', 'timezone'],
             'unit_system' => ['required', Rule::in(['metric', 'imperial'])],

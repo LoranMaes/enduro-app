@@ -18,17 +18,17 @@ class TicketAuditLogResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'ticket_id' => $this->ticket_id,
+            'id' => $this->resource->getRouteKey(),
+            'ticket_id' => $this->ticket?->getRouteKey() ?? $this->ticket_id,
             'event_type' => $this->event_type,
-            'actor_admin_id' => $this->actor_admin_id,
+            'actor_admin_id' => $this->actorAdmin?->getRouteKey() ?? $this->actor_admin_id,
             'actor_admin' => $this->whenLoaded('actorAdmin', function (): ?array {
                 if ($this->actorAdmin === null) {
                     return null;
                 }
 
                 return [
-                    'id' => $this->actorAdmin->id,
+                    'id' => $this->actorAdmin->getRouteKey(),
                     'name' => $this->actorAdmin->fullName(),
                     'email' => $this->actorAdmin->email,
                 ];

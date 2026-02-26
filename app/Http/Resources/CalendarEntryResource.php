@@ -15,8 +15,8 @@ class CalendarEntryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'user_id' => $this->user_id,
+            'id' => $this->resource->getRouteKey(),
+            'user_id' => $this->user?->getRouteKey() ?? $this->user_id,
             'scheduled_date' => $this->scheduled_date?->toDateString(),
             'type' => $this->type?->value ?? (string) $this->type,
             'title' => $this->title,

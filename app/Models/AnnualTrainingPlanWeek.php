@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,11 +12,16 @@ class AnnualTrainingPlanWeek extends Model
     /** @use HasFactory<\Database\Factories\AnnualTrainingPlanWeekFactory> */
     use HasFactory;
 
+    use UsesDualUuidIdentity;
+
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'annual_training_plan_id',
+        'annual_training_plan_uuid_id',
         'week_start_date',
         'week_type',
         'priority',

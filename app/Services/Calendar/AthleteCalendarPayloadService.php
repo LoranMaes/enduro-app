@@ -102,7 +102,7 @@ class AthleteCalendarPayloadService
         $trainingSessions = $this->querySessions($authenticatedUser, $athlete)
             ->whereDate('scheduled_date', '>=', $calendarWindow['starts_at'])
             ->whereDate('scheduled_date', '<=', $calendarWindow['ends_at'])
-            ->with('activity')
+            ->with(['activity', 'trainingWeek'])
             ->orderBy('scheduled_date')
             ->orderBy('id')
             ->get();
@@ -110,10 +110,16 @@ class AthleteCalendarPayloadService
         $activities = $this->queryActivities($authenticatedUser, $athlete)
             ->whereDate('started_at', '>=', $calendarWindow['starts_at'])
             ->whereDate('started_at', '<=', $calendarWindow['ends_at'])
+            ->with([
+                'trainingSession:id,public_id,uuid_id',
+                'athlete:id,public_id,uuid_id',
+            ])
             ->orderBy('started_at')
             ->orderBy('id')
             ->get([
                 'id',
+                'public_id',
+                'uuid_id',
                 'training_session_id',
                 'athlete_id',
                 'provider',
@@ -150,10 +156,10 @@ class AthleteCalendarPayloadService
             'activities' => [
                 'data' => $activities->map(
                     fn (Activity $activity): array => [
-                        'id' => $activity->id,
-                        'training_session_id' => $activity->training_session_id,
-                        'linked_session_id' => $activity->training_session_id,
-                        'athlete_id' => $activity->athlete_id,
+                        'id' => $activity->getRouteKey(),
+                        'training_session_id' => $activity->trainingSession?->getRouteKey(),
+                        'linked_session_id' => $activity->trainingSession?->getRouteKey(),
+                        'athlete_id' => $activity->athlete?->getRouteKey() ?? $activity->athlete_id,
                         'provider' => $activity->provider,
                         'external_id' => $activity->external_id,
                         'sport' => $activity->sport,

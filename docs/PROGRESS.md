@@ -1,5 +1,21 @@
 # Endure — Progress Log
 
+## 2026-02-26 (UUID/Opaque ID Dual-Mode Hardening Continued)
+
+- Continued the UUID + opaque public ID migration pass with dual-mode safety hardening (behavior-preserving):
+    - training session API now supports `training_week_id` as opaque identifiers in dual mode during create/update validation and mutation paths
+    - training session API responses now consistently preload `trainingWeek` for route-key-safe serialization
+    - training session link/unlink mutation responses now return route-key IDs (`legacy` mode remains numeric, `dual` mode uses opaque IDs)
+    - calendar payload activity mapping now emits route-key IDs (`id`, `training_session_id`, `linked_session_id`, `athlete_id`) while preserving legacy mode output behavior
+- Added explicit migration coverage tests:
+    - new feature file: `tests/Feature/Api/UuidDualModeApiTest.php`
+    - verifies:
+        - opaque IDs in training-session resource payloads under dual mode
+        - session creation with `training_week_id` as public ID
+        - legacy numeric route fallback still resolves in dual mode
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/UuidDualModeApiTest.php`
+
 ## 2026-02-25 (ATP + Progress + Session Detail Hardening Pass Complete)
 
 - Completed decision-locked hardening pass without route or payload breaking changes:

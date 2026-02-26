@@ -16,7 +16,7 @@ trait HasTrainingSessionRules
     protected function trainingSessionRules(): array
     {
         return [
-            'training_week_id' => ['nullable', 'integer', 'exists:training_weeks,id'],
+            'training_week_id' => ['nullable'],
             'date' => ['required', 'date'],
             'sport' => ['required', Rule::enum(TrainingSessionSport::class)],
             'title' => ['nullable', 'string', 'max:180'],
@@ -71,15 +71,20 @@ trait HasTrainingSessionRules
                 return;
             }
 
-            if ($this->input('training_week_id') === null) {
+            $trainingWeekId = $this->input('training_week_id');
+
+            if ($trainingWeekId === null || $trainingWeekId === '') {
                 return;
             }
 
-            $trainingWeek = TrainingWeek::query()
-                ->with('trainingPlan:id,user_id')
-                ->find((int) $this->input('training_week_id'));
+            $trainingWeek = $this->resolveTrainingWeek($trainingWeekId);
 
             if (! $trainingWeek instanceof TrainingWeek) {
+                $validator->errors()->add(
+                    'training_week_id',
+                    'The selected training week id is invalid.',
+                );
+
                 return;
             }
 
@@ -176,6 +181,23 @@ trait HasTrainingSessionRules
                 }
             }
         });
+    }
+
+    private function resolveTrainingWeek(mixed $trainingWeekId): ?TrainingWeek
+    {
+        $trainingWeek = (new TrainingWeek)->resolveRouteBinding($trainingWeekId);
+
+        if ($trainingWeek instanceof TrainingWeek) {
+            return $trainingWeek->loadMissing('trainingPlan:id,user_id');
+        }
+
+        if (! is_numeric($trainingWeekId)) {
+            return null;
+        }
+
+        return TrainingWeek::query()
+            ->with('trainingPlan:id,user_id')
+            ->find((int) $trainingWeekId);
     }
 
     private function isTrainingWeekAccessibleToUser(User $user, TrainingWeek $trainingWeek): bool

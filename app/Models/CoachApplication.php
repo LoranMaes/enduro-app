@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\LogsModelActivity;
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,12 +13,16 @@ class CoachApplication extends Model
 {
     use HasFactory;
     use LogsModelActivity;
+    use UsesDualUuidIdentity;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'user_id',
+        'user_uuid_id',
         'status',
         'coaching_experience',
         'specialties',
@@ -28,6 +33,7 @@ class CoachApplication extends Model
         'submitted_at',
         'reviewed_at',
         'reviewed_by_user_id',
+        'reviewed_by_user_uuid_id',
     ];
 
     /**

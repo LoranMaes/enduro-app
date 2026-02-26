@@ -22,7 +22,7 @@ class ImpersonationStopController extends Controller
             abort(403);
         }
 
-        $originalUser = User::query()->find((int) $originalUserId);
+        $originalUser = User::query()->find($originalUserId);
 
         if ($originalUser === null || ! $originalUser->isAdmin()) {
             $request->session()->forget([

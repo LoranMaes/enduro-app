@@ -39,8 +39,8 @@ class ImpersonationStartController extends Controller
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
-        $request->session()->put('impersonation.original_user_id', $admin->id);
-        $request->session()->put('impersonation.impersonated_user_id', $user->id);
+        $request->session()->put('impersonation.original_user_id', $admin->getKey());
+        $request->session()->put('impersonation.impersonated_user_id', $user->getKey());
 
         if ($user->isCoach()) {
             return redirect()->route('coaches.index');

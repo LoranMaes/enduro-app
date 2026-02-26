@@ -4,6 +4,31 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 18 — UUID/Opaque ID Dual-Mode Hardening (COMPLETE)
+
+- Goals:
+  - harden API write/read paths for dual ID mode (`legacy` + `dual`) without breaking existing contracts
+  - ensure training session mutation flows accept opaque related IDs while preserving legacy numeric fallback
+  - add explicit feature coverage for dual-mode route binding and payload identifier behavior
+- Boundaries:
+  - no endpoint removals
+  - no route-name changes
+  - no default mode flip (rollout flags remain the switch)
+- Completed:
+  - training session mutation flow:
+    - `training_week_id` resolution in create/update now supports opaque route keys in dual mode
+    - legacy numeric fallback still works during migration
+  - training session serialization:
+    - controller responses now load required relations to serialize route-key-safe IDs
+    - link/unlink mutation responses now emit route-key IDs
+  - calendar payload:
+    - activity identifiers now emitted through route-key abstraction for dual-mode readiness
+  - tests:
+    - added `tests/Feature/Api/UuidDualModeApiTest.php`
+    - validated opaque IDs, public-ID week references, and numeric fallback behavior in dual mode
+
+---
+
 ## Phase 17 — ATP + Progress + Session Detail Hardening (COMPLETE)
 
 - Goals:

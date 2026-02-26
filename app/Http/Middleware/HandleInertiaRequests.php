@@ -58,8 +58,8 @@ class HandleInertiaRequests extends Middleware
     /**
      * @return array{
      *     impersonating: bool,
-     *     original_user: array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null,
-     *     impersonated_user: array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null
+     *     original_user: array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null,
+     *     impersonated_user: array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null
      * }
      */
     private function resolveImpersonationContext(Request $request, ?User $user): array
@@ -75,8 +75,8 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        $originalUser = User::query()->find((int) $originalUserId);
-        $impersonatedUser = User::query()->find((int) $impersonatedUserId);
+        $originalUser = User::query()->find($originalUserId);
+        $impersonatedUser = User::query()->find($impersonatedUserId);
 
         if (
             $originalUser === null ||
@@ -104,12 +104,12 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}
+     * @return array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}
      */
     private function toSharedUser(User $user): array
     {
         return [
-            'id' => $user->id,
+            'id' => $user->getRouteKey(),
             'name' => $user->fullName(),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,

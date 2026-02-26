@@ -10,8 +10,8 @@ class WorkoutLibraryItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'user_id' => $this->user_id,
+            'id' => $this->resource->getRouteKey(),
+            'user_id' => $this->user?->getRouteKey() ?? $this->user_id,
             'title' => $this->title,
             'sport' => $this->sport,
             'structure_json' => $this->structure_json,

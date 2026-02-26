@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Models\Concerns\HasBlindIndexes;
+use App\Models\Concerns\UsesDualUuidIdentity;
+use App\Support\Ids\BlindIndex;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,12 +20,15 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
+    use HasBlindIndexes;
+
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
 
     use LogsActivity;
     use Notifiable;
     use TwoFactorAuthenticatable;
+    use UsesDualUuidIdentity;
 
     /**
      * The attributes that are mass assignable.
@@ -31,9 +37,12 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'uuid_id',
+        'public_id',
         'first_name',
         'last_name',
         'email',
+        'email_bidx',
         'password',
         'role',
         'timezone',
@@ -43,11 +52,13 @@ class User extends Authenticatable
         'strava_token_expires_at',
         'is_subscribed',
         'stripe_customer_id',
+        'stripe_customer_id_bidx',
         'stripe_subscription_status',
         'stripe_subscription_synced_at',
         'enable_load_metrics',
         'suspended_at',
         'suspended_by_user_id',
+        'suspended_by_user_uuid_id',
         'suspension_reason',
     ];
 
@@ -61,8 +72,11 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+        'uuid_id',
         'strava_access_token',
         'strava_refresh_token',
+        'email_bidx',
+        'stripe_customer_id_bidx',
     ];
 
     /**
@@ -79,16 +93,28 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'first_name' => 'string',
             'last_name' => 'string',
+            'email' => \App\Casts\EncryptedStringOrPlain::class,
             'timezone' => 'string',
             'unit_system' => 'string',
             'is_subscribed' => 'boolean',
-            'stripe_customer_id' => 'string',
+            'stripe_customer_id' => \App\Casts\EncryptedStringOrPlain::class,
             'stripe_subscription_status' => 'string',
             'stripe_subscription_synced_at' => 'datetime',
             'enable_load_metrics' => 'boolean',
+            'strava_access_token' => \App\Casts\EncryptedStringOrPlain::class,
+            'strava_refresh_token' => \App\Casts\EncryptedStringOrPlain::class,
             'strava_token_expires_at' => 'datetime',
             'suspended_at' => 'datetime',
+            'suspension_reason' => \App\Casts\EncryptedStringOrPlain::class,
         ];
+    }
+
+    public function syncBlindIndexes(): void
+    {
+        $blindIndex = app(BlindIndex::class);
+
+        $this->email_bidx = $blindIndex->forEmail($this->email);
+        $this->stripe_customer_id_bidx = $blindIndex->forGeneric($this->stripe_customer_id);
     }
 
     public function athleteProfile(): HasOne

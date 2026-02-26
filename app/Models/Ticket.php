@@ -6,6 +6,7 @@ use App\Concerns\LogsModelActivity;
 use App\Enums\TicketImportance;
 use App\Enums\TicketStatus;
 use App\Enums\TicketType;
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,18 +17,23 @@ class Ticket extends Model
 {
     use HasFactory;
     use LogsModelActivity;
+    use UsesDualUuidIdentity;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'title',
         'description',
         'status',
         'type',
         'importance',
         'assignee_admin_id',
+        'assignee_admin_uuid_id',
         'creator_admin_id',
+        'creator_admin_uuid_id',
         'done_at',
         'archived_at',
     ];
