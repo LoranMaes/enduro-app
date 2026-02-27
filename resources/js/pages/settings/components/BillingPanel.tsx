@@ -56,9 +56,19 @@ export function BillingPanel({
                             <a href={portalUrl}>Manage subscription</a>
                         </Button>
                     ) : (
-                        <Button asChild>
-                            <a href={subscribeUrl}>Subscribe</a>
-                        </Button>
+                        <>
+                            {billing.plans.length > 0 ? (
+                                billing.plans.map((plan) => (
+                                    <Button key={plan.key} asChild>
+                                        <a href={plan.subscribe_url}>Subscribe: {plan.label}</a>
+                                    </Button>
+                                ))
+                            ) : (
+                                <Button asChild>
+                                    <a href={subscribeUrl}>Subscribe</a>
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

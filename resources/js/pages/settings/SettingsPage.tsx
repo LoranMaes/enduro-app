@@ -296,7 +296,7 @@ export function SettingsPage({
                         {selectedTab === 'billing' ? (
                             <SettingsSectionCard
                                 title="Billing & Plans"
-                                description="Cashier/Stripe wiring comes in a dedicated billing phase."
+                                description="Manage your subscription plan and billing access."
                             >
                                 <BillingPanel
                                     name={profile.name}

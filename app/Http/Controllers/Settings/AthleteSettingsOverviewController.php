@@ -7,8 +7,11 @@ use App\Models\ActivityProviderConnection;
 use App\Models\User;
 use App\Services\ActivityProviders\ActivityProviderConnectionStore;
 use App\Services\ActivityProviders\ActivityProviderManager;
+use App\Services\Billing\StripeCheckoutSessionSyncService;
 use App\Services\Performance\AthletePerformanceProfileResolver;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,15 +21,21 @@ class AthleteSettingsOverviewController extends Controller
         private readonly ActivityProviderManager $providerManager,
         private readonly ActivityProviderConnectionStore $connectionStore,
         private readonly AthletePerformanceProfileResolver $athletePerformanceProfileResolver,
+        private readonly StripeCheckoutSessionSyncService $stripeCheckoutSessionSyncService,
     ) {}
 
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
+        $checkoutReturnRedirect = $this->resolveCheckoutReturnRedirect($request, $user);
+
+        if ($checkoutReturnRedirect instanceof RedirectResponse) {
+            return $checkoutReturnRedirect;
+        }
 
         $user->loadMissing('athleteProfile');
         $resolvedPerformanceProfile = $this->athletePerformanceProfileResolver->resolve(
@@ -68,12 +77,92 @@ class AthleteSettingsOverviewController extends Controller
                     ? trim((string) $user->stripe_id)
                     : null,
                 'subscription_synced_at' => $user->stripe_subscription_synced_at?->toIso8601String(),
+                'plans' => $this->resolveBillingPlans(),
             ],
             'canManageConnections' => $user->canManageActivityProviderConnections(),
             'settingsStatus' => $request->session()->get('settings_status'),
             'connectionStatusMessage' => $request->session()->get('activity_provider_connection_message'),
             'billingStatusMessage' => $request->session()->get('billing_status_message'),
         ]);
+    }
+
+    private function resolveCheckoutReturnRedirect(
+        Request $request,
+        User $user,
+    ): ?RedirectResponse {
+        if (strtolower(trim((string) $request->query('tab', ''))) !== 'billing') {
+            return null;
+        }
+
+        $checkoutState = strtolower(trim((string) $request->query('checkout', '')));
+
+        if ($checkoutState === '') {
+            return null;
+        }
+
+        if ($checkoutState === 'cancel') {
+            return redirect()
+                ->route('settings.overview', ['tab' => 'billing'])
+                ->with('billing_status_message', 'Checkout was canceled. No charges were made.');
+        }
+
+        if ($checkoutState !== 'success') {
+            return null;
+        }
+
+        $checkoutSessionId = trim((string) $request->query('session_id', ''));
+
+        if ($checkoutSessionId === '') {
+            return redirect()
+                ->route('settings.overview', ['tab' => 'billing'])
+                ->with('billing_status_message', 'Checkout completed. Waiting for subscription confirmation.');
+        }
+
+        $didSync = $this->stripeCheckoutSessionSyncService->sync(
+            $user,
+            $checkoutSessionId,
+        );
+
+        if ($didSync) {
+            return redirect()
+                ->route('settings.overview', ['tab' => 'billing'])
+                ->with('billing_status_message', 'Subscription activated successfully.');
+        }
+
+        return redirect()
+            ->route('settings.overview', ['tab' => 'billing'])
+            ->with('billing_status_message', 'Checkout completed. Waiting for subscription confirmation.');
+    }
+
+    /**
+     * @return array<int, array{
+     *     key: string,
+     *     label: string,
+     *     subscribe_url: string
+     * }>
+     */
+    private function resolveBillingPlans(): array
+    {
+        /** @var array<string, string> $configuredPlans */
+        $configuredPlans = (array) config('services.stripe.price_plans', []);
+
+        return collect($configuredPlans)
+            ->map(function (string $priceValue, string $planKey): ?array {
+                if (trim($priceValue) === '') {
+                    return null;
+                }
+
+                return [
+                    'key' => $planKey,
+                    'label' => Str::headline($planKey),
+                    'subscribe_url' => route('settings.overview.billing.subscribe', [
+                        'plan' => $planKey,
+                    ]),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**

@@ -58,6 +58,11 @@ export type SettingsOverviewProps = {
         stripe_customer_id: string | null;
         stripe_id: string | null;
         subscription_synced_at: string | null;
+        plans: Array<{
+            key: string;
+            label: string;
+            subscribe_url: string;
+        }>;
     };
     canManageConnections: boolean;
     settingsStatus: string | null;

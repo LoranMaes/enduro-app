@@ -75,6 +75,30 @@ return [
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         'default_price_id' => env('STRIPE_DEFAULT_PRICE_ID'),
+        'price_plans' => (static function (): array {
+            $plans = [];
+            $raw = trim((string) env('STRIPE_PRICE_PLANS', ''));
+
+            if ($raw === '') {
+                return $plans;
+            }
+
+            $entries = array_filter(array_map('trim', explode(',', $raw)));
+
+            foreach ($entries as $entry) {
+                [$key, $priceId] = array_pad(explode(':', $entry, 2), 2, '');
+                $normalizedKey = strtolower(trim((string) $key));
+                $normalizedPriceId = trim((string) $priceId);
+
+                if ($normalizedKey === '' || $normalizedPriceId === '') {
+                    continue;
+                }
+
+                $plans[$normalizedKey] = $normalizedPriceId;
+            }
+
+            return $plans;
+        })(),
     ],
 
 ];
