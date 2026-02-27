@@ -93,3 +93,30 @@ it('supports dry-run mode without dispatching jobs', function () {
     expect($connection)->not->toBeNull();
     expect($connection?->initial_full_import_requested_at)->toBeNull();
 });
+
+it('queues full-history imports for already-synced athletes when forced', function () {
+    Queue::fake();
+
+    config()->set('services.activity_providers.initial_full_import_enabled', false);
+
+    $athlete = User::factory()->athlete()->create();
+
+    ActivityProviderConnection::query()->create([
+        'user_id' => $athlete->id,
+        'provider' => 'strava',
+        'access_token' => 'access-token-1',
+        'refresh_token' => 'refresh-token-1',
+        'token_expires_at' => now()->addHour(),
+        'last_synced_at' => now()->subHour(),
+        'initial_full_import_requested_at' => now()->subHour(),
+    ]);
+
+    $this->artisan('activity-providers:queue-initial-full-history-import', [
+        '--user' => [$athlete->id],
+        '--force' => true,
+    ])->assertSuccessful();
+
+    Queue::assertPushed(StravaFullHistoryImportJob::class, function (StravaFullHistoryImportJob $job) use ($athlete): bool {
+        return (int) $job->user->id === (int) $athlete->id;
+    });
+});

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\StravaFullHistoryImportJob;
 use App\Models\ActivityProviderConnection;
 use App\Models\User;
 use App\Services\ActivityProviders\InitialFullHistoryImportDispatcher;
@@ -13,6 +14,7 @@ class QueueInitialFullHistoryImportsCommand extends Command
         {--provider=strava : Provider key (currently strava only)}
         {--user=* : Limit to specific user IDs}
         {--chunk=100 : Rows per chunk}
+        {--force : Queue for connected athletes even when already synced}
         {--dry-run : Preview only, do not dispatch jobs}';
 
     protected $description = 'Queue one-time initial full-history imports for eligible provider connections.';
@@ -29,6 +31,7 @@ class QueueInitialFullHistoryImportsCommand extends Command
 
         $chunkSize = max(1, (int) $this->option('chunk'));
         $dryRun = (bool) $this->option('dry-run');
+        $force = (bool) $this->option('force');
         $requestedUserIds = collect((array) $this->option('user'))
             ->filter(fn (mixed $value): bool => is_numeric($value))
             ->map(fn (mixed $value): int => (int) $value)
@@ -38,9 +41,13 @@ class QueueInitialFullHistoryImportsCommand extends Command
         $query = ActivityProviderConnection::query()
             ->with('user')
             ->where('provider', $provider)
-            ->whereNull('initial_full_import_requested_at')
-            ->whereNull('last_synced_at')
             ->orderBy('id');
+
+        if (! $force) {
+            $query
+                ->whereNull('initial_full_import_requested_at')
+                ->whereNull('last_synced_at');
+        }
 
         if ($requestedUserIds->isNotEmpty()) {
             $query->whereIn('user_id', $requestedUserIds->all());
@@ -50,7 +57,7 @@ class QueueInitialFullHistoryImportsCommand extends Command
         $queued = 0;
         $skipped = 0;
 
-        $query->chunkById($chunkSize, function ($connections) use (&$eligible, &$queued, &$skipped, $dispatcher, $dryRun): void {
+        $query->chunkById($chunkSize, function ($connections) use (&$eligible, &$queued, &$skipped, $dispatcher, $dryRun, $force): void {
             foreach ($connections as $connection) {
                 if (! $connection instanceof ActivityProviderConnection) {
                     continue;
@@ -67,6 +74,20 @@ class QueueInitialFullHistoryImportsCommand extends Command
                 $eligible++;
 
                 if ($dryRun) {
+                    continue;
+                }
+
+                if ($force) {
+                    StravaFullHistoryImportJob::dispatch($user);
+
+                    if ($connection->initial_full_import_requested_at === null) {
+                        $connection->forceFill([
+                            'initial_full_import_requested_at' => now(),
+                        ])->save();
+                    }
+
+                    $queued++;
+
                     continue;
                 }
 
