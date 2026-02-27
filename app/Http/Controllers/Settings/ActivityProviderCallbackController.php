@@ -9,6 +9,7 @@ use App\Services\ActivityProviders\ActivityProviderManager;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderRequestException;
 use App\Services\ActivityProviders\Exceptions\ActivityProviderUnauthorizedException;
 use App\Services\ActivityProviders\Exceptions\UnsupportedActivityProviderException;
+use App\Services\ActivityProviders\InitialFullHistoryImportDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,7 @@ class ActivityProviderCallbackController extends Controller
     public function __construct(
         private readonly ActivityProviderManager $providerManager,
         private readonly ActivityProviderConnectionStore $connectionStore,
+        private readonly InitialFullHistoryImportDispatcher $initialFullHistoryImportDispatcher,
     ) {}
 
     /**
@@ -61,10 +63,14 @@ class ActivityProviderCallbackController extends Controller
         try {
             $oauthProvider = $this->providerManager->oauthProvider($provider);
             $tokens = $oauthProvider->exchangeAuthorizationCode($code);
-            $this->connectionStore->upsert(
+            $connection = $this->connectionStore->upsert(
                 user: $user,
                 provider: $provider,
                 tokens: $tokens,
+            );
+            $this->initialFullHistoryImportDispatcher->dispatchIfEligible(
+                user: $user,
+                connection: $connection,
             );
         } catch (UnsupportedActivityProviderException) {
             abort(404);

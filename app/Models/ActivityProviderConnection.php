@@ -33,6 +33,7 @@ class ActivityProviderConnection extends Model
         'provider_athlete_id',
         'provider_athlete_id_bidx',
         'last_synced_at',
+        'initial_full_import_requested_at',
         'last_sync_status',
         'last_sync_reason',
     ];
@@ -55,6 +56,7 @@ class ActivityProviderConnection extends Model
             'refresh_token' => \App\Casts\EncryptedStringOrPlain::class,
             'token_expires_at' => 'datetime',
             'last_synced_at' => 'datetime',
+            'initial_full_import_requested_at' => 'datetime',
             'provider_athlete_id' => \App\Casts\EncryptedStringOrPlain::class,
         ];
     }
