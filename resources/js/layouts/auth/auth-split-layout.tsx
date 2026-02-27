@@ -29,7 +29,7 @@ export default function AuthSplitLayout({
         <div className="min-h-svh bg-background px-4 py-6 sm:px-6">
             <Head title={pageTitle} />
 
-            <div className="mx-auto grid min-h-[calc(100svh-3rem)] w-full max-w-6xl overflow-hidden rounded-2xl border border-border bg-surface lg:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.25fr)]">
+            <div className="mx-auto grid min-h-[calc(100svh-3rem)] w-full max-w-6xl overflow-hidden rounded-2xl border border-border bg-surface lg:grid-cols-[minmax(20rem,0.95fr)_minmax(0,1.25fr)]">
                 <section className="relative hidden border-r border-border bg-zinc-950 lg:flex lg:flex-col">
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_58%)]" />
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.12),transparent_52%)]" />
@@ -46,7 +46,7 @@ export default function AuthSplitLayout({
                         </Link>
 
                         <div className="mt-auto space-y-5">
-                            <p className="text-[11px] tracking-[0.24em] text-zinc-500 uppercase">
+                            <p className="text-[0.6875rem] tracking-[0.24em] text-zinc-500 uppercase">
                                 Athlete System
                             </p>
                             <h2 className="max-w-xs text-3xl leading-tight font-medium text-zinc-100">
@@ -90,7 +90,7 @@ export default function AuthSplitLayout({
                                 : 'mt-8 lg:mt-2',
                         )}
                     >
-                        <p className="text-[11px] tracking-[0.24em] text-zinc-500 uppercase">
+                        <p className="text-[0.6875rem] tracking-[0.24em] text-zinc-500 uppercase">
                             Access
                         </p>
                         <h1 className="mt-2 text-3xl font-medium text-zinc-100">

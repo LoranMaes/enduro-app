@@ -8,7 +8,7 @@ use App\Http\Requests\Api\StoreTrainingPlanRequest;
 use App\Http\Requests\Api\UpdateTrainingPlanRequest;
 use App\Http\Resources\TrainingPlanResource;
 use App\Models\TrainingPlan;
-use App\Models\User;
+use App\Support\QueryScopes\TrainingScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -27,7 +27,7 @@ class TrainingPlanController extends Controller
         $validated = $request->validated();
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $plans = $this->queryForUser($request->user())
+        $plans = TrainingScope::forVisiblePlans($request->user())
             ->when(
                 isset($validated['starts_from']),
                 fn (Builder $query) => $query->whereDate('ends_at', '>=', $validated['starts_from']),
@@ -132,25 +132,5 @@ class TrainingPlanController extends Controller
         $trainingPlan->delete();
 
         return response()->noContent();
-    }
-
-    private function queryForUser(User $user): Builder
-    {
-        if ($user->isAdmin()) {
-            return TrainingPlan::query();
-        }
-
-        if ($user->isAthlete()) {
-            return TrainingPlan::query()->where('user_id', $user->id);
-        }
-
-        if ($user->isCoach()) {
-            return TrainingPlan::query()->whereIn(
-                'user_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
-        }
-
-        return TrainingPlan::query()->whereRaw('1 = 0');
     }
 }

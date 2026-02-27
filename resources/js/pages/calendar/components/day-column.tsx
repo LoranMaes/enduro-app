@@ -1,50 +1,102 @@
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ActivityView, TrainingSessionView } from '@/types/training-plans';
+import type {
+    ActivityView,
+    CalendarEntryView,
+    GoalView,
+    TrainingSessionView,
+} from '@/types/training-plans';
 import { ActivityRow } from './activity-row';
+import { CalendarEntryRow } from './calendar-entry-row';
+import { GoalRow } from './goal-row';
 import { SessionRow } from './session-row';
 
 type DayColumnProps = {
     dayNumber: string;
     dayDate: string;
+    targetWeekId: number;
     isToday: boolean;
     isPast: boolean;
+    dropActive: boolean;
+    draggingSessionId: number | null;
     sessions: TrainingSessionView[];
     activities: ActivityView[];
+    calendarEntries: CalendarEntryView[];
+    goals: GoalView[];
     canManageSessions: boolean;
     canManageSessionLinks: boolean;
     canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
+    onSessionDragStart: (session: TrainingSessionView) => void;
+    onSessionDragEnd: () => void;
+    onDayDragOver: (date: string) => void;
+    onDayDrop: (date: string, targetWeekId: number) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
+    onOpenGoal: (goal: GoalView) => void;
 };
 
 export function DayColumn({
     dayNumber,
     dayDate,
+    targetWeekId,
     isToday,
     isPast,
+    dropActive,
+    draggingSessionId,
     sessions,
     activities,
+    calendarEntries,
+    goals,
     canManageSessions,
     canManageSessionLinks,
     canOpenActivityDetails,
     onCreateSession,
     onEditSession,
+    onSessionDragStart,
+    onSessionDragEnd,
+    onDayDragOver,
+    onDayDrop,
     onOpenActivity,
+    onOpenCalendarEntry,
+    onOpenGoal,
 }: DayColumnProps) {
     const canOpenCreateModal = canManageSessions && sessions.length === 0;
     const canOpenEditModal = canManageSessions || canManageSessionLinks;
     const isReadOnly = !canManageSessions && !canManageSessionLinks;
-    const hasEntries = sessions.length > 0 || activities.length > 0;
+    const hasEntries =
+        sessions.length > 0 ||
+        goals.length > 0 ||
+        calendarEntries.length > 0 ||
+        activities.length > 0;
 
-    const sortedActivities = activities.slice().sort((left, right) => {
+    const sortedActivities = activities
+        .filter((activity) => activity.linkedSessionId === null)
+        .slice()
+        .sort((left, right) => {
         if (left.startedAt === right.startedAt) {
             return left.id - right.id;
         }
 
         return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
-    });
+        });
+    const sortedCalendarEntries = calendarEntries
+        .slice()
+        .sort((left, right) => left.id - right.id);
+    const sortedGoals = goals.slice().sort((left, right) => left.id - right.id);
+    const unlinkedSessionCountBySport = sessions.reduce<Record<string, number>>(
+        (carry, session) => {
+            if (session.linkedActivityId !== null || session.status === 'completed') {
+                return carry;
+            }
+
+            carry[session.sport] = (carry[session.sport] ?? 0) + 1;
+
+            return carry;
+        },
+        {},
+    );
 
     const openCreateSession = (): void => {
         if (!canOpenCreateModal) {
@@ -54,23 +106,60 @@ export function DayColumn({
         onCreateSession(dayDate);
     };
 
+    const isCreateClickable = canOpenCreateModal;
+    const canUseSemanticButton = isCreateClickable && !hasEntries;
+    const DayContainer = canUseSemanticButton ? 'button' : 'div';
+
     return (
-        <div
-            onClick={openCreateSession}
-            onKeyDown={(event) => {
-                if (!canOpenCreateModal) {
+        <DayContainer
+            {...(canUseSemanticButton
+                ? {
+                      type: 'button' as const,
+                      onClick: openCreateSession,
+                  }
+                : isCreateClickable
+                  ? {
+                        onClick: openCreateSession,
+                        onKeyDown: (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                openCreateSession();
+                            }
+                        },
+                        role: 'button' as const,
+                        tabIndex: 0,
+                    }
+                  : {})}
+            onDragEnter={(event) => {
+                if (!canManageSessions) {
                     return;
                 }
 
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openCreateSession();
-                }
+                event.preventDefault();
+                event.stopPropagation();
+                onDayDragOver(dayDate);
             }}
-            role={canOpenCreateModal ? 'button' : undefined}
-            tabIndex={canOpenCreateModal ? 0 : undefined}
+            onDragOver={(event) => {
+                if (!canManageSessions) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = 'move';
+                onDayDragOver(dayDate);
+            }}
+            onDrop={(event) => {
+                if (!canManageSessions) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                onDayDrop(dayDate, targetWeekId);
+            }}
             className={cn(
-                'group/day relative flex h-full flex-col px-2 pt-1.5 pb-2 transition-all duration-200',
+                'group/day relative flex h-full w-full flex-col px-2 pt-1.5 pb-2 text-left transition-all duration-200',
                 isToday
                     ? 'bg-zinc-900/40 ring-1 ring-white/5 ring-inset'
                     : 'bg-transparent',
@@ -83,6 +172,7 @@ export function DayColumn({
                 canOpenCreateModal &&
                     'focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none focus-visible:ring-inset',
                 isReadOnly && 'cursor-default',
+                dropActive && 'ring-1 ring-sky-400/80 ring-inset bg-sky-500/5',
             )}
         >
             <div className="mb-2 flex items-start justify-between px-1">
@@ -100,24 +190,38 @@ export function DayColumn({
                     {dayNumber.replace(/^\w+\s/, '')}
                 </span>
                 {canManageSessions ? (
-                    <button
-                        type="button"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onCreateSession(dayDate);
-                        }}
-                        className={cn(
-                            'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100 hover:text-white',
-                            isPast
-                                ? 'hover:bg-zinc-800/50'
-                                : 'hover:bg-zinc-800',
-                            'focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none',
-                        )}
-                        aria-label="Add session"
-                    >
-                        <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    isCreateClickable ? (
+                        <span
+                            className={cn(
+                                'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100',
+                                isPast
+                                    ? 'group-hover/day:bg-zinc-800/50'
+                                    : 'group-hover/day:bg-zinc-800',
+                            )}
+                            aria-hidden="true"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </span>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onCreateSession(dayDate);
+                            }}
+                            className={cn(
+                                'flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all group-hover/day:opacity-100 hover:text-white',
+                                isPast
+                                    ? 'hover:bg-zinc-800/50'
+                                    : 'hover:bg-zinc-800',
+                                'focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:outline-none',
+                            )}
+                            aria-label="Add session"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                        </button>
+                    )
                 ) : null}
             </div>
 
@@ -128,10 +232,22 @@ export function DayColumn({
                         session={session}
                         showDate={false}
                         isInteractive={canOpenEditModal}
+                        isDraggable={canManageSessions && session.status !== 'completed'}
+                        isDragging={draggingSessionId === session.id}
                         onClick={() => {
                             if (canOpenEditModal) {
                                 onEditSession(session);
                             }
+                        }}
+                        onDragStart={(event) => {
+                            event.dataTransfer.setData(
+                                'text/plain',
+                                `session:${session.id}`,
+                            );
+                            onSessionDragStart(session);
+                        }}
+                        onDragEnd={() => {
+                            onSessionDragEnd();
                         }}
                     />
                 ))}
@@ -140,6 +256,9 @@ export function DayColumn({
                     <ActivityRow
                         key={activity.id}
                         activity={activity}
+                        showPossibleMatch={
+                            (unlinkedSessionCountBySport[activity.sport] ?? 0) > 0
+                        }
                         isInteractive={canOpenActivityDetails}
                         onClick={() => {
                             if (canOpenActivityDetails) {
@@ -149,14 +268,40 @@ export function DayColumn({
                     />
                 ))}
 
+                {sortedCalendarEntries.map((calendarEntry) => (
+                    <CalendarEntryRow
+                        key={calendarEntry.id}
+                        entry={calendarEntry}
+                        isInteractive={canManageSessions}
+                        onClick={() => {
+                            if (canManageSessions) {
+                                onOpenCalendarEntry(calendarEntry);
+                            }
+                        }}
+                    />
+                ))}
+
+                {sortedGoals.map((goal) => (
+                    <GoalRow
+                        key={goal.id}
+                        goal={goal}
+                        isInteractive={canManageSessions}
+                        onClick={() => {
+                            if (canManageSessions) {
+                                onOpenGoal(goal);
+                            }
+                        }}
+                    />
+                ))}
+
                 {!hasEntries ? (
-                    <div className="flex min-h-[40px] w-full flex-1 items-start px-1 pt-0.5">
-                        <p className="text-[10px] text-zinc-700">
+                    <div className="flex min-h-[2.5rem] w-full flex-1 items-start px-1 pt-0.5">
+                        <p className="text-[0.625rem] text-zinc-700">
                             No training planned
                         </p>
                     </div>
                 ) : null}
             </div>
-        </div>
+        </DayContainer>
     );
 }

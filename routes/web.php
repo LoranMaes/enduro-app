@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminConsoleController;
+use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\AdminTicketBoardController;
 use App\Http\Controllers\Admin\AdminUserIndexController;
 use App\Http\Controllers\Admin\AdminUserShowController;
 use App\Http\Controllers\Admin\AdminUserSuspensionController;
@@ -14,9 +16,11 @@ use App\Http\Controllers\AthleteActivityDetailController;
 use App\Http\Controllers\AthleteCalendarController;
 use App\Http\Controllers\AthleteProgressController;
 use App\Http\Controllers\AthleteSessionDetailController;
+use App\Http\Controllers\AtpPageController;
 use App\Http\Controllers\Auth\CoachPendingApprovalController;
 use App\Http\Controllers\CoachAthleteIndexController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SupportPageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -40,8 +44,6 @@ Route::get(
     CoachApplicationFileShowController::class,
 )
     ->middleware(['auth', 'not_suspended'])
-    ->whereNumber('coachApplication')
-    ->whereNumber('coachApplicationFile')
     ->name('coach.applications.files.show');
 
 Route::post('admin/impersonate/stop', ImpersonationStopController::class)
@@ -65,6 +67,10 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
         ->middleware('approved_coach')
         ->name('progress.index');
 
+    Route::get('support', SupportPageController::class)
+        ->middleware('approved_coach')
+        ->name('support.index');
+
     Route::get('sessions/{trainingSession}', AthleteSessionDetailController::class)
         ->middleware('approved_coach')
         ->name('sessions.show');
@@ -76,30 +82,34 @@ Route::middleware(['auth', 'verified', 'not_suspended', 'log_activity'])->group(
         return Inertia::render('plans/index');
     })->middleware('approved_coach')->name('plans.index');
 
-    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('atp/{year}', AtpPageController::class)
+        ->middleware('approved_coach')
+        ->whereNumber('year')
+        ->name('atp.show');
+
+    Route::middleware(['admin', 'not_impersonating'])->prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/', AdminConsoleController::class)->name('index');
         Route::get('/analytics', AdminAnalyticsController::class)->name('analytics');
         Route::get('/users', AdminUserIndexController::class)->name('users.index');
         Route::get('/users/{user}', AdminUserShowController::class)
-            ->whereNumber('user')
             ->name('users.show');
         Route::post('/users/{user}/suspend', [AdminUserSuspensionController::class, 'store'])
-            ->whereNumber('user')
             ->name('users.suspend');
         Route::delete('/users/{user}/suspend', [AdminUserSuspensionController::class, 'destroy'])
-            ->whereNumber('user')
             ->name('users.unsuspend');
         Route::get('/coach-applications', CoachApplicationIndexController::class)
             ->name('coach-applications.index');
         Route::post('/coach-applications/{coachApplication}/review', CoachApplicationReviewController::class)
-            ->whereNumber('coachApplication')
             ->name('coach-applications.review');
         Route::get('/coach-applications/{coachApplication}/files/{coachApplicationFile}', CoachApplicationFileShowController::class)
-            ->whereNumber('coachApplication')
-            ->whereNumber('coachApplicationFile')
             ->name('coach-applications.files.show');
+        Route::get('/tickets', AdminTicketBoardController::class)
+            ->name('tickets.index');
+        Route::get('/settings', [AdminSettingsController::class, 'show'])
+            ->name('settings.show');
+        Route::patch('/settings', [AdminSettingsController::class, 'update'])
+            ->name('settings.update');
         Route::post('/impersonate/{user}', ImpersonationStartController::class)
-            ->whereNumber('user')
             ->name('impersonate.start');
     });
 

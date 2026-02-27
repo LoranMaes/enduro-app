@@ -1,8 +1,8 @@
 import { Link } from '@inertiajs/react';
-import { ArrowRight } from 'lucide-react';
-import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
+import { ArrowRight } from 'lucide-react';
 import React, { useEffect, useRef } from 'react';
 
 import { AccessSection } from './access-section';

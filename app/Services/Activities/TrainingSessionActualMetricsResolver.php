@@ -3,12 +3,16 @@
 namespace App\Services\Activities;
 
 use App\Models\Activity;
-use App\Models\AthleteProfile;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Performance\AthletePerformanceProfileResolver;
 
 class TrainingSessionActualMetricsResolver
 {
+    public function __construct(
+        private readonly AthletePerformanceProfileResolver $athletePerformanceProfileResolver,
+    ) {}
+
     public function resolveActualDurationMinutes(TrainingSession $trainingSession): ?int
     {
         if (
@@ -83,6 +87,13 @@ class TrainingSessionActualMetricsResolver
         }
 
         return $this->estimateHeartRateBasedTss($activity, $athlete);
+    }
+
+    public function resolveActivityProviderTss(Activity $activity): ?int
+    {
+        $rawPayload = $this->normalizePayload($activity->raw_payload);
+
+        return $this->payloadInteger($rawPayload, ['tss']);
     }
 
     private function resolveSessionActivity(TrainingSession $trainingSession): ?Activity
@@ -176,7 +187,8 @@ class TrainingSessionActualMetricsResolver
         }
 
         $athleteProfile = $athlete?->athleteProfile;
-        $ftpWatts = $this->resolveFtpWatts($athleteProfile);
+        $resolvedProfile = $this->athletePerformanceProfileResolver->resolve($athleteProfile);
+        $ftpWatts = $resolvedProfile['ftp_watts'];
 
         if ($ftpWatts === null || $ftpWatts <= 0) {
             return null;
@@ -204,7 +216,8 @@ class TrainingSessionActualMetricsResolver
         }
 
         $athleteProfile = $athlete?->athleteProfile;
-        $thresholdHeartRate = $this->resolveThresholdHeartRate($athleteProfile);
+        $resolvedProfile = $this->athletePerformanceProfileResolver->resolve($athleteProfile);
+        $thresholdHeartRate = $resolvedProfile['threshold_heart_rate_bpm'];
 
         if ($thresholdHeartRate === null || $thresholdHeartRate <= 0) {
             return null;
@@ -229,40 +242,6 @@ class TrainingSessionActualMetricsResolver
         $estimatedTss = ($durationSeconds / 3600) * ($intensityFactor ** 2) * 100;
 
         return $this->normalizeEstimate($estimatedTss);
-    }
-
-    private function resolveFtpWatts(?AthleteProfile $athleteProfile): ?int
-    {
-        if (! $athleteProfile instanceof AthleteProfile) {
-            return null;
-        }
-
-        $ftpWatts = $athleteProfile->ftp_watts;
-
-        return is_int($ftpWatts) && $ftpWatts > 0 ? $ftpWatts : null;
-    }
-
-    private function resolveThresholdHeartRate(?AthleteProfile $athleteProfile): ?int
-    {
-        if (! $athleteProfile instanceof AthleteProfile) {
-            return null;
-        }
-
-        if (
-            is_int($athleteProfile->threshold_heart_rate_bpm)
-            && $athleteProfile->threshold_heart_rate_bpm > 0
-        ) {
-            return $athleteProfile->threshold_heart_rate_bpm;
-        }
-
-        if (
-            is_int($athleteProfile->max_heart_rate_bpm)
-            && $athleteProfile->max_heart_rate_bpm > 0
-        ) {
-            return (int) round($athleteProfile->max_heart_rate_bpm * 0.9);
-        }
-
-        return null;
     }
 
     /**

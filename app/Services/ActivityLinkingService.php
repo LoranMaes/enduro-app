@@ -68,8 +68,14 @@ class ActivityLinkingService
 
     private function normalizeSport(string $sport): string
     {
-        return match (strtolower(trim($sport))) {
-            'swim', 'bike', 'run', 'gym', 'other' => strtolower(trim($sport)),
+        $normalizedSport = strtolower(trim($sport));
+
+        return match ($normalizedSport) {
+            'swim', 'bike', 'run', 'day_off', 'mtn_bike', 'custom', 'walk', 'gym', 'other' => $normalizedSport,
+            'ride', 'cycling', 'virtualride', 'ebikeride' => 'bike',
+            'mountainbike', 'mountainbiking' => 'mtn_bike',
+            'strength', 'workout' => 'gym',
+            'hike', 'walking' => 'walk',
             default => 'other',
         };
     }

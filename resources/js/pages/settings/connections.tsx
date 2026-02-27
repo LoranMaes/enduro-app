@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { initializeEcho } from '@/lib/echo';
 import SettingsLayout from '@/layouts/settings/layout';
+import { initializeEcho } from '@/lib/echo';
 import { sync as syncActivityProvider } from '@/routes/activity-providers';
 import {
     connections as settingsConnections,
@@ -252,7 +252,7 @@ export default function Connections({
                                                         }
                                                     </p>
                                                     <span
-                                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${connectionStatusClass}`}
+                                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.625rem] font-medium uppercase ${connectionStatusClass}`}
                                                     >
                                                         {providerConnection.connected
                                                             ? 'Connected'

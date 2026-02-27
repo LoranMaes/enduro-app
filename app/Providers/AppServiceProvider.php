@@ -3,21 +3,32 @@
 namespace App\Providers;
 
 use App\Models\Activity;
+use App\Models\CalendarEntry;
+use App\Models\Goal;
+use App\Models\Ticket;
 use App\Models\TrainingPlan;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
+use App\Models\User;
+use App\Models\WorkoutLibraryItem;
 use App\Policies\ActivityPolicy;
+use App\Policies\CalendarEntryPolicy;
+use App\Policies\GoalPolicy;
+use App\Policies\TicketPolicy;
 use App\Policies\TrainingPlanPolicy;
 use App\Policies\TrainingSessionPolicy;
 use App\Policies\TrainingWeekPolicy;
+use App\Policies\WorkoutLibraryItemPolicy;
 use App\Services\ActivityProviders\ActivityProviderManager;
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
+use App\Services\Entitlements\SubscriptionFeatureMatrixService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Pennant\Feature;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configurePolicies();
         $this->configureDefaults();
+        $this->configureFeatureFlags();
     }
 
     /**
@@ -72,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TrainingWeek::class, TrainingWeekPolicy::class);
         Gate::policy(TrainingSession::class, TrainingSessionPolicy::class);
         Gate::policy(Activity::class, ActivityPolicy::class);
+        Gate::policy(CalendarEntry::class, CalendarEntryPolicy::class);
+        Gate::policy(Goal::class, GoalPolicy::class);
+        Gate::policy(WorkoutLibraryItem::class, WorkoutLibraryItemPolicy::class);
+        Gate::policy(Ticket::class, TicketPolicy::class);
     }
 
     /**
@@ -94,5 +110,22 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null
         );
+    }
+
+    protected function configureFeatureFlags(): void
+    {
+        $matrixService = app(SubscriptionFeatureMatrixService::class);
+
+        foreach ($matrixService->definitions() as $definition) {
+            $featureKey = $definition['key'];
+
+            Feature::define($featureKey, function (mixed $scope) use ($matrixService, $featureKey): bool {
+                if (! $scope instanceof User) {
+                    return false;
+                }
+
+                return $matrixService->enabledFor($scope, $featureKey);
+            });
+        }
     }
 }

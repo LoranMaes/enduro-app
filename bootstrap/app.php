@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdminUser;
 use App\Http\Middleware\EnsureApprovedCoach;
+use App\Http\Middleware\EnsureNotImpersonating;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
         $middleware->alias([
             'admin' => EnsureAdminUser::class,
+            'not_impersonating' => EnsureNotImpersonating::class,
             'approved_coach' => EnsureApprovedCoach::class,
             'not_suspended' => EnsureNotSuspended::class,
             'log_activity' => LogUserActivity::class,
@@ -32,6 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+        $middleware->validateCsrfTokens(except: [
+            'stripe/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

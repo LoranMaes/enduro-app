@@ -4,6 +4,560 @@ This follows the **design-first → Codex → backend** approach.
 
 ---
 
+## Phase 19 — Progress/Performance + Theme/Cashier Hardening (IN PROGRESS)
+
+- Goals:
+  - stabilize performance forecast behavior when trailing synthetic zero snapshots are present
+  - expose one-shot “today” load snapshots in both progress charts
+  - improve performance chart readability (legend education, toggles, contrast, hover clarity)
+  - ensure suggested load range appears from the beginning of the selected range when historical seeds exist
+  - add settings-level theme control tab and keep appearance route compatibility
+  - scaffold Laravel Cashier/Stripe webhook readiness without breaking existing billing compatibility endpoint
+- Boundaries:
+  - no route removals
+  - no endpoint key removals
+  - additive props/interfaces only
+  - no visual redesign; slicing density preserved
+- Completed in this phase:
+  - performance forecast:
+    - clamped fetch to present-day range
+    - trimmed trailing synthetic zero points before projection
+    - retained no-workout EWMA decay horizon logic
+  - load trend:
+    - added today snapshot row (actual/planned/suggested)
+    - seeded suggested-range warm-up from prior seed history and immediate range context
+    - increased suggested-range visual contrast
+  - performance management chart:
+    - added CTL/ATL/TSB legend tooltips
+    - added series visibility toggles
+    - added colored-dot hover values
+    - added snapshot row and taller chart surface
+  - settings/theme:
+    - added `theme` tab to settings overview flow
+    - routed legacy `/settings/appearance` to `overview?tab=theme`
+  - cashier scaffold:
+    - installed and published Cashier assets/migrations
+    - enabled `Billable` on `User`
+    - added CSRF exclusion for `stripe/*` webhook path
+    - kept existing `/api/webhooks/stripe` endpoint as compatibility bridge
+    - replaced settings billing shell with live subscription-state panel
+    - added Reverb billing event stream from Stripe webhook to settings UI (`no reload` updates)
+    - billing UX polish:
+      - moved back to user-facing plan card presentation
+      - added subscribe/manage actions in billing tab
+      - added graceful messaging for missing checkout config or missing Stripe customer link
+- Remaining follow-up (outside this phase boundary):
+  - repo-wide TS + feature test normalization for UUID/opaque-ID migration assertions (numeric ID assumptions still present in many tests/pages)
+  - full billing subscription source-of-truth cutover from legacy `is_subscribed` toggle to Cashier subscription checks
+
+---
+
+## Phase 18 — UUID/Opaque ID Dual-Mode Hardening (COMPLETE)
+
+- Goals:
+  - harden API write/read paths for dual ID mode (`legacy` + `dual`) without breaking existing contracts
+  - ensure training session mutation flows accept opaque related IDs while preserving legacy numeric fallback
+  - add explicit feature coverage for dual-mode route binding and payload identifier behavior
+- Boundaries:
+  - no endpoint removals
+  - no route-name changes
+  - no default mode flip (rollout flags remain the switch)
+- Completed:
+  - training session mutation flow:
+    - `training_week_id` resolution in create/update now supports opaque route keys in dual mode
+    - legacy numeric fallback still works during migration
+  - training session serialization:
+    - controller responses now load required relations to serialize route-key-safe IDs
+    - link/unlink mutation responses now emit route-key IDs
+  - calendar payload:
+    - activity identifiers now emitted through route-key abstraction for dual-mode readiness
+  - tests:
+    - added `tests/Feature/Api/UuidDualModeApiTest.php`
+    - validated opaque IDs, public-ID week references, and numeric fallback behavior in dual mode
+
+---
+
+## Phase 17 — ATP + Progress + Session Detail Hardening (COMPLETE)
+
+- Goals:
+  - apply final ATP readability fixes (week-type scanning, localized dates, goal marker placement, no placeholder cells)
+  - fix session-detail hover/crosshair alignment regression
+  - improve progress target-band visibility and make compliance states easier to scan
+  - correct ATP planned/completed aggregation semantics for planned vs unplanned sessions
+  - decompose oversized ATP service into maintainable collaborators
+- Boundaries:
+  - no route changes
+  - no API key removals/renames
+  - no visual redesign
+  - behavior preserved except locked correctness fixes
+- Completed:
+  - ATP UI:
+    - fixed week-type palette usage across chart/table/legend
+    - moved goal flag below week number
+    - localized ATP date rendering using browser locale + user timezone
+    - replaced TSS “Coming soon” cells with value-or-dash rendering
+  - session detail:
+    - chart hover dotted line now snaps to hovered sample index (same source as point/map sync)
+  - calendar:
+    - removed calendar session-row auto-completed badge/text
+  - progress:
+    - target-range band visibility increased (stronger fill + upper/lower bounds)
+    - compliance grid alignment fixed
+    - compliance actual/recommended display switched to TSS
+    - reusable load-state pill component introduced and reused in compliance + weekly logs
+  - ATP backend:
+    - split ATP service responsibilities:
+      - `AtpWeekDefinitionFactory`
+      - `AtpWeekSessionMetricsResolver`
+      - `AtpWeekGoalResolver`
+      - thin orchestrator `AthleteAnnualTrainingPlanService`
+    - corrected ATP metric semantics:
+      - planned totals: planned sessions only
+      - completed totals: completed planned + unplanned sessions
+  - tests and validation:
+    - ATP API feature coverage extended for planned/unplanned metric correctness
+    - wayfinder generation, types, feature tests, full tests, and pint all green
+
+---
+
+## Phase 16 — ATP + Load/Progress Hardening (COMPLETE)
+
+- Goals:
+  - establish persisted/reusable weekly metrics shared by ATP, Progress, and Calendar week headers
+  - improve ATP weekly readability and hover detail without changing click-to-calendar behavior
+  - fix session-detail chart interaction bugs (crosshair alignment + double-click reset scope)
+  - replace progress/compliance placeholder messaging with concrete ratio-source semantics
+  - centralize athlete preference normalization and improve timezone UX input constraints
+  - scaffold Stripe subscription syncing without adding checkout UX in this wave
+- Boundaries:
+  - no breaking route/API contract changes
+  - no reconciliation flow regressions
+  - no visual redesign
+  - billing remains scaffold-level only
+- Completed:
+  - weekly metrics persistence/services:
+    - added `athlete_week_metrics` persistence model
+    - added `WeeklyMetricsCalculator`, `WeeklyLoadStateClassifier`, `WeeklyMetricsSnapshotService`
+    - added weekly recalc jobs and nightly schedule
+    - integrated weekly recalc dispatch into load/sync command and sync pipeline paths
+  - ATP integration:
+    - week payload now includes `is_current_week`, `load_state`, `load_state_ratio`, `goal_marker`
+    - ATP chart/table now render current-week emphasis, hover detail, goal markers, and load-state badges
+  - session-detail fixes:
+    - snapped hover/crosshair alignment in interactive chart
+    - moved zoom reset to chart double-click and removed map-level reset
+  - progress/compliance updates:
+    - compliance payload now carries snapshot load-state metadata and planned/completed TSS totals
+    - progress compliance/week rows consume load-state data and show clear indicators
+  - preferences/settings/billing:
+    - introduced `AthletePerformanceProfileResolver` and applied it in metrics/settings paths
+    - replaced timezone free-text with searchable IANA selector
+    - added Stripe webhook scaffold endpoint + user subscription sync fields
+  - test hardening:
+    - added weekly classifier unit tests
+    - added Stripe webhook feature tests
+    - expanded compliance and ATP API tests for new fields
+    - updated progress feature assertions for strict planned-completion semantics
+
+---
+
+## Phase 15 — Training Load Engine Foundation (COMPLETE)
+
+- Goals:
+  - implement coach-grade ATL/CTL/TSB computation infrastructure without breaking existing contracts
+  - add queue-safe recalculation pathways for event-driven and scheduled backfills
+  - expose load history via API and render a dedicated performance-management chart in progress UI
+  - keep implementation multi-athlete safe and free of `auth()` coupling in services
+- Boundaries:
+  - no breaking changes to existing API contracts
+  - no reconciliation flow regressions
+  - no controller orchestration bloat
+- Completed:
+  - database/model:
+    - added `training_load_snapshots` table with unique (`user_id`, `date`, `sport`)
+    - added `users.enable_load_metrics` (default true)
+    - added `TrainingLoadSnapshot` model + user relation
+  - calculator service:
+    - `TrainingLoadCalculator::recalculateForUser(User $user, Carbon $from, Carbon $to)`
+    - day-by-day EWMA walk with seed-from-previous-snapshot fallback
+    - per-sport + combined daily series persisted via idempotent upsert
+  - jobs/scheduling:
+    - `RecalculateUserLoadJob`
+    - `RecalculateRecentLoadJob` (90-day nightly backfill, chunked users)
+    - scheduler registration added in `routes/console.php`
+    - `DispatchRecentLoadRecalculation` action used by write paths
+  - command:
+    - `load:recompute` added with `--user=`, `--all`, `--from=`
+    - command dispatches jobs only
+  - sync/backfill:
+    - `StravaFullHistoryImportJob` added
+    - imports activities-only and dispatches recalculation per imported batch
+  - progress API:
+    - new `GET /api/progress`
+    - `LoadHistoryService` + `LoadHistoryResource` return combined + per-sport ATL/CTL/TSB series
+  - frontend:
+    - `PerformanceManagementChart` added to progress page
+    - combined/per-sport toggle supported
+    - chart data fetched from `/api/progress` via Wayfinder route helper
+    - load widgets hidden when `load_metrics_enabled` is false
+  - dispatch hooks added to required mutation points:
+    - session completion
+    - session unlink
+    - session planned TSS change
+    - activity sync reconciliation completion
+
+---
+
+## Phase 14 — Calendar Creation UX + Workout Library DnD Hardening (COMPLETE)
+
+- Goals:
+  - align calendar creation flow with slicing intent (session creation and library flows clearly separated)
+  - keep calendar fully visible when using workout library tooling
+  - harden drag/drop creation and date moves without backend contract changes
+  - improve workout template preview readability and template management usability
+- Boundaries:
+  - no API contract changes
+  - no backend flow redesign
+  - no visual redesign outside existing calendar theme
+  - preserve existing session editor and structure-builder behavior
+- Completed:
+  - creation-flow correction:
+    - day click / plus -> type picker -> sport -> existing session editor (`Details` + `Structure`)
+    - workout library removed from this inline flow and exposed as separate calendar action panel
+  - workout library sidepanel:
+    - opens from calendar header
+    - non-blocking sheet mode (calendar stays visible/usable)
+    - width now adapts by mode (browse vs create/edit template)
+  - template UX:
+    - added structure mini-preview with variable-height bars for better structure differentiation
+    - added edit flow for existing workout templates
+  - drag/drop hardening:
+    - uncompleted sessions can be dragged to other days
+    - library templates can be dropped on day targets to create planned sessions
+    - drop payload normalization now maps structure keys to API expectations (`duration_minutes`, nested repeat items)
+    - added fallback retry path for invalid `training_week_id` values (`null` retry)
+  - shared UI primitive:
+    - extended `Sheet` with optional `hideOverlay` for sidepanel interaction pattern
+
+---
+
+## Phase 13 — ATP/Libraries/Merge/Settings Consolidation (COMPLETE)
+
+- Goals:
+  - ship ATP as a dedicated athlete page with persisted week metadata
+  - add athlete-owned workout library and wire it into calendar workout creation
+  - harden activity/session reconciliation for ambiguous matches
+  - consolidate workout-type entitlements into admin settings tabs
+- Boundaries:
+  - no backend contract drift on existing APIs
+  - no visual redesign
+  - impersonation-safe admin visibility only
+- Completed:
+  - ATP:
+    - route `/atp/{year}` + sidebar entry (athlete-only)
+    - API endpoints:
+      - `GET /api/atp/{year}`
+      - `PATCH /api/atp/{year}/weeks/{week_start}`
+    - persisted week metadata table `annual_training_plan_weeks`
+    - 60-second cache on ATP read service payload
+    - week/bar navigation wired to calendar via `?week=...`
+  - workout library:
+    - domain + owner-only policy + CRUD API:
+      - `GET/POST/PATCH/DELETE /api/workout-library...`
+    - calendar flow integration:
+      - `Workout -> New Workout | From Library`
+      - library selection creates planned session with structure + estimated duration/TSS
+  - merge hardening:
+    - reconciler now avoids auto-linking ambiguous multi-match candidates
+    - no duplicate free-workout creation when candidates are ambiguous
+    - matching tolerance/proximity checks improved
+  - settings consolidation:
+    - standalone `/admin/settings/entitlements` page removed
+    - workout-type entitlement controls moved into `Admin Settings` tab (`Workout Types`)
+    - admin-only and hidden during impersonation
+  - generator stability:
+    - regenerated and restored Wayfinder-generated `actions` and `routes` artifacts cleanly
+
+---
+
+## Phase 12 — Completion & Compliance Phase 2 (COMPLETE)
+
+- Goals:
+  - add coach-grade compliance read model without introducing training-science load modeling
+  - add placeholder weekly recommendation band plumbing (minutes-based only)
+  - add admin-managed entitlement overrides UI/API with impersonation-safe access
+  - improve completion-source visibility in calendar/session detail surfaces
+- Boundaries:
+  - no backend policy contract drift
+  - no route shape drift on existing endpoints
+  - no visual redesign
+  - no advanced load/physiology calculations
+- Completed:
+  - backend compliance architecture:
+    - `ComplianceService` for weekly/summary planned-only compliance aggregation
+    - `WeeklyRecommendationBandService` for placeholder min/max minutes band
+    - API endpoint: `GET /api/progress/compliance`
+  - progress integration:
+    - Inertia progress page now receives compliance payload from backend service
+    - dedicated compliance panel added with weekly `X/Y`, percentage, and placeholder band status
+  - calendar integration:
+    - calendar window now hydrates and incrementally merges compliance weeks
+    - week headers show compliance chip and range-state chip (`In range`, `High`, `Low`, `No baseline`)
+    - week compliance indicator can navigate to progress with an appropriate range
+  - admin entitlement management:
+    - initially delivered as dedicated page/API surface (later consolidated into Admin Settings tabs in Phase 13)
+    - API endpoints:
+      - `GET /api/admin/entitlements/entry-types`
+      - `PATCH /api/admin/entitlements/entry-types`
+      - `POST /api/admin/entitlements/entry-types/reset`
+    - `entry_type_entitlements` now tracks `updated_by_admin_id`
+    - service now merges config defaults + DB overrides with 60-second cache and source metadata
+  - completion-source UX:
+    - calendar session cards now distinguish `Auto-completed` and manual completion labels
+    - session completion panel now shows completion source meta line
+
+---
+
+## Phase 11 — Completion v2 Foundations (COMPLETE)
+
+- Goals:
+  - keep unified session/activity reconciliation behavior stable
+  - add minimal goals domain foundation for calendar integration
+  - add minimal annual training plan (ATP) yearly scaffold endpoint
+  - keep creation flow foundation modular (`Workout` vs `Other`) with dedicated goal path
+  - preserve Wayfinder-only frontend route usage
+- Boundaries:
+  - no training-science load-modeling expansion
+  - no backend contract breakage in existing session/calendar APIs
+  - no visual redesign
+- Completed:
+  - goals backend scaffold:
+    - migrations/models/policy/resource/requests/controller/routes
+    - endpoints: `GET/POST /api/goals`, `GET/PATCH /api/goals/{goal}`
+  - ATP backend scaffold:
+    - migration/model
+    - endpoint: `GET /api/annual-training-plan/{year}` (auto-create skeleton)
+  - calendar payload + frontend wiring:
+    - goals included in dashboard payload window
+    - goals window fetching for infinite-load path
+    - goals rendered in day columns with dedicated goal modal
+    - create selector now routes `Other -> Goal` into goal modal
+  - athlete-context write gating fix:
+    - calendar write permissions now correctly treat `role: null` as athlete
+    - impersonation context treated as athlete context in calendar selection
+  - completion write behavior guard:
+    - completion now copies provider `tss` only (no derived TSS write on completion)
+  - config-driven entitlement defaults:
+    - added `config/training.php` defaults with env overrides
+    - DB entitlement records still override defaults
+
+---
+
+## Phase 10 — Unified Completion + Calendar Entry Types (COMPLETE)
+
+- Goals:
+  - unify activity/session reconciliation into a single post-sync flow
+  - ensure linked workouts render as one calendar card
+  - auto-complete matched sessions during provider sync
+  - create plan-less completed sessions for unplanned synced workouts
+  - add first-step calendar entry creation (`Workout` vs `Other`)
+  - add admin-managed entitlement gating for entry types
+- Boundaries:
+  - no training-science derivations beyond existing conservative metrics
+  - no backend/provider contract redesign
+  - no role/policy broadening (coach stays read-only, admin impersonation context preserved)
+- Completed:
+  - new `calendar_entries` domain + API (`index/store/show/update/destroy`)
+  - subscription entitlement persistence via `entry_type_entitlements`
+  - athlete write gating via entitlement checks for:
+    - workout types (`TrainingSessionController`)
+    - other entry types (`CalendarEntryController`)
+  - reconciliation orchestrator added:
+    - `ActivityToSessionReconciler`
+    - integrated into provider sync pipeline (`ActivitySyncService`)
+  - planning/completion provenance fields added to sessions:
+    - `planning_source`
+    - `completion_source`
+    - `auto_completed_at`
+  - calendar first-step creation UX added:
+    - `Workout`/`Other` selector modal
+    - dedicated calendar-entry modal for non-workout entries
+  - compliance denominator/numerator aligned to planned sessions only in week summary UI
+
+---
+
+## Phase 9.13 — Final Smoke + Full Quality Gates (COMPLETE)
+
+- Scope:
+  - run final quality gates across frontend/backend
+  - verify no regressions in recent wave fixes
+  - close refactor wave with behavior-preserving validation
+- Guardrails:
+  - no behavior/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - executed full quality gate suite after Waves 6 and 7
+  - verified no regressions across provider/policy/ticket/admin/auth surfaces touched in this pass
+  - kept backend/frontend contracts and UX behavior unchanged
+
+---
+
+## Phase 9.12 — Security + Content Hardening Pass (COMPLETE)
+
+- Scope:
+  - review and harden `dangerouslySetInnerHTML` render boundaries
+  - keep rich-text rendering explicit and sanitized at trust boundaries
+  - preserve payloads and current UX behavior
+- Guardrails:
+  - no backend/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - removed `dangerouslySetInnerHTML` usage for pagination labels in admin users/logs tables using safe label decoding helper (`resources/js/lib/pagination.ts`)
+  - tightened 2FA QR render trust boundary by adding explicit SVG sanitization in `two-factor-setup-modal.tsx`
+  - preserved rendering behavior and payload contracts
+
+---
+
+## Phase 9.11 — Backend Hardening Pass (COMPLETE)
+
+- Scope:
+  - replace `whereRaw('1 = 0')` query fallbacks with explicit expressive empty-result constraints
+  - consolidate repeated impersonation checks in policies via shared helper
+  - split Strava provider concerns (HTTP client/mapping/token lifecycle) into maintainable boundaries
+- Guardrails:
+  - no behavior/API/route/policy contract changes
+  - no UX changes
+- Completed:
+  - replaced raw fallback scopes (`whereRaw('1 = 0')`) with explicit empty-key constraints in `TrainingScope`
+  - consolidated policy impersonation checks into shared trait `App\Policies\Concerns\DetectsImpersonation`
+  - split Strava provider responsibilities:
+    - `StravaApiClient` for HTTP/token/request concerns
+    - `StravaActivityMapper` for payload mapping concerns
+    - `StravaActivityProvider` retained as orchestration boundary only
+
+---
+
+## Phase 9.10 — Session Analysis Chart Decomposition (COMPLETE)
+
+- Scope:
+  - split `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+  - isolate rendering/state helpers without changing chart behavior
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no math/interaction changes
+- Completed:
+  - decomposed `SessionAnalysisChart.tsx` by extracting:
+    - `session-analysis-chart/InteractiveStreamChart.tsx`
+    - `session-analysis-chart/SelectionStatLine.tsx`
+  - reduced parent chart component to orchestration-only rendering while preserving interactions and chart math
+
+---
+
+## Phase 9.9 — Admin + Session Analysis Decomposition (COMPLETE)
+
+- Scope:
+  - decompose remaining oversized admin surfaces:
+    - `resources/js/pages/admin/analytics.tsx`
+    - `resources/js/pages/admin/users/show.tsx`
+  - decompose `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+  - preserve behavior and API contracts exactly
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no UX redesign
+- Completed:
+  - decomposed `resources/js/pages/admin/analytics.tsx` into feature modules:
+    - `analytics/types.ts`
+    - `analytics/utils.ts`
+    - `analytics/hooks/useAdminAnalyticsChart.ts`
+    - `analytics/components/*`
+  - decomposed `resources/js/pages/admin/users/show.tsx` into feature modules:
+    - `show/types.ts`
+    - `show/utils.ts`
+    - `show/components/*`
+  - preserved all route/API contracts and page behavior
+
+---
+
+## Phase 9.8 — Legacy Surface Cleanup + Auth/Register Decomposition (COMPLETE)
+
+- Scope:
+  - remove or formally retire unused legacy calendar monolith (`plan-section.tsx`) if it is confirmed unused
+  - split oversized auth registration page into isolated steps/hooks/components
+  - preserve onboarding behavior and request payloads exactly
+- Guardrails:
+  - no backend/API/policy changes
+  - no route contract changes
+  - no UX redesign
+- Completed:
+  - confirmed no active references to `resources/js/pages/calendar/components/plan-section.tsx` and removed the file
+  - replaced monolithic `resources/js/pages/auth/register.tsx` step rendering with extracted step components:
+    - `AccountStep`
+    - `AthletePreferencesStep`
+    - `AthleteZonesStep`
+    - `AthleteIntegrationsStep`
+    - `CoachProfileStep`
+    - `CoachApplicationStep`
+  - preserved registration payload contract and form behavior while migrating constants/types/helpers to feature-local files
+
+---
+
+## Phase 9.7 — Ticket Editor Decomposition (COMPLETE)
+
+- Scope:
+  - split `resources/js/pages/admin/tickets/components/ticket-description-editor.tsx`
+  - extract editor-specific hooks/components/utilities while preserving behavior
+  - keep mention and `/user` interactions stable in both create + edit flows
+- Guardrails:
+  - no backend/API changes
+  - no route shape changes
+  - no payload format changes
+- Completed:
+  - decomposed editor into orchestrator + dedicated hook + toolbar + suggestion popover + shared utils/types
+  - preserved mention/slash token insertion behavior and keyboard accessibility
+  - maintained export path compatibility for existing imports
+
+---
+
+## Phase 9.6 — Refactor Hardening Wave 1 (COMPLETE)
+
+- Scope:
+  - ticket notification + ticket query-state smoke/stability checks
+  - React lint/stability blocker cleanup in targeted files
+  - strict Wayfinder completion for remaining hardcoded route usage in targeted pages
+- Guardrails:
+  - no API contract changes
+  - no route shape changes
+  - no backend behavior changes
+  - no UX redesign
+- Completed:
+  - removed effect-driven state sync patterns in ticket selection and coach applications
+  - finished strict Wayfinder migration in targeted athlete/coach/plan/session files
+  - validated ticket notification mark-seen flows through feature coverage
+
+---
+
+## Phase 9.5 — Global Hardening (COMPLETE)
+
+- Frontend hardening wave executed with strict no-backend-change constraints.
+- Completed:
+  - global native `<select>` migration to ShadCN `Select`
+  - admin pill/badge normalization onto ShadCN `Badge`
+  - coach-application status switcher normalization to ShadCN `ToggleGroup`
+  - arbitrary pixel-utility reduction (layout sizing converted to rem/responsive equivalents)
+  - semantic click-target cleanup for remaining interactive card/day wrappers
+  - page metadata safety fix for decomposed page-helper files
+- Preserved:
+  - existing API contracts
+  - routes/policies
+  - slicing-aligned UI behavior
+  - ticket/calendar/session interaction flow
+- Validation gate passed:
+  - types, full compact test suite, and Pint formatting.
+
+---
+
 ## Phase 0 — Design (COMPLETE)
 
 - Google AI Studio prototype
@@ -258,8 +812,69 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
   - Integrations
   - Billing & Plans
 - added athlete account label/sidebar treatment
+
+### 9.3 Tickets Frontend Decomposition (COMPLETE FOR WAVE C4 SCOPE)
+
+- Objective:
+  - split oversized admin tickets page into testable UI units + hooks without API/behavior changes
+  - stabilize rich editor suggestion UX in edit mode before deeper extraction
+- Completed:
+  - extracted `TicketCreateDialog` from `admin/tickets/index.tsx`
+  - stabilized mention and `/user` trigger parsing in existing ticket editing
+  - stabilized query-driven ticket opening from notification URLs
+  - hardened mark-seen/mark-all-seen notification mutations with direct Wayfinder route usage
+  - reduced `admin/tickets/index.tsx` to orchestrator size (395 lines)
+  - extracted ticket detail dialog into dedicated modules:
+    - `TicketDetailSheet`
+    - `TicketDetailOverviewTab`
+    - `TicketDetailAuditTab`
+  - extracted mutation/network operations into `useTicketMutations`
+  - extracted selection/query sync into `useTicketSelection`
+  - extracted ticket detail draft/autosync state into `useTicketDetailState`
+  - filter surface now emits a single payload update contract (`onFiltersChange`)
+- Result:
+  - no backend or API contract changes
+  - behavior preserved for create/edit/autosync/audit/attachments/realtime/query-open
+
+### 9.4 Tickets Primitive + Semantics Alignment (COMPLETE)
+
+- Completed:
+  - ShadCN primitive adoption for toggle-like controls in ticket create/detail/editor flows
+  - badge/pill normalization through shared badge-based ticket UI helpers
+  - semantic board/list/table interaction cleanup for keyboard and SR clarity
+  - realtime ticket channel effect stabilization to avoid unnecessary subscription churn
+  - removal of remaining arbitrary `px` classes in ticket-related notification surface
+- Constraints respected:
+  - no backend or contract changes
+  - no policy/auth changes
+  - no visual redesign
 - integrations tab now reflects real provider state; static Garmin copy removed
 - added backend persistence endpoints/validation for profile + training preferences
+
+### 9.5 Session Detail Decomposition (COMPLETE FOR WAVE C5)
+
+- Objective:
+  - split oversized `session-detail.tsx` into orchestration + focused modules without behavior/API drift
+- Completed:
+  - reduced `resources/js/pages/calendar/session-detail.tsx` to 347 lines
+  - extracted UI modules:
+    - `SessionDetailLayout`
+    - `SessionMap`
+    - `SessionStatisticsCard`
+    - `SessionInternalNotes`
+    - `SessionPlannedStructurePreview`
+    - `SessionAnalysisChart`
+  - extracted hooks:
+    - `useSessionStreams`
+    - `useSessionZoom`
+    - `useSessionHover`
+    - `useSessionStats`
+  - extracted shared `constants.ts`, `types.ts`, `utils.ts` for session-detail scope
+- Constraints respected:
+  - no backend changes
+  - no route/API contract changes
+  - no visual redesign
+  - chart/map/zoom/hover/statistics/notes behavior preserved
 
 ### 7.2 Calendar + Session Detail Parity (CORE COMPLETE)
 
@@ -357,3 +972,223 @@ Scope: athlete only, slicing-first, production-safe vertical slices with real ba
    - object storage for uploads
 5. Athlete slicing parity polish:
    - remaining work is behavior/performance polish, not architectural rewrites.
+
+---
+
+## Phase 8 — Admin Internal Ops: Tickets Module (V1 COMPLETE)
+
+- Admin-only tickets board now implemented with strict impersonation blocking.
+- Core backend domain implemented:
+    - ticket lifecycle entities + enums
+    - private per-admin internal notes
+    - ticket attachments
+    - mentions
+    - explicit ticket audit trail
+    - persisted admin ticket settings
+- Realtime implemented via Reverb:
+    - board update event broadcasts
+    - mention notification broadcasts
+- Notifications surface implemented:
+    - global admin bell
+    - unread badge
+    - mark seen / mark-all
+- Board + archive UX implemented:
+    - board columns: todo / in progress / to review / done
+    - drag/drop status changes
+    - archived table with sorting + pagination
+    - filtering (assignee, creator, type, importance) + global search
+- Delayed archive automation implemented:
+    - scheduler-backed archive job
+    - configurable archive-delay hours
+
+### 8.1 Remaining Tickets Enhancements (Next)
+
+- Upgrade description editor from structured textarea payloads to full rich-text command UX parity.
+- Add richer keyboard DnD/accessibility semantics for board interactions.
+- Expand mention parsing support for comment/internal-note contexts.
+- Add stronger notification deep-link focus behavior in ticket detail panels.
+
+### 8.2 Tickets UX Hardening (COMPLETE FOR CURRENT SLICE)
+
+- Tickets board filter model now auto-applies with debounce (manual apply button removed).
+- Tickets settings moved to dedicated Admin Settings surface:
+    - `GET /admin/settings`
+    - `PATCH /admin/settings`
+    - archive delay now managed there for future extensibility (feature flags/config blocks).
+- Notification bell is integrated into admin layout chrome instead of floating absolute corner positioning.
+- Ticket creation UX now uses richer, explicit controls:
+    - type badge group
+    - importance slider
+    - assignee input with avatar suggestions
+- Ticket description editor upgraded to lightweight WYSIWYG:
+    - formatting toolbar (bold, heading, underline, bullet list)
+    - `@admin` mentions
+    - `/user` references with caret-anchored suggestions
+    - inserted references rendered as clickable badge tokens
+- Ticket detail open/update robustness improved by normalizing resource payload shapes from API responses.
+- Ticket detail editing is now auto-sync first:
+    - manual `Save Changes` action removed
+    - debounced field sync for title/type/importance/assignee/description
+    - debounced private-note sync
+    - persistent sync status chip in modal (`pending`, `syncing`, `saved`, `error`)
+- Request validation feedback is now surfaced inline for create/detail ticket forms with field-level clear-on-edit behavior.
+- Description editor usability hardening:
+    - active toolbar state highlighting for selected formats
+    - explicit heading level selector
+    - slash command transforms (`/h1`, `/h2`, `/h3`, `/paragraph`, `/bullet`, `/bold`, `/italic`, `/underline`)
+    - bounded editor height to prevent modal growth
+- Ticket detail audit trail now uses constrained dialog layout + scroll-safe containers so long histories no longer break vertical scrolling.
+
+---
+
+## Phase 9 — Global Quality Cleanup (Audit Complete, Refactor Pending Approval)
+
+Scope: full codebase quality pass with behavior stability and slicing parity preservation.
+
+### 9.0 Phase 1 Audit (COMPLETE)
+
+- backend hotspots identified:
+    - oversized controllers (`DashboardController`, `AthleteCalendarController`, `TrainingSessionController`, `Api/Admin/TicketController`, `AdminAnalyticsController`)
+    - duplicated request validation (`Store/UpdateTrainingSessionRequest`, `Store/UpdateTrainingWeekRequest`)
+    - repeated impersonation checks across policies
+    - repeated role-scoped query fallbacks (`whereRaw('1 = 0')`) that should be centralized
+- frontend hotspots identified:
+    - oversized React pages/components with mixed responsibilities (tickets board, session detail, workout builder, session editor)
+    - remaining hardcoded API paths instead of Wayfinder helpers (tickets, notifications, activity streams)
+    - custom UI patterns where shadcn primitives are available and should be preferred
+- styling/accessibility hotspots identified:
+    - heavy fixed-pixel utility usage in critical surfaces
+    - fragile modal viewport ownership in high-content dialogs
+    - semantic/keyboard consistency gaps in complex interactive components
+
+### 9.1 Planned Refactor Waves (PENDING APPROVAL)
+
+1. Safe cleanup wave:
+   - migrate remaining hardcoded frontend API paths to Wayfinder helpers
+   - introduce shared backend query-scope helpers without behavior changes
+   - perform low-risk shadcn primitive alignment where component contracts remain stable
+2. Structural cleanup wave:
+   - split fat controllers and extract duplicated validation/service logic
+   - split oversized frontend components into hooks + presentational units
+3. Hardening wave:
+   - targeted performance pass (analytics caching, index validation, payload trimming)
+   - accessibility/semantic polish and responsive overflow hardening
+   - focused regression test expansion for touched domains
+
+### 9.2 Wave A (COMPLETE)
+
+1. Strict Wayfinder migration
+   - replace remaining hardcoded API fetch URLs with generated route helpers
+   - remove ticket-page API URL props that duplicate route definitions
+2. Ticket filter validation extraction
+   - move API ticket index filter validation out of controller into dedicated FormRequest
+   - keep query behavior and response payload shape unchanged
+3. Shared constants cleanup
+   - de-duplicate ticket status/type/importance string literals across frontend/backend
+4. Verification and docs
+   - run targeted tests + Pint
+   - update progress/state docs with Wave A completion summary
+
+### 9.3 Wave B (COMPLETE)
+
+1. Calendar payload service extraction
+   - added `AthleteCalendarPayloadService`
+   - `DashboardController` and `AthleteCalendarController` now delegate payload orchestration
+2. Role-scope query centralization
+   - added `TrainingScope` helper methods:
+     - `forVisiblePlans`
+     - `forVisibleWeeks`
+     - `forVisibleSessions`
+     - `forVisibleActivities`
+   - replaced duplicated inline role query conditionals in API/controllers
+3. Training session action-service split
+   - added:
+     - `LinkActivityAction`
+     - `UnlinkActivityAction`
+     - `CompleteSessionAction`
+     - `RevertCompletionAction`
+   - `TrainingSessionController` is now thin orchestration for these actions
+4. Session validation consolidation
+   - added `HasTrainingSessionRules` concern
+   - shared rules and post-validation now reused by both store/update requests
+5. Index additions
+   - added migration for `users(created_at)` and `users(role, created_at)`
+6. Admin analytics caching
+   - added 60-second range-keyed caching to admin analytics aggregates
+
+### 9.4 Next Wave
+
+- Wave C is the next approved scope:
+    - frontend decomposition of oversized components
+    - stronger shadcn primitive alignment
+    - dialog/layout responsiveness and semantic cleanup
+    - TipTap-based ticket description editor migration with preserved mention/user-ref payload contract
+
+### 9.5 Wave C (IN PROGRESS)
+
+1. Decompose oversized frontend modules
+   - admin tickets board/detail
+   - session detail
+   - workout structure builder
+   - session editor modal
+2. ShadCN alignment
+   - add missing command/popover/tabs/scroll primitives and migrate custom suggestion/menu implementations
+3. Editor migration
+   - replace fragile `contentEditable` with TipTap foundation while preserving backend payload shape
+4. Styling + a11y hardening
+   - reduce fixed-pixel layout usage in touched components
+   - standardize dialog viewport-safe behavior and semantic roles
+
+### 9.6 Wave C Slice Update (CURRENT)
+
+1. Completed in this slice
+   - shadcn primitive availability added for wave usage:
+     - command / popover / tabs / table / scroll-area
+   - admin tickets decomposition:
+     - extracted shared ticket helpers to `lib/ticket-utils.ts`
+     - extracted shared UI atoms to `components/ticket-ui.tsx`
+     - extracted assignee combobox (`Popover + Command`) to `components/ticket-assignee-combobox.tsx`
+   - tickets page now uses extracted modules and no longer owns the custom assignee suggestion dropdown implementation
+   - TipTap editor migration hardening:
+     - fixed editorProps typing + `setContent` options for current API
+     - fixed suggestion-state typing for slash/mention menu stability
+   - session editor modal tab container was stabilized (missing Tabs closure fixed) and retains viewport-safe layout behavior
+2. Remaining for Wave C completion
+   - further decomposition of oversized calendar surfaces (`session-detail`, `workout-structure-builder`, deeper `session-editor-modal` internals)
+   - broader semantic/a11y pass on remaining clickable non-button patterns
+   - additional rem-based cleanup in untouched large files where fixed px text sizing remains
+
+### 9.7 Wave D1 — Dynamic Subscription Feature Matrix (COMPLETED)
+
+1. Runtime engine
+   - installed Laravel Pennant and registered matrix-defined features in `AppServiceProvider`
+   - introduced canonical feature catalog in `config/subscription-features.php`
+2. Dynamic admin overrides
+   - added `subscription_feature_entitlements` table + model
+   - implemented `SubscriptionFeatureMatrixService` for:
+     - config/default resolution
+     - DB override merge
+     - segment resolution (`athlete_free`, `athlete_paid`, `coach_paid`)
+     - 60-second cache + invalidation on updates/resets
+3. Admin operations
+   - added admin APIs:
+     - `GET /api/admin/entitlements/subscription-features`
+     - `PATCH /api/admin/entitlements/subscription-features`
+     - `POST /api/admin/entitlements/subscription-features/reset`
+   - integrated matrix controls into existing admin settings page (`Feature Matrix` tab, autosave, source badges)
+4. Enforcement integration
+   - ATP read/edit gates
+   - progress extended-range gate (free athletes locked to 4 weeks)
+   - progress chart visibility gates (load trend/performance management)
+   - workout library API gate
+   - activity streams API gate
+   - structured workout payload guard in training session create/update
+   - free-athlete history depth clamp through `HistoryWindowLimiter` (8 weeks)
+5. Frontend lock UX
+   - added shared `feature_access` Inertia prop map
+   - added reusable `FeatureLockedCard`
+   - applied lock states in progress, calendar/session detail, sidebar ATP access
+6. Validation status
+   - targeted new/updated tests pass
+   - formatting pass complete
+   - known existing global TS UUID/public-id migration errors remain outside this wave

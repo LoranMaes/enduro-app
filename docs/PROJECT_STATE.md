@@ -2,9 +2,80 @@
 
 ## Current Phase
 
-Backend spine + athlete operational flows are complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
+Phase 19 is in progress: progress/performance hardening + settings theme integration + Cashier scaffold readiness, alongside ongoing UUID/opaque-ID migration stabilization.
+
+## Current Wave Focus
+
+- Phase 19 in progress:
+    - progress/performance:
+        - forecast seeding now avoids synthetic zero tails before projection
+        - load trend includes today snapshot (actual/planned/suggested)
+        - performance management includes today snapshot, legend tooltips, series toggles, and improved hover readability
+        - suggested range warm-up now uses seed history and appears earlier in-window when data exists
+    - settings/theme:
+        - settings overview includes a dedicated `Theme` tab
+        - `/settings/appearance` now redirects to `/settings/overview?tab=theme`
+    - light mode:
+        - root light palette and dark palette separation is in place
+        - progress surfaces now rely on semantic token classes for better dual-theme readability
+    - billing scaffold:
+        - Cashier installed/published and User is billable
+        - CSRF exemption added for `stripe/*` webhook path
+        - legacy `/api/webhooks/stripe` compatibility endpoint remains active
+        - settings billing tab now displays real synced subscription state
+        - Reverb live update event wired for subscription status changes
+        - billing tab now presents user-facing plan UI with subscribe/manage actions (technical Stripe fields hidden)
+    - known validation status:
+        - targeted tests for this wave are green
+        - global TS/tests remain red due broader UUID/encryption migration expectations outside this wave
+- Phase 18 delivered end-to-end:
+    - training-session write flows now resolve `training_week_id` from opaque route keys in dual mode
+    - training-session API serialization now preloads relation keys for route-key-safe ID output
+    - session link/unlink mutation responses now emit route-key IDs
+    - calendar activity payload IDs now flow through route-key abstraction (`legacy` numeric, `dual` opaque)
+    - explicit dual-mode migration tests added:
+        - `tests/Feature/Api/UuidDualModeApiTest.php`
+- Phase 17 delivered end-to-end:
+    - ATP week-type colors are now consistent across chart bars, table indicators, and legend
+    - ATP goal flag is now positioned below week labels for unobstructed week-number readability
+    - ATP week date labels/tooltips now follow browser-locale formatting with user timezone context
+    - ATP table TSS placeholders replaced with real value-or-dash rendering
+    - ATP aggregation now correctly separates:
+        - planned totals (`planning_source=planned` only)
+        - completed totals (completed planned + unplanned sessions)
+    - ATP service decomposition completed:
+        - `AtpWeekDefinitionFactory`
+        - `AtpWeekSessionMetricsResolver`
+        - `AtpWeekGoalResolver`
+        - `AthleteAnnualTrainingPlanService` remains orchestration + cache layer
+    - session-detail dotted hover line now snaps to the selected sample index (aligned with hover point/map sync)
+    - calendar session rows no longer show the auto-completed badge/text
+    - progress load trend target range now renders with stronger visibility (band + explicit boundaries)
+    - progress compliance/weekly logs now use shared `LoadStatePill` component and TSS-based recommended ranges
+- Phase 16 remains in place:
+    - persisted weekly snapshot source added for ATP/progress/calendar:
+        - `athlete_week_metrics`
+        - `WeeklyMetricsCalculator`
+        - `WeeklyLoadStateClassifier`
+        - `WeeklyMetricsSnapshotService`
+    - weekly recalculation dispatch now runs with existing load recalculation hooks and nightly backfill
+    - ATP payload now includes `is_current_week`, `load_state`, `load_state_ratio`, and `goal_marker`
+    - ATP header/table now surface current-week focus, hover detail, and load-state badges
+    - session detail chart hover line is now sample-aligned; zoom reset moved to chart double-click only
+    - progress/compliance now consume snapshot load-state fields with explicit ratio-source messaging
+    - training preference normalization centralized in `AthletePerformanceProfileResolver`
+    - settings timezone input now uses searchable IANA selection
+    - Stripe webhook scaffold added for `is_subscribed` synchronization
+
+## Previous Phase Snapshot
+
+Phase 14 delivered calendar creation UX correction + workout library sidepanel hardening + drag/drop stabilization.
+
+Backend spine + athlete operational flows remain complete, including activity sync/link/complete pipelines, coach-athlete assignment, and admin impersonation.
 
 Athlete slicing parity is in active Phase 7 implementation with settings/calendar/session-detail/progress/plans V1 surfaces now wired to real data.
+
+Phase 9 cleanup Wave A and Wave B are complete (behavior-preserving mechanical + backend-boundary refactors). Wave C frontend decomposition is in progress with tickets (C3/C4), session-detail (C5), and additional surface decomposition waves completed. Wave D global frontend hardening has now been executed with behavior-preserving constraints.
 
 ## Confidence Level
 
@@ -27,6 +98,26 @@ High — UX validated, backend structure in place
 - Athlete session-detail chart/map visual fidelity still needs screenshot-level polish against slicing reference
 - Interval structure taxonomy is currently code-defined; admin-manageable block catalogs are deferred
 - Stream coverage depends on provider payload availability; unsupported streams remain disabled by design
+- Ticket editor is now WYSIWYG-based, but advanced keyboard navigation and richer command coverage are still follow-up work
+- Ticket decomposition remains ongoing for other app surfaces, but admin tickets Wave C4 boundaries are now in place (index orchestration + isolated hooks/components)
+- Ticket semantics/primitives were hardened in Wave C3, but detail-dialog extraction and final size reduction are still pending
+
+## Cleanup Audit Snapshot (2026-02-11)
+
+- Backend maintainability risk:
+    - controller/service boundaries are drifting in key flows (calendar orchestration, sessions, tickets, analytics)
+    - duplicated validation and impersonation guard logic increase change risk
+- Frontend maintainability risk:
+    - very large components are combining layout, fetch orchestration, and mutation logic
+    - remaining hardcoded API URLs bypass existing Wayfinder route generation
+- Design-system risk:
+    - custom interaction patterns are still used where shadcn primitives exist and can reduce UI drift
+- Styling/responsive risk:
+    - fixed-pixel layout usage remains high in complex screens
+    - modal overflow behavior remains fragile in some dense admin/calendar views
+- Accessibility risk:
+    - semantic element usage and keyboard interaction patterns are inconsistent across advanced editors and boards
+    - ticket-board semantics were improved (region/list/button/listbox roles), but full app-wide parity work remains
 
 ## Mitigations
 
@@ -38,6 +129,13 @@ High — UX validated, backend structure in place
 - Deliver API logic incrementally behind policy checks
 - Keep coach permissions read-only until assignment + impersonation workflows are fully stabilized
 - Keep admin writes tightly scoped to moderation-only flows (suspension/reactivation) until full governance policy phase
+- Wave B mitigations now applied:
+    - calendar payload orchestration extracted to dedicated service
+    - role visibility scoping centralized in shared query helper
+    - training session write-side business actions extracted from controller
+    - duplicated session request rules consolidated
+    - users list indexes added for created-at sort/filter scale paths
+    - admin analytics aggregates now cached for 60 seconds
 - Maintain a production readiness checklist before go-live:
     - supervised queue workers
     - supervised Reverb
@@ -45,6 +143,11 @@ High — UX validated, backend structure in place
     - monitoring/alerts
     - verified backups
     - object storage for user uploads
+- Wave D hardening mitigations now applied:
+    - native selects removed from app surfaces (ShadCN select standardized)
+    - arbitrary pixel utilities reduced to shadow/border exceptions only
+    - remaining clickable non-semantic wrappers converted to semantic interactive elements
+    - decomposed page-helper metadata/title coverage stabilized for frontend test guards
 
 ## UI Chart Guardrails
 
@@ -60,6 +163,21 @@ LOCKED for MVP
 ## Backend Status
 
 - Domain entities, migrations, policies, API resources, and API route scaffolding are in place.
+- Unified completion + entry-type backend additions are now live:
+    - `calendar_entries` CRUD API (athlete-owned)
+    - `entry_type_entitlements` admin-managed gating flags
+    - `training_sessions` provenance fields: `planning_source`, `completion_source`, `auto_completed_at`
+    - `ActivityToSessionReconciler` integrated into sync for auto-link/auto-complete/unplanned creation
+- Load engine foundation is now live:
+    - `training_load_snapshots` storage model and indexed read/write paths
+    - queue-safe user-window recalculation (`RecalculateUserLoadJob`)
+    - nightly recent backfill (`RecalculateRecentLoadJob`)
+    - operational recompute command (`load:recompute`)
+    - load history API (`GET /api/progress`) with combined and per-sport series
+- Goals/ATP foundations are now live:
+    - `goals` domain with athlete/admin policy controls and CRUD-lite API (`index/store/show/update`)
+    - `annual_training_plans` skeleton domain with per-athlete/per-year uniqueness and auto-create read endpoint
+    - calendar payload includes `goals` window data for frontend rendering
 - Authentication remains Fortify-based; API routes use `auth` middleware.
 - TrainingPlan CRUD is implemented and tested.
 - TrainingWeek read + CRUD is implemented and tested (including overlap/date validation).
@@ -109,6 +227,15 @@ LOCKED for MVP
     - explicit validation in training session store/update requests
     - nested structure items (`steps[*].items`) + `repeats` type validation are supported
     - no auto-derived metrics or science logic attached
+- Admin internal-ops tickets backbone is available:
+    - admin-only web surface: `GET /admin/tickets`
+    - admin-only ticket APIs under `/api/admin/tickets...`
+    - strict impersonation blocking for all ticket web/API paths
+    - delayed done-ticket archiving via `ArchiveDoneTicketsJob` + scheduler
+    - persisted archive-delay setting via `admin_settings`
+    - realtime board update and mention notification events via Reverb
+    - mention notifications persisted in Laravel `notifications` table
+    - per-ticket audit events persisted in `ticket_audit_logs`
 - Session read payloads now include resolved historical load hints:
     - `actual_tss` remains persisted write-state
     - `resolved_actual_tss` is computed for read surfaces using activity payload + conservative fallback estimates
@@ -131,6 +258,19 @@ LOCKED for MVP
 ## Frontend Status
 
 - Athlete calendar uses real backend data with athlete-only session write interactions enabled.
+- Unified calendar creation and rendering flow is now live:
+    - first-step selector (`Workout` vs `Other`)
+    - dedicated modal for `event`/`goal`/`note` entries
+    - entitlement lock-state rendering for gated types
+    - linked activity/session duplicate cards removed (single-card session rendering)
+- Progress now includes dedicated performance-management visualization:
+    - ATL/CTL/TSB chart rendering via `/api/progress`
+    - per-sport/combined toggle
+    - load widgets conditionally hidden when `enable_load_metrics` is disabled
+- Goal creation/view flow is now separated from generic calendar entries:
+    - `Other -> Goal` opens a dedicated goal modal
+    - goals render in day columns as dedicated cards and can be updated in-place
+    - event/note entry flow remains on calendar-entry modal
 - Athlete calendar now supports athlete-only session writes (modal CRUD) against real backend endpoints.
 - Athlete calendar now centers on the current week at initial load and supports infinite vertical scrolling (past/future windows) through session read API window fetches.
 - Calendar composition now follows slicing structure:
@@ -235,6 +375,66 @@ LOCKED for MVP
     - deterministic stream-point downsampling for smoother chart interaction
     - no-planned-structure sessions collapse to full-width analysis layout (no empty planned-block shell)
 - Plans page now uses slicing-style coming-soon layout.
+- Admin tickets UI is now live and in-theme:
+    - board tab with 4 kanban columns and drag/drop status moves
+    - archived tab with sort-on-header and pagination
+    - ticket create + detail dialogs
+    - per-ticket attachments + private internal note editing
+    - audit trail tab
+    - global admin notification bell with realtime unread updates
+- Admin tickets UX hardening applied:
+    - debounced auto-filters (no manual apply action)
+    - shadcn `Select` usage across ticket filters/forms
+    - dedicated admin settings page (`/admin/settings`) for archive delay + future controls
+    - integrated notification bell placement in admin layout chrome
+    - WYSIWYG ticket description editor with:
+        - formatting toolbar
+        - `@admin` mentions
+        - `/user` reference insertion
+        - clickable reference badges
+    - resource-payload normalization fix for reliable ticket open after create/update
+- Admin ticket detail modal hardening applied:
+    - auto-sync ticket edits (no manual save button)
+    - auto-sync internal notes
+    - persistent in-modal sync-state indicator
+    - inline validation feedback for create/edit flows
+    - bounded editor region + improved WYSIWYG active states
+    - audit-trail tab now has guaranteed y-scroll inside constrained dialog viewport
+- Wave C decomposition/alignment slice landed for frontend foundations:
+    - Added reusable shadcn-derivative primitives under `resources/js/components/ui`:
+        - `command.tsx`
+        - `popover.tsx`
+        - `tabs.tsx`
+        - `table.tsx`
+        - `scroll-area.tsx`
+    - Added reusable admin-ticket modules:
+    - `resources/js/pages/admin/tickets/components/ticket-assignee-combobox.tsx`
+    - `resources/js/pages/admin/tickets/components/ticket-ui.tsx`
+    - `resources/js/pages/admin/tickets/lib/ticket-utils.ts`
+    - `resources/js/pages/admin/tickets/components/TicketDetailSheet.tsx`
+    - `resources/js/pages/admin/tickets/components/TicketDetailOverviewTab.tsx`
+    - `resources/js/pages/admin/tickets/components/TicketDetailAuditTab.tsx`
+    - `resources/js/pages/admin/tickets/hooks/useTicketMutations.ts`
+    - `resources/js/pages/admin/tickets/hooks/useTicketSelection.ts`
+    - `resources/js/pages/admin/tickets/hooks/useTicketDetailState.ts`
+    - `resources/js/pages/admin/tickets/index.tsx` now delegates shared display + serialization concerns to extracted modules (behavior preserved).
+    - `resources/js/pages/admin/tickets/index.tsx` reduced to 395 lines and now acts as a thin orchestration layer.
+    - Ticket description editor (TipTap) integration is now API-accurate for current package versions (typed attributes/setContent contract fixed).
+- Session detail decomposition (Wave C5) is now completed with behavior preserved:
+    - `resources/js/pages/calendar/session-detail.tsx` reduced to 347 lines (thin orchestration layer)
+    - extracted modules:
+        - `resources/js/pages/calendar/session-detail/SessionDetailLayout.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionMap.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionStatisticsCard.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionInternalNotes.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionPlannedStructurePreview.tsx`
+        - `resources/js/pages/calendar/session-detail/SessionAnalysisChart.tsx`
+    - extracted hooks:
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionStreams.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionZoom.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionHover.ts`
+        - `resources/js/pages/calendar/session-detail/hooks/useSessionStats.ts`
+    - Session editor modal tab scaffold is now structurally stable (`Tabs` closure fix) with the shared dialog size contract still intact.
 - Remaining athlete parity work is focused on fine-grained visual polish, not architectural rewrites.
 
 ## Auth & Approval Status
@@ -257,3 +457,33 @@ LOCKED for MVP
     - approve/reject with review notes
     - one-at-a-time file preview with navigation controls
 - Admin dashboard now includes pending coach-application visibility for faster triage.
+
+## Subscription Matrix State (Pennant)
+
+- Dynamic subscription feature gating is now active through Laravel Pennant with config+DB matrix resolution.
+- Source of truth:
+    - definitions: `config/subscription-features.php`
+    - overrides: `subscription_feature_entitlements`
+    - resolver: `App\Services\Entitlements\SubscriptionFeatureMatrixService`
+- User segments:
+    - `athlete_free`
+    - `athlete_paid`
+    - `coach_paid` (coaches treated as paid for this wave)
+- Admin management:
+    - matrix controls are in existing `/admin/settings` under `Feature Matrix` tab
+    - autosave updates both workout-type entitlements and subscription-feature overrides
+    - row source is visible (`Config default` vs `Customized`)
+- Active gated surfaces:
+    - ATP read/edit
+    - progress extended ranges
+    - progress chart visibility (`load_trend`, `performance_management`)
+    - workout library API
+    - activity streams API
+    - structured workout payload writes
+    - free-athlete historical window clamp (8 weeks)
+- Frontend integration:
+    - `feature_access` shared prop map exposed through Inertia middleware
+    - lock-state UI now shown with upgrade CTA instead of hard-hidden sections in key athlete surfaces
+- Compatibility notes:
+    - entry-type entitlement system remains separate and unchanged for workout/other entry-type gating
+    - existing UUID/public-id TypeScript migration backlog is still present in unrelated files and can fail global `npm run types`

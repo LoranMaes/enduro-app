@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\LogsModelActivity;
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,12 +13,16 @@ class TrainingWeek extends Model
 {
     use HasFactory;
     use LogsModelActivity;
+    use UsesDualUuidIdentity;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'training_plan_id',
+        'training_plan_uuid_id',
         'starts_at',
         'ends_at',
     ];

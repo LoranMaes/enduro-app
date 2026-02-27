@@ -6,12 +6,13 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { index as athletesIndex } from '@/routes/athletes';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Athletes',
-        href: '/athletes',
+        href: athletesIndex().url,
     },
 ];
 

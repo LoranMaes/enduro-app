@@ -26,21 +26,21 @@ class ActivityResource extends JsonResource
 
         if ($this->relationLoaded('trainingSession') && $this->trainingSession !== null) {
             $linkedSessionSummary = [
-                'id' => $this->trainingSession->id,
+                'id' => $this->trainingSession->getRouteKey(),
                 'scheduled_date' => $this->trainingSession->scheduled_date?->toDateString(),
                 'sport' => $this->trainingSession->sport,
             ];
         }
 
         return [
-            'id' => $this->id,
+            'id' => $this->resource->getRouteKey(),
             'training_session_id' => $this->training_session_id,
             'linked_session_id' => $this->training_session_id,
             'linked_session_uid' => $this->training_session_id !== null
                 ? (string) $this->training_session_id
                 : null,
             'linked_session_summary' => $linkedSessionSummary,
-            'athlete_id' => $this->athlete_id,
+            'athlete_id' => $this->athlete?->getRouteKey() ?? $this->athlete_id,
             'provider' => $this->provider,
             'external_id' => $this->external_id,
             'sport' => $this->sport,

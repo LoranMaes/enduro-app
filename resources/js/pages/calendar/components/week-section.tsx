@@ -1,15 +1,21 @@
 import { cn } from '@/lib/utils';
 import type {
     ActivityView,
+    CalendarEntryView,
+    GoalView,
     TrainingSessionView,
     TrainingWeekView,
 } from '@/types/training-plans';
+import type { ProgressComplianceWeek } from '../types';
 import { DayColumn } from './day-column';
 import { WeekSummary } from './week-summary';
 
 type WeekSectionProps = {
     week: TrainingWeekView;
     activities: ActivityView[];
+    calendarEntries: CalendarEntryView[];
+    goals: GoalView[];
+    compliance: ProgressComplianceWeek | null;
     visibleDayDates: string[] | null;
     summaryRailWidth: number;
     canManageSessions: boolean;
@@ -17,7 +23,16 @@ type WeekSectionProps = {
     canOpenActivityDetails: boolean;
     onCreateSession: (date: string) => void;
     onEditSession: (session: TrainingSessionView) => void;
+    onSessionDragStart: (session: TrainingSessionView) => void;
+    onSessionDragEnd: () => void;
+    onDayDragOver: (date: string) => void;
+    onDayDrop: (date: string, targetWeekId: number) => void;
+    draggingSessionId: number | null;
+    isDayDropTarget: (date: string) => boolean;
     onOpenActivity: (activity: ActivityView) => void;
+    onOpenCalendarEntry: (entry: CalendarEntryView) => void;
+    onOpenGoal: (goal: GoalView) => void;
+    onOpenProgressForWeek: (weekStartsAt: string) => void;
 };
 
 const dateKey = (date: Date): string => {
@@ -43,6 +58,9 @@ const dayToken = (date: Date): string => {
 export function WeekSection({
     week,
     activities,
+    calendarEntries,
+    goals,
+    compliance,
     visibleDayDates,
     summaryRailWidth,
     canManageSessions,
@@ -50,7 +68,16 @@ export function WeekSection({
     canOpenActivityDetails,
     onCreateSession,
     onEditSession,
+    onSessionDragStart,
+    onSessionDragEnd,
+    onDayDragOver,
+    onDayDrop,
+    draggingSessionId,
+    isDayDropTarget,
     onOpenActivity,
+    onOpenCalendarEntry,
+    onOpenGoal,
+    onOpenProgressForWeek,
 }: WeekSectionProps) {
     const weekStart = new Date(`${week.startsAt}T00:00:00`);
     const todayKey = dateKey(new Date());
@@ -87,6 +114,10 @@ export function WeekSection({
                 return carry;
             }
 
+            if (activity.linkedSessionId !== null) {
+                return carry;
+            }
+
             if (!carry[activity.startedDate]) {
                 carry[activity.startedDate] = [];
             }
@@ -97,12 +128,39 @@ export function WeekSection({
         },
         {},
     );
+    const calendarEntriesByDay = calendarEntries.reduce<
+        Record<string, CalendarEntryView[]>
+    >((carry, entry) => {
+        if (!carry[entry.scheduledDate]) {
+            carry[entry.scheduledDate] = [];
+        }
 
+        carry[entry.scheduledDate].push(entry);
+
+        return carry;
+    }, {});
+    const goalsByDay = goals.reduce<Record<string, GoalView[]>>((carry, goal) => {
+        if (goal.targetDate === null) {
+            return carry;
+        }
+
+        if (!carry[goal.targetDate]) {
+            carry[goal.targetDate] = [];
+        }
+
+        carry[goal.targetDate].push(goal);
+
+        return carry;
+    }, {});
+
+    const plannedSessionsForCompliance = week.sessions.filter((session) => {
+        return session.planningSource === 'planned';
+    });
     const durationMinutes = week.sessions.reduce(
         (total, session) => total + session.durationMinutes,
         0,
     );
-    const plannedLoad = week.sessions.reduce(
+    const plannedLoad = plannedSessionsForCompliance.reduce(
         (total, session) => total + (session.plannedTss ?? 0),
         0,
     );
@@ -184,10 +242,23 @@ export function WeekSection({
     const actualLoad = activityLoad + sessionFallbackLoad;
     const summaryDuration =
         actualDurationMinutes > 0 ? actualDurationMinutes : durationMinutes;
-    const completedSessions = week.sessions.filter(
+    const completedSessions = plannedSessionsForCompliance.filter(
         (session) => session.status === 'completed',
     ).length;
-    const hasPlannedSessions = week.sessions.length > 0;
+    const resolvedPlannedSessionsCount =
+        compliance?.planned_sessions_count ?? plannedSessionsForCompliance.length;
+    const resolvedCompletedSessionsCount =
+        compliance?.planned_completed_count ?? completedSessions;
+    const complianceRatio =
+        resolvedPlannedSessionsCount > 0
+            ? resolvedCompletedSessionsCount / resolvedPlannedSessionsCount
+            : 0;
+    const compliancePercentage = Math.round(complianceRatio * 100);
+    const recommendationState = resolveRecommendationState(
+        compliance?.recommended_tss_state ?? null,
+        compliance?.load_state ?? null,
+    );
+    const hasPlannedSessions = plannedSessionsForCompliance.length > 0;
     const isCurrentWeek = isDateInWeek(weekStart, new Date());
     const gridTemplateColumns = `repeat(${Math.max(1, dayDates.length)}, minmax(0, 1fr)) ${summaryRailWidth}px`;
 
@@ -200,18 +271,54 @@ export function WeekSection({
             >
                 <p
                     className={cn(
-                        'font-sans text-[10px] font-medium tracking-wider text-zinc-500 uppercase',
+                        'font-sans text-[0.625rem] font-medium tracking-wider text-zinc-500 uppercase',
                         isCurrentWeek && 'text-zinc-200',
                     )}
                 >
                     Week of {formatWeekRange(weekStart)}
                 </p>
                 <div className="flex items-center gap-2">
-                    {!hasPlannedSessions ? (
-                        <p className="text-[10px] text-zinc-600">
+                    {!hasPlannedSessions && resolvedPlannedSessionsCount === 0 ? (
+                        <p className="text-[0.6875rem] text-zinc-600">
                             No training planned
                         </p>
                     ) : null}
+                    {resolvedPlannedSessionsCount > 0 ? (
+                        <button
+                            type="button"
+                            onClick={() => onOpenProgressForWeek(week.startsAt)}
+                            className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[0.6875rem] text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:outline-none"
+                            aria-label={`Week compliance ${resolvedCompletedSessionsCount} out of ${resolvedPlannedSessionsCount}. View in progress.`}
+                        >
+                            <span className="font-mono">
+                                {resolvedCompletedSessionsCount}/{resolvedPlannedSessionsCount}
+                            </span>
+                            <span className="text-zinc-500">{compliancePercentage}%</span>
+                        </button>
+                    ) : null}
+                    {compliance?.recommendation_band !== null ? (
+                        <span
+                            className={cn(
+                                'rounded-full border px-2 py-0.5 text-[0.6875rem]',
+                                recommendationState === 'in_range' &&
+                                    'border-emerald-500/45 text-emerald-300',
+                                recommendationState === 'too_low' &&
+                                    'border-zinc-700 text-zinc-400',
+                                recommendationState === 'too_high' &&
+                                    'border-amber-500/40 text-amber-300',
+                            )}
+                        >
+                            {recommendationState === 'in_range'
+                                ? 'In range'
+                                : recommendationState === 'too_high'
+                                  ? 'High'
+                                  : 'Low'}
+                        </span>
+                    ) : (
+                        <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[0.6875rem] text-zinc-600">
+                            No baseline
+                        </span>
+                    )}
                     {isCurrentWeek ? (
                         <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
                     ) : null}
@@ -226,28 +333,42 @@ export function WeekSection({
                     const currentDay = new Date(`${currentDayKey}T00:00:00`);
                     const daySessions = sessionsByDay[currentDayKey] ?? [];
                     const dayActivities = activitiesByDay[currentDayKey] ?? [];
+                    const dayCalendarEntries =
+                        calendarEntriesByDay[currentDayKey] ?? [];
+                    const dayGoals = goalsByDay[currentDayKey] ?? [];
 
                     return (
                         <div
                             key={`${week.id}-${currentDayKey}`}
-                            className="min-h-[112px] border-b border-border md:min-h-[184px] md:border-b-0"
+                            className="min-h-[7rem] border-b border-border md:min-h-[11.5rem] md:border-b-0"
                         >
                             <DayColumn
                                 dayNumber={dayToken(currentDay)}
                                 dayDate={currentDayKey}
+                                targetWeekId={week.id}
                                 isToday={todayKey === currentDayKey}
                                 isPast={
                                     currentDay < new Date() &&
                                     todayKey !== currentDayKey
                                 }
+                                dropActive={isDayDropTarget(currentDayKey)}
+                                draggingSessionId={draggingSessionId}
                                 sessions={daySessions}
                                 activities={dayActivities}
+                                calendarEntries={dayCalendarEntries}
+                                goals={dayGoals}
                                 canManageSessions={canManageSessions}
                                 canManageSessionLinks={canManageSessionLinks}
                                 canOpenActivityDetails={canOpenActivityDetails}
                                 onCreateSession={onCreateSession}
                                 onEditSession={onEditSession}
+                                onSessionDragStart={onSessionDragStart}
+                                onSessionDragEnd={onSessionDragEnd}
+                                onDayDragOver={onDayDragOver}
+                                onDayDrop={onDayDrop}
                                 onOpenActivity={onOpenActivity}
+                                onOpenCalendarEntry={onOpenCalendarEntry}
+                                onOpenGoal={onOpenGoal}
                             />
                         </div>
                     );
@@ -258,8 +379,8 @@ export function WeekSection({
                         totalDuration={summaryDuration}
                         totalTss={actualLoad}
                         plannedTss={plannedLoad}
-                        completedSessions={completedSessions}
-                        plannedSessions={week.sessions.length}
+                        completedSessions={resolvedCompletedSessionsCount}
+                        plannedSessions={resolvedPlannedSessionsCount}
                         activityVolumeBySport={activityVolumeBySport}
                         isCurrentWeek={isCurrentWeek}
                     />
@@ -312,4 +433,35 @@ function sportSortOrder(sport: string): number {
         gym: 3,
         other: 4,
     }[sport] ?? 5;
+}
+
+function resolveRecommendationState(
+    recommendedTssState: string | null,
+    loadState: string | null,
+): 'too_low' | 'in_range' | 'too_high' {
+    if (recommendedTssState === 'in_range') {
+        return 'in_range';
+    }
+
+    if (recommendedTssState === 'high') {
+        return 'too_high';
+    }
+
+    if (recommendedTssState === 'low') {
+        return 'too_low';
+    }
+
+    if (loadState === 'in_range') {
+        return 'in_range';
+    }
+
+    if (loadState === 'high') {
+        return 'too_high';
+    }
+
+    if (loadState === 'low') {
+        return 'too_low';
+    }
+
+    return 'too_low';
 }

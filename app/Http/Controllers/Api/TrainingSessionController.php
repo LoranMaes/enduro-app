@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Load\DispatchRecentLoadRecalculation;
+use App\Actions\TrainingSession\CompleteSessionAction;
+use App\Actions\TrainingSession\LinkActivityAction;
+use App\Actions\TrainingSession\RevertCompletionAction;
+use App\Actions\TrainingSession\UnlinkActivityAction;
+use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CompleteTrainingSessionRequest;
@@ -17,18 +23,28 @@ use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
 use App\Models\User;
-use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Services\Calendar\HistoryWindowLimiter;
+use App\Services\Entitlements\EntryTypeEntitlementService;
+use App\Support\QueryScopes\TrainingScope;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrainingSessionController extends Controller
 {
     public function __construct(
-        private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly LinkActivityAction $linkActivityAction,
+        private readonly UnlinkActivityAction $unlinkActivityAction,
+        private readonly CompleteSessionAction $completeSessionAction,
+        private readonly RevertCompletionAction $revertCompletionAction,
+        private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
+        private readonly HistoryWindowLimiter $historyWindowLimiter,
+        private readonly DispatchRecentLoadRecalculation $dispatchRecentLoadRecalculation,
     ) {}
 
     /**
@@ -40,17 +56,32 @@ class TrainingSessionController extends Controller
     {
         $this->authorize('viewAny', TrainingSession::class);
         $validated = $request->validated();
+        $user = $request->user();
+        abort_unless($user instanceof User, Response::HTTP_UNAUTHORIZED);
+
+        $from = $this->historyWindowLimiter->clampDate(
+            $user,
+            isset($validated['from']) ? (string) $validated['from'] : null,
+        );
+        $to = isset($validated['to'])
+            ? CarbonImmutable::parse((string) $validated['to'])->toDateString()
+            : null;
+
+        if ($from !== null && $to !== null && CarbonImmutable::parse($to)->lt(CarbonImmutable::parse($from))) {
+            $to = CarbonImmutable::parse($from)->toDateString();
+        }
+
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $sessions = $this->queryForUser($request->user())
-            ->with('activity')
+        $sessions = TrainingScope::forVisibleSessions($user)
+            ->with(['activity', 'trainingWeek'])
             ->when(
-                isset($validated['from']),
-                fn (Builder $query) => $query->whereDate('scheduled_date', '>=', $validated['from']),
+                $from !== null,
+                fn (Builder $query) => $query->whereDate('scheduled_date', '>=', $from),
             )
             ->when(
-                isset($validated['to']),
-                fn (Builder $query) => $query->whereDate('scheduled_date', '<=', $validated['to']),
+                $to !== null,
+                fn (Builder $query) => $query->whereDate('scheduled_date', '<=', $to),
             )
             ->when(
                 isset($validated['training_plan_id']),
@@ -80,9 +111,7 @@ class TrainingSessionController extends Controller
         $trainingWeek = null;
 
         if (isset($validated['training_week_id']) && $validated['training_week_id'] !== null) {
-            $trainingWeek = TrainingWeek::query()
-                ->with('trainingPlan:id,user_id')
-                ->findOrFail((int) $validated['training_week_id']);
+            $trainingWeek = $this->resolveTrainingWeekForMutation($validated['training_week_id']);
             $this->authorize('update', $trainingWeek);
         }
 
@@ -94,19 +123,39 @@ class TrainingSessionController extends Controller
             ]);
         }
 
+        $this->ensureWorkoutEntitlement(
+            sport: $validated['sport'],
+            user: $request->user(),
+        );
+        $this->ensureStructureBuilderEntitlement(
+            user: $request->user(),
+            plannedStructure: $validated['planned_structure'] ?? null,
+        );
+
         $trainingSession = TrainingSession::query()->create([
             'user_id' => $ownerId,
             'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
+            'title' => $validated['title'] ?? null,
             'status' => TrainingSessionStatus::Planned->value,
+            'planning_source' => TrainingSessionPlanningSource::Planned->value,
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
-        return (new TrainingSessionResource($trainingSession))
+        $owner = User::query()->find($ownerId);
+
+        if ($owner instanceof User && $owner->isAthlete()) {
+            $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+        }
+
+        return (new TrainingSessionResource($trainingSession->loadMissing([
+            'trainingWeek',
+            'activity',
+        ])))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
@@ -140,9 +189,7 @@ class TrainingSessionController extends Controller
         $trainingWeek = null;
 
         if (isset($validated['training_week_id']) && $validated['training_week_id'] !== null) {
-            $trainingWeek = TrainingWeek::query()
-                ->with('trainingPlan:id,user_id')
-                ->findOrFail((int) $validated['training_week_id']);
+            $trainingWeek = $this->resolveTrainingWeekForMutation($validated['training_week_id']);
             $this->authorize('update', $trainingWeek);
         }
 
@@ -156,18 +203,51 @@ class TrainingSessionController extends Controller
             ]);
         }
 
+        if (
+            array_key_exists('sport', $validated)
+            && $validated['sport'] !== $trainingSession->sport
+        ) {
+            $this->ensureWorkoutEntitlement(
+                sport: $validated['sport'],
+                user: $request->user(),
+            );
+        }
+        $this->ensureStructureBuilderEntitlement(
+            user: $request->user(),
+            plannedStructure: $validated['planned_structure'] ?? null,
+        );
+
         $trainingSession->update([
             'user_id' => $ownerId,
             'training_week_id' => $trainingWeek?->id,
             'scheduled_date' => $validated['date'],
             'sport' => $validated['sport'],
+            'title' => array_key_exists('title', $validated)
+                ? $validated['title']
+                : $trainingSession->title,
             'duration_minutes' => $validated['planned_duration_minutes'],
             'planned_tss' => $validated['planned_tss'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'planned_structure' => $validated['planned_structure'] ?? null,
         ]);
 
-        return new TrainingSessionResource($trainingSession->refresh());
+        if ($trainingSession->wasChanged([
+            'training_week_id',
+            'scheduled_date',
+            'duration_minutes',
+            'planned_tss',
+        ])) {
+            $owner = User::query()->find($ownerId);
+
+            if ($owner instanceof User && $owner->isAthlete()) {
+                $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+            }
+        }
+
+        return new TrainingSessionResource($trainingSession->refresh()->loadMissing([
+            'trainingWeek',
+            'activity',
+        ]));
     }
 
     /**
@@ -176,8 +256,13 @@ class TrainingSessionController extends Controller
     public function destroy(TrainingSession $trainingSession): \Illuminate\Http\Response
     {
         $this->authorize('delete', $trainingSession);
+        $owner = User::query()->find($trainingSession->user_id);
 
         $trainingSession->delete();
+
+        if ($owner instanceof User && $owner->isAthlete()) {
+            $this->dispatchRecentLoadRecalculation->execute($owner, 60);
+        }
 
         return response()->noContent();
     }
@@ -197,41 +282,13 @@ class TrainingSessionController extends Controller
             ]);
         }
 
-        if ($activity->athlete_id !== $user->id) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'The selected activity is invalid.',
-            ]);
-        }
-
-        if (
-            $activity->training_session_id !== null &&
-            $activity->training_session_id !== $trainingSession->id
-        ) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'This activity is already linked to another session.',
-            ]);
-        }
-
-        $conflictingLinkExists = Activity::query()
-            ->where('training_session_id', $trainingSession->id)
-            ->where('id', '!=', $activity->id)
-            ->exists();
-
-        if ($conflictingLinkExists) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'This session already has a linked activity. Unlink it first.',
-            ]);
-        }
-
-        $activity->training_session_id = $trainingSession->id;
-        $activity->save();
-        $activity->loadMissing('trainingSession');
+        $linkedActivity = $this->linkActivityAction->execute($user, $trainingSession, $activity);
 
         return response()->json([
-            'activity' => (new ActivityResource($activity))->resolve(),
+            'activity' => (new ActivityResource($linkedActivity))->resolve(),
             'session' => [
-                'id' => $trainingSession->id,
-                'linked_activity_id' => $activity->id,
+                'id' => $trainingSession->getRouteKey(),
+                'linked_activity_id' => $linkedActivity->getRouteKey(),
             ],
         ]);
     }
@@ -242,30 +299,20 @@ class TrainingSessionController extends Controller
     ): JsonResponse {
         $this->authorize('unlinkActivity', $trainingSession);
 
-        $linkedActivity = Activity::query()
-            ->where('training_session_id', $trainingSession->id)
-            ->first();
         $user = $request->user();
 
-        if (! $linkedActivity instanceof Activity || ! $user instanceof User) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'No activity is currently linked to this session.',
-            ]);
-        }
-
-        if ($linkedActivity->athlete_id !== $user->id) {
+        if (! $user instanceof User) {
             throw ValidationException::withMessages([
                 'activity_id' => 'The linked activity is invalid.',
             ]);
         }
 
-        $linkedActivity->training_session_id = null;
-        $linkedActivity->save();
+        $unlinkedActivity = $this->unlinkActivityAction->execute($user, $trainingSession);
 
         return response()->json([
-            'activity' => (new ActivityResource($linkedActivity))->resolve(),
+            'activity' => (new ActivityResource($unlinkedActivity))->resolve(),
             'session' => [
-                'id' => $trainingSession->id,
+                'id' => $trainingSession->getRouteKey(),
                 'linked_activity_id' => null,
             ],
         ]);
@@ -277,46 +324,21 @@ class TrainingSessionController extends Controller
     ): TrainingSessionResource {
         $this->authorize('complete', $trainingSession);
 
-        $trainingSession->loadMissing('activity');
-
-        if (
-            $trainingSession->status instanceof TrainingSessionStatus
-            && $trainingSession->status === TrainingSessionStatus::Completed
-        ) {
-            throw ValidationException::withMessages([
-                'session' => 'This session is already completed.',
-            ]);
-        }
-
-        $linkedActivity = $trainingSession->activity;
         $user = $request->user();
 
-        if (! $linkedActivity instanceof Activity) {
-            throw ValidationException::withMessages([
-                'activity_id' => 'Link an activity before completing this session.',
-            ]);
-        }
-
-        if (! $user instanceof User || $linkedActivity->athlete_id !== $user->id) {
+        if (! $user instanceof User) {
             throw ValidationException::withMessages([
                 'activity_id' => 'The linked activity is invalid.',
             ]);
         }
 
-        $actualDurationMinutes = $this->actualMetricsResolver->resolveActivityDurationMinutes(
-            $linkedActivity,
-        );
-
-        $trainingSession->update([
-            'status' => TrainingSessionStatus::Completed->value,
-            'actual_duration_minutes' => $actualDurationMinutes,
-            'actual_tss' => $this->actualMetricsResolver->resolveActivityTss($linkedActivity, $user),
-            'completed_at' => now(),
-        ]);
-
-        return new TrainingSessionResource(
-            $trainingSession->refresh()->loadMissing('activity'),
-        );
+        return new TrainingSessionResource($this->completeSessionAction->execute(
+            $user,
+            $trainingSession,
+        )->loadMissing([
+            'trainingWeek',
+            'activity',
+        ]));
     }
 
     public function revertCompletion(
@@ -325,44 +347,126 @@ class TrainingSessionController extends Controller
     ): TrainingSessionResource {
         $this->authorize('revertCompletion', $trainingSession);
 
-        if (
-            ! ($trainingSession->status instanceof TrainingSessionStatus)
-            || $trainingSession->status !== TrainingSessionStatus::Completed
-        ) {
-            throw ValidationException::withMessages([
-                'session' => 'Only completed sessions can be reverted.',
-            ]);
-        }
-
-        $trainingSession->update([
-            'status' => TrainingSessionStatus::Planned->value,
-            'actual_duration_minutes' => null,
-            'actual_tss' => null,
-            'completed_at' => null,
-        ]);
-
         return new TrainingSessionResource(
-            $trainingSession->refresh()->loadMissing('activity'),
+            $this->revertCompletionAction->execute($trainingSession)->loadMissing([
+                'trainingWeek',
+                'activity',
+            ]),
         );
     }
 
-    private function queryForUser(User $user): Builder
+    private function ensureWorkoutEntitlement(string $sport, ?User $user): void
     {
-        if ($user->isAdmin()) {
-            return TrainingSession::query();
+        if (! $user instanceof User) {
+            return;
         }
 
-        if ($user->isAthlete()) {
-            return TrainingSession::query()->where('user_id', $user->id);
+        if ($user->is_subscribed) {
+            return;
         }
 
-        if ($user->isCoach()) {
-            return TrainingSession::query()->whereIn(
-                'user_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
+        $entryTypeKey = sprintf('workout.%s', $sport);
+
+        if (! $this->entryTypeEntitlementService->requiresSubscription($entryTypeKey)) {
+            return;
         }
 
-        return TrainingSession::query()->whereRaw('1 = 0');
+        throw ValidationException::withMessages([
+            'sport' => 'This workout type requires an active subscription.',
+        ]);
+    }
+
+    private function resolveTrainingWeekForMutation(mixed $trainingWeekId): TrainingWeek
+    {
+        $trainingWeek = (new TrainingWeek)->resolveRouteBinding($trainingWeekId);
+
+        if ($trainingWeek instanceof TrainingWeek) {
+            return $trainingWeek->loadMissing('trainingPlan:id,user_id');
+        }
+
+        if (is_numeric($trainingWeekId)) {
+            $legacyTrainingWeek = TrainingWeek::query()
+                ->with('trainingPlan:id,user_id')
+                ->find((int) $trainingWeekId);
+
+            if ($legacyTrainingWeek instanceof TrainingWeek) {
+                return $legacyTrainingWeek;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'training_week_id' => 'The selected training week id is invalid.',
+        ]);
+    }
+
+    private function ensureStructureBuilderEntitlement(?User $user, mixed $plannedStructure): void
+    {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        if (! $this->hasStructureSteps($plannedStructure)) {
+            return;
+        }
+
+        if (Feature::for($user)->active('workout.structure_builder')) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'planned_structure' => 'Workout structure requires an active subscription.',
+        ]);
+    }
+
+    private function hasStructureSteps(mixed $plannedStructure): bool
+    {
+        if (! is_array($plannedStructure)) {
+            return false;
+        }
+
+        if (! array_key_exists('steps', $plannedStructure)) {
+            return false;
+        }
+
+        if (! is_array($plannedStructure['steps'])) {
+            return false;
+        }
+
+        return count($plannedStructure['steps']) > 0;
+    }
+
+    private function ensureStructureBuilderEntitlementForUpdate(
+        ?User $user,
+        mixed $plannedStructure,
+        mixed $existingPlannedStructure,
+    ): void {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        if (! $this->hasStructureSteps($plannedStructure)) {
+            return;
+        }
+
+        if (Feature::for($user)->active('workout.structure_builder')) {
+            return;
+        }
+
+        if ($this->structuresMatch($plannedStructure, $existingPlannedStructure)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'planned_structure' => 'Workout structure requires an active subscription.',
+        ]);
+    }
+
+    private function structuresMatch(mixed $left, mixed $right): bool
+    {
+        if (! is_array($left) || ! is_array($right)) {
+            return false;
+        }
+
+        return json_encode($left) === json_encode($right);
     }
 }

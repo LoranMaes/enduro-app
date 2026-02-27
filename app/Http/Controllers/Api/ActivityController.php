@@ -7,11 +7,18 @@ use App\Http\Requests\Api\ListActivityRequest;
 use App\Http\Resources\ActivityResource;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Calendar\HistoryWindowLimiter;
+use App\Support\QueryScopes\TrainingScope;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ActivityController extends Controller
 {
+    public function __construct(
+        private readonly HistoryWindowLimiter $historyWindowLimiter,
+    ) {}
+
     /**
      * Display a listing of activities.
      */
@@ -20,22 +27,38 @@ class ActivityController extends Controller
         $this->authorize('viewAny', Activity::class);
 
         $validated = $request->validated();
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $from = $this->historyWindowLimiter->clampDate(
+            $user,
+            isset($validated['from']) ? (string) $validated['from'] : null,
+        );
+        $to = isset($validated['to'])
+            ? CarbonImmutable::parse((string) $validated['to'])->toDateString()
+            : null;
+
+        if ($from !== null && $to !== null && CarbonImmutable::parse($to)->lt(CarbonImmutable::parse($from))) {
+            $to = CarbonImmutable::parse($from)->toDateString();
+        }
+
         $perPage = (int) ($validated['per_page'] ?? 20);
 
-        $activities = $this->queryForUser($request->user())
+        $activities = TrainingScope::forVisibleActivities($user)
             ->when(
                 isset($validated['provider']),
                 fn (Builder $query) => $query->where('provider', $validated['provider']),
             )
             ->when(
-                isset($validated['from']),
-                fn (Builder $query) => $query->whereDate('started_at', '>=', $validated['from']),
+                $from !== null,
+                fn (Builder $query) => $query->whereDate('started_at', '>=', $from),
             )
             ->when(
-                isset($validated['to']),
-                fn (Builder $query) => $query->whereDate('started_at', '<=', $validated['to']),
+                $to !== null,
+                fn (Builder $query) => $query->whereDate('started_at', '<=', $to),
             )
             ->orderByDesc('started_at')
+            ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -51,25 +74,5 @@ class ActivityController extends Controller
         $activity->loadMissing('trainingSession');
 
         return new ActivityResource($activity);
-    }
-
-    private function queryForUser(User $user): Builder
-    {
-        if ($user->isAdmin()) {
-            return Activity::query();
-        }
-
-        if ($user->isAthlete()) {
-            return Activity::query()->where('athlete_id', $user->id);
-        }
-
-        if ($user->isCoach()) {
-            return Activity::query()->whereIn(
-                'athlete_id',
-                $user->coachedAthletes()->select('users.id'),
-            );
-        }
-
-        return Activity::query()->whereRaw('1 = 0');
     }
 }

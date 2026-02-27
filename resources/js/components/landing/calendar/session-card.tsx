@@ -112,21 +112,26 @@ export function SessionCard({
             : (displayDuration ?? '');
 
     const isSkipped = displayStatus === 'skipped';
+    const isClickable = !isOverlay && typeof onClick === 'function';
+    const Container = isClickable ? 'button' : 'div';
 
     return (
-        <div
-            onClick={(event) => {
-                event.stopPropagation();
-
-                if (!isOverlay) {
-                    onClick?.();
-                }
-            }}
+        <Container
+            {...(isClickable
+                ? {
+                      type: 'button' as const,
+                      onClick: (event) => {
+                          event.stopPropagation();
+                          onClick?.();
+                      },
+                  }
+                : {})}
             className={cn(
-                'group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
+                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 text-left transition-all duration-200',
                 currentStatusStyle,
-                compact ? 'min-h-[56px] gap-0.5' : 'min-h-[72px] gap-1',
+                compact ? 'min-h-[3.5rem] gap-0.5' : 'min-h-[4.5rem] gap-1',
                 isOverlay && 'cursor-default',
+                isClickable && 'cursor-pointer',
             )}
         >
             <div
@@ -216,6 +221,6 @@ export function SessionCard({
                     title={`Intensity: ${intensity}`}
                 />
             )}
-        </div>
+        </Container>
     );
 }

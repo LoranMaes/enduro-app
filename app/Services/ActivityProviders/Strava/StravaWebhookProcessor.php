@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityProviderConnection;
 use App\Models\ActivityProviderWebhookEvent;
 use App\Services\Activities\ActivitySyncDispatcher;
+use App\Support\Ids\BlindIndex;
 use Carbon\CarbonImmutable;
 use JsonException;
 use Throwable;
@@ -16,6 +17,7 @@ class StravaWebhookProcessor
 
     public function __construct(
         private readonly ActivitySyncDispatcher $activitySyncDispatcher,
+        private readonly BlindIndex $blindIndex,
     ) {}
 
     /**
@@ -74,7 +76,10 @@ class StravaWebhookProcessor
             $connection = ActivityProviderConnection::query()
                 ->with('user')
                 ->where('provider', self::PROVIDER)
-                ->where('provider_athlete_id', $ownerId)
+                ->where('provider_athlete_id_bidx', $this->blindIndex->forProviderAthleteId(
+                    self::PROVIDER,
+                    $ownerId,
+                ))
                 ->first();
 
             if (! $connection instanceof ActivityProviderConnection || $connection->user === null) {
@@ -89,7 +94,11 @@ class StravaWebhookProcessor
                     Activity::query()
                         ->where('provider', self::PROVIDER)
                         ->where('athlete_id', $connection->user_id)
-                        ->where('external_id', $objectId)
+                        ->where('external_id_bidx', $this->blindIndex->forExternalActivityId(
+                            $connection->user_id,
+                            self::PROVIDER,
+                            $objectId,
+                        ))
                         ->delete();
                 }
 

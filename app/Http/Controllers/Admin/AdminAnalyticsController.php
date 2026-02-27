@@ -14,6 +14,7 @@ use App\Models\TrainingSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,6 +40,12 @@ class AdminAnalyticsController extends Controller
         $rangeStart = CarbonImmutable::now()
             ->startOfWeek()
             ->subWeeks($rangeWeeks - 1);
+        $rangeCacheKey = sprintf(
+            '%s:%s:%s',
+            $rangeKey,
+            $rangeStart->toDateString(),
+            $rangeEnd->toDateString(),
+        );
 
         $weekStarts = collect(range(0, $rangeWeeks - 1))
             ->map(fn (int $offset): CarbonImmutable => $rangeStart->addWeeks($offset));
@@ -51,13 +58,46 @@ class AdminAnalyticsController extends Controller
                 'start' => $rangeStart->toIso8601String(),
                 'end' => $rangeEnd->toIso8601String(),
             ],
-            'userGrowth' => $this->buildUserGrowthData($weekStarts, $rangeStart, $rangeEnd),
-            'coachPipeline' => $this->buildCoachPipelineData($rangeStart, $rangeEnd),
-            'platformUsage' => $this->buildPlatformUsageData($rangeStart, $rangeEnd),
-            'syncHealth' => $this->buildSyncHealthData($rangeStart, $rangeEnd),
-            'moderation' => $this->buildModerationData($rangeStart, $rangeEnd),
-            'systemOps' => $this->buildSystemOpsData(),
+            'userGrowth' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:user-growth",
+                fn (): array => $this->buildUserGrowthData($weekStarts, $rangeStart, $rangeEnd),
+            ),
+            'coachPipeline' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:coach-pipeline",
+                fn (): array => $this->buildCoachPipelineData($rangeStart, $rangeEnd),
+            ),
+            'platformUsage' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:platform-usage",
+                fn (): array => $this->buildPlatformUsageData($rangeStart, $rangeEnd),
+            ),
+            'syncHealth' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:sync-health",
+                fn (): array => $this->buildSyncHealthData($rangeStart, $rangeEnd),
+            ),
+            'moderation' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:moderation",
+                fn (): array => $this->buildModerationData($rangeStart, $rangeEnd),
+            ),
+            'systemOps' => $this->rememberAnalytics(
+                "{$rangeCacheKey}:system-ops",
+                fn (): array => $this->buildSystemOpsData(),
+            ),
         ]);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  \Closure(): T  $callback
+     * @return T
+     */
+    private function rememberAnalytics(string $cacheKey, \Closure $callback): mixed
+    {
+        return Cache::remember(
+            "admin:analytics:{$cacheKey}",
+            now()->addSeconds(60),
+            $callback,
+        );
     }
 
     private function resolveRangeWeeks(string $rangeKey): int

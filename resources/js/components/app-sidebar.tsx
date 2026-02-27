@@ -2,9 +2,13 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     CalendarDays,
+    CalendarRange,
     ClipboardCheck,
+    Crown,
     Eye,
     FileText,
+    LifeBuoy,
+    KanbanSquare,
     LogOut,
     Settings,
     ShieldCheck,
@@ -14,10 +18,17 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useImpersonationVisualState } from '@/hooks/use-impersonation-visual-state';
 import { dashboard, logout } from '@/routes';
-import { index as adminIndex } from '@/routes/admin';
+import { analytics as adminAnalytics, index as adminIndex } from '@/routes/admin';
+import { index as adminCoachApplicationsIndex } from '@/routes/admin/coach-applications';
+import { show as adminSettingsShow } from '@/routes/admin/settings';
+import { index as adminTicketsIndex } from '@/routes/admin/tickets';
 import { index as adminUsersIndex } from '@/routes/admin/users';
 import { index as coachesIndex } from '@/routes/coaches';
+import { show as showAtp } from '@/routes/atp';
+import { index as plansIndex } from '@/routes/plans';
+import { index as progressIndex } from '@/routes/progress';
 import { overview as settingsOverview } from '@/routes/settings';
+import { index as supportIndex } from '@/routes/support';
 import type { SharedData } from '@/types';
 
 type AppRole = 'athlete' | 'coach' | 'admin';
@@ -26,6 +37,7 @@ type SidebarItem = {
     href: string;
     icon: LucideIcon;
     isActive: (currentPath: string) => boolean;
+    locked?: boolean;
 };
 
 export function AppSidebar() {
@@ -35,10 +47,22 @@ export function AppSidebar() {
         page.url,
         window?.location.origin ?? 'http://localhost',
     ).pathname;
+    const featureAccess = page.props.feature_access ?? {};
     const role = (auth.user.role ?? 'athlete') as AppRole;
     const { isImpersonating, visualImpersonating } =
         useImpersonationVisualState();
     const isAdminConsoleMode = role === 'admin' && !isImpersonating;
+    const subscriptionStatus =
+        typeof auth.user.stripe_subscription_status === 'string'
+            ? auth.user.stripe_subscription_status.toLowerCase()
+            : null;
+    const hasActiveSubscription =
+        role !== 'admin' &&
+        (auth.user.is_subscribed === true ||
+            subscriptionStatus === 'active' ||
+            subscriptionStatus === 'trialing');
+    const canAccessAtp = featureAccess['atp.read'] ?? true;
+    const canAccessSupport = featureAccess['support.tickets'] ?? true;
 
     const items: SidebarItem[] = isAdminConsoleMode
         ? [
@@ -56,16 +80,28 @@ export function AppSidebar() {
               },
               {
                   title: 'Analytics',
-                  href: '/admin/analytics',
+                  href: adminAnalytics().url,
                   icon: BarChart3,
                   isActive: (path: string) => path.startsWith('/admin/analytics'),
               },
               {
+                  title: 'Tickets',
+                  href: adminTicketsIndex().url,
+                  icon: KanbanSquare,
+                  isActive: (path: string) => path.startsWith('/admin/tickets'),
+              },
+              {
                   title: 'Coach Applications',
-                  href: '/admin/coach-applications',
+                  href: adminCoachApplicationsIndex().url,
                   icon: ClipboardCheck,
                   isActive: (path: string) =>
                       path.startsWith('/admin/coach-applications'),
+              },
+              {
+                  title: 'Settings',
+                  href: adminSettingsShow().url,
+                  icon: Settings,
+                  isActive: (path: string) => path === '/admin/settings',
               },
           ]
         : [
@@ -79,16 +115,28 @@ export function AppSidebar() {
               },
               ...(role === 'athlete'
                   ? [
+                        ...(!isImpersonating
+                            ? [
+                                  {
+                                      title: 'Annual Plan',
+                                      href: showAtp(new Date().getFullYear()).url,
+                                      icon: CalendarRange,
+                                      isActive: (path: string) =>
+                                          path.startsWith('/atp'),
+                                      locked: !canAccessAtp,
+                                  } satisfies SidebarItem,
+                              ]
+                            : []),
                         {
                             title: 'Training Progress',
-                            href: '/progress',
+                            href: progressIndex().url,
                             icon: TrendingUp,
                             isActive: (path: string) =>
                                 path.startsWith('/progress'),
                         } satisfies SidebarItem,
                         {
                             title: 'Training Plans',
-                            href: '/plans',
+                            href: plansIndex().url,
                             icon: FileText,
                             isActive: (path: string) =>
                                 path.startsWith('/plans'),
@@ -104,6 +152,18 @@ export function AppSidebar() {
                             isActive: (path: string) =>
                                 path.startsWith('/coaches') ||
                                 path.startsWith('/athletes'),
+                        } satisfies SidebarItem,
+                    ]
+                  : []),
+              ...((role === 'athlete' || role === 'coach')
+                  ? [
+                        {
+                            title: 'Support',
+                            href: supportIndex().url,
+                            icon: LifeBuoy,
+                            isActive: (path: string) =>
+                                path.startsWith('/support'),
+                            locked: !canAccessSupport,
                         } satisfies SidebarItem,
                     ]
                   : []),
@@ -149,6 +209,8 @@ export function AppSidebar() {
                                     ? visualImpersonating
                                         ? 'bg-amber-900/40 text-amber-100'
                                         : 'bg-zinc-800 text-white'
+                                    : item.locked
+                                      ? 'text-amber-300 hover:bg-amber-900/20 hover:text-amber-200'
                                     : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300'
                             }`}
                             title={item.title}
@@ -170,21 +232,32 @@ export function AppSidebar() {
             </nav>
 
             <div className="mt-auto mb-4 flex flex-col items-center gap-2">
-                <div
-                    className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[10px] font-bold ${
-                        visualImpersonating
-                            ? 'border-amber-700 bg-amber-900/80 text-amber-100'
-                            : role === 'admin'
-                              ? 'border-amber-800 bg-amber-900/50 text-amber-500'
-                              : 'border-zinc-700 bg-zinc-800 text-zinc-400'
-                    }`}
-                    title={`Current Role: ${role}`}
-                >
-                    {visualImpersonating ? (
-                        <Eye className="h-3 w-3" />
-                    ) : (
-                        roleBadge
-                    )}
+                <div className="relative">
+                    <div
+                        className={`flex h-6 w-6 cursor-help items-center justify-center rounded border text-[0.625rem] font-bold ${
+                            visualImpersonating
+                                ? 'border-amber-700 bg-amber-900/80 text-amber-100'
+                                : role === 'admin'
+                                  ? 'border-amber-800 bg-amber-900/50 text-amber-500'
+                                  : 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                        }`}
+                        title={`Current Role: ${role}`}
+                    >
+                        {visualImpersonating ? (
+                            <Eye className="h-3 w-3" />
+                        ) : (
+                            roleBadge
+                        )}
+                    </div>
+                    {hasActiveSubscription ? (
+                        <span
+                            className="absolute -top-1.5 -right-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-emerald-800 bg-emerald-500/20 px-0.5 text-emerald-300"
+                            title="Active subscription"
+                            aria-label="Active subscription"
+                        >
+                            <Crown className="h-2.5 w-2.5" />
+                        </span>
+                    ) : null}
                 </div>
                 <Link
                     href={logout()}

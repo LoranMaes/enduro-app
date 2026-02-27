@@ -98,7 +98,7 @@ export function Label({
     return (
         <div
             className={cn(
-                'font-sans text-[10px] tracking-wider text-zinc-500 uppercase',
+                'font-sans text-[0.625rem] tracking-wider text-zinc-500 uppercase',
                 className,
             )}
             {...props}

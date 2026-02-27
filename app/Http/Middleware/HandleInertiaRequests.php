@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\Entitlements\SubscriptionFeatureMatrixService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -48,6 +50,11 @@ class HandleInertiaRequests extends Middleware
                 'original_user' => $impersonationContext['original_user'],
                 'impersonated_user' => $impersonationContext['impersonated_user'],
             ],
+            'feature_access' => $this->resolveFeatureAccess($user),
+            'feature_limits' => $this->resolveFeatureLimits($user),
+            'admin_notifications' => [
+                'unread_count' => $this->resolveAdminUnreadNotifications($user, $impersonationContext['impersonating']),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
@@ -55,8 +62,8 @@ class HandleInertiaRequests extends Middleware
     /**
      * @return array{
      *     impersonating: bool,
-     *     original_user: array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null,
-     *     impersonated_user: array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null
+     *     original_user: array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null,
+     *     impersonated_user: array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}|null
      * }
      */
     private function resolveImpersonationContext(Request $request, ?User $user): array
@@ -72,8 +79,8 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        $originalUser = User::query()->find((int) $originalUserId);
-        $impersonatedUser = User::query()->find((int) $impersonatedUserId);
+        $originalUser = User::query()->find($originalUserId);
+        $impersonatedUser = User::query()->find($impersonatedUserId);
 
         if (
             $originalUser === null ||
@@ -101,17 +108,79 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}
+     * @return array{id: int|string, name: string, first_name: string|null, last_name: string|null, email: string, role: string|null}
      */
     private function toSharedUser(User $user): array
     {
         return [
-            'id' => $user->id,
+            'id' => $user->getRouteKey(),
             'name' => $user->fullName(),
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
             'role' => $user->role?->value,
         ];
+    }
+
+    private function resolveAdminUnreadNotifications(?User $user, bool $isImpersonating): int
+    {
+        if (! $user instanceof User || ! $user->isAdmin() || $isImpersonating) {
+            return 0;
+        }
+
+        return $user->unreadNotifications()->count();
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function resolveFeatureAccess(?User $user): array
+    {
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        /** @var array<int, array{key: string}> $definitions */
+        $definitions = (array) config('subscription-features.definitions', []);
+        $featureFlags = [];
+
+        foreach ($definitions as $definition) {
+            $featureKey = strtolower(trim((string) ($definition['key'] ?? '')));
+
+            if ($featureKey === '') {
+                continue;
+            }
+
+            $featureFlags[$featureKey] = Feature::for($user)->active($featureKey);
+        }
+
+        return $featureFlags;
+    }
+
+    /**
+     * @return array<string, int|null>
+     */
+    private function resolveFeatureLimits(?User $user): array
+    {
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        /** @var array<int, array{key: string}> $definitions */
+        $definitions = (array) config('subscription-features.definitions', []);
+        $limits = [];
+        $matrixService = app(SubscriptionFeatureMatrixService::class);
+
+        foreach ($definitions as $definition) {
+            $featureKey = strtolower(trim((string) ($definition['key'] ?? '')));
+
+            if ($featureKey === '') {
+                continue;
+            }
+
+            $limits[$featureKey] = $matrixService->limitFor($user, $featureKey);
+        }
+
+        return $limits;
     }
 }

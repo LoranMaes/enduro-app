@@ -9,6 +9,7 @@ import {
     Link2,
     XCircle,
 } from 'lucide-react';
+import type { DragEvent as ReactDragEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { TrainingSessionView } from '@/types/training-plans';
 import {
@@ -38,11 +39,23 @@ const sportConfig: Record<
         borderColor: 'bg-violet-400',
         title: 'Zone 2',
     },
+    mtn_bike: {
+        icon: Bike,
+        textColor: 'text-violet-400',
+        borderColor: 'bg-violet-400',
+        title: 'MTB',
+    },
     run: {
         icon: Footprints,
         textColor: 'text-rose-400',
         borderColor: 'bg-rose-400',
         title: 'Intervals',
+    },
+    walk: {
+        icon: Footprints,
+        textColor: 'text-emerald-400',
+        borderColor: 'bg-emerald-400',
+        title: 'Walk',
     },
     gym: {
         icon: Dumbbell,
@@ -55,6 +68,24 @@ const sportConfig: Record<
         textColor: 'text-amber-400',
         borderColor: 'bg-amber-400',
         title: 'Strength',
+    },
+    day_off: {
+        icon: Activity,
+        textColor: 'text-zinc-500',
+        borderColor: 'bg-zinc-500',
+        title: 'Day Off',
+    },
+    custom: {
+        icon: Activity,
+        textColor: 'text-zinc-300',
+        borderColor: 'bg-zinc-400',
+        title: 'Custom',
+    },
+    other: {
+        icon: Activity,
+        textColor: 'text-zinc-300',
+        borderColor: 'bg-zinc-400',
+        title: 'Workout',
     },
     rest: {
         icon: Activity,
@@ -70,8 +101,12 @@ type SessionRowProps = {
     compact?: boolean;
     isOverlay?: boolean;
     isInteractive?: boolean;
+    isDraggable?: boolean;
+    isDragging?: boolean;
     intensity?: 'easy' | 'steady' | 'tempo' | 'threshold' | 'vo2';
     onClick?: () => void;
+    onDragStart?: (event: ReactDragEvent<HTMLElement>) => void;
+    onDragEnd?: (event: ReactDragEvent<HTMLElement>) => void;
 };
 
 const intensityConfig: Record<string, string> = {
@@ -88,8 +123,12 @@ export function SessionRow({
     compact = false,
     isOverlay = false,
     isInteractive = true,
+    isDraggable = false,
+    isDragging = false,
     intensity,
     onClick,
+    onDragStart,
+    onDragEnd,
 }: SessionRowProps) {
     const config = sportConfig[session.sport] ?? sportConfig.rest;
     const SportIcon = config.icon;
@@ -103,11 +142,14 @@ export function SessionRow({
     const displayTss = isCompleted
         ? (session.actualTss ?? undefined)
         : (session.plannedTss ?? undefined);
-    const displayTitle = config.title;
+    const displayTitle = session.title?.trim() !== '' ? session.title : config.title;
     const isSkipped = session.status === 'skipped';
     const isPlanned = session.status === 'planned';
     const isLinked = session.linkedActivityId !== null;
     const isPlannedWithoutActivity = isPlanned && !isLinked;
+    const isManualCompleted =
+        isCompleted &&
+        (session.completionSource === 'manual' || session.completionSource === null);
     const durationParts = formatDurationParts(displayDurationMinutes);
 
     const interactiveStatusStyle: Record<string, string> = {
@@ -156,29 +198,43 @@ export function SessionRow({
         onClick?.();
     };
 
+    const isClickableCard = isInteractive && !isOverlay;
+    const Container = isClickableCard ? 'button' : 'div';
+    const canDrag = isDraggable && !isOverlay;
+
     return (
-        <div
-            onClick={(event) => {
-                event.stopPropagation();
-                activate();
-            }}
-            onKeyDown={(event) => {
-                if (!isInteractive || isOverlay) {
+        <Container
+            {...(isClickableCard
+                ? {
+                      type: 'button' as const,
+                      onClick: (event) => {
+                          event.stopPropagation();
+                          activate();
+                      },
+                  }
+                : {})}
+            draggable={canDrag}
+            onDragStart={(event) => {
+                if (!canDrag) {
                     return;
                 }
 
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    activate();
-                }
+                event.stopPropagation();
+                onDragStart?.(event as ReactDragEvent<HTMLElement>);
             }}
-            role={isInteractive && !isOverlay ? 'button' : undefined}
-            tabIndex={isInteractive && !isOverlay ? 0 : undefined}
+            onDragEnd={(event) => {
+                if (!canDrag) {
+                    return;
+                }
+
+                event.stopPropagation();
+                onDragEnd?.(event as ReactDragEvent<HTMLElement>);
+            }}
             className={cn(
-                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 transition-all duration-200',
+                'group relative flex w-full flex-col overflow-hidden rounded-md border py-2 pr-2 pl-3 text-left transition-all duration-200',
                 currentStatusStyle,
                 reconciliationStateStyle,
-                compact ? 'min-h-[56px] gap-0.5' : 'min-h-[72px] gap-1',
+                compact ? 'min-h-[3.5rem] gap-0.5' : 'min-h-[4.5rem] gap-1',
                 isOverlay && 'cursor-default',
                 !isOverlay && !isInteractive && 'cursor-default',
                 !isOverlay && isInteractive && 'cursor-pointer',
@@ -186,6 +242,8 @@ export function SessionRow({
                 !isOverlay &&
                     isInteractive &&
                     'focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:outline-none focus-visible:ring-inset',
+                canDrag && 'cursor-grab active:cursor-grabbing',
+                isDragging && 'opacity-60',
             )}
         >
             <div
@@ -238,12 +296,17 @@ export function SessionRow({
                             <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
                         ) : null}
                         {isAdjusted ? (
-                            <span className="inline-flex items-center rounded-full border border-zinc-600/80 bg-zinc-800/70 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                            <span className="inline-flex items-center rounded-full border border-zinc-600/80 bg-zinc-800/70 px-1.5 py-0.5 text-[0.625rem] text-zinc-300">
                                 Adjusted
                             </span>
                         ) : null}
+                        {isManualCompleted && !isAdjusted ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-500/50 bg-emerald-950/30 px-1.5 py-0.5 text-[0.625rem] text-emerald-300">
+                                Completed
+                            </span>
+                        ) : null}
                         {isReadyToComplete ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/45 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/45 bg-sky-500/10 px-1.5 py-0.5 text-[0.625rem] text-sky-200">
                                 <Link2 className="h-2.5 w-2.5" />
                                 Ready
                             </span>
@@ -267,7 +330,7 @@ export function SessionRow({
             </div>
 
             <div className="mt-auto flex items-start gap-3">
-                <div className="flex min-w-[34px] flex-col leading-[1.1]">
+                <div className="flex min-w-[2.125rem] flex-col leading-[1.1]">
                     <span
                         className={cn(
                             'font-mono text-sm font-medium',
@@ -292,7 +355,7 @@ export function SessionRow({
                 </div>
 
                 {displayTss !== undefined && displayTss > 0 ? (
-                    <div className="flex min-w-[28px] flex-col leading-[1.1]">
+                    <div className="flex min-w-[1.75rem] flex-col leading-[1.1]">
                         <span
                             className={cn(
                                 'font-mono text-sm font-light',
@@ -301,7 +364,7 @@ export function SessionRow({
                         >
                             {displayTss}
                         </span>
-                        <span className="font-mono text-[10px] tracking-wide text-zinc-600 uppercase">
+                        <span className="font-mono text-[0.625rem] tracking-wide text-zinc-600 uppercase">
                             TSS
                         </span>
                     </div>
@@ -309,16 +372,16 @@ export function SessionRow({
             </div>
 
             {!compact && !isOverlay && isReadyToComplete ? (
-                <p className="text-[10px] text-zinc-400">Ready to complete</p>
+                <p className="text-[0.625rem] text-zinc-400">Ready to complete</p>
             ) : null}
             {!compact && !isOverlay && isAdjusted ? (
-                <p className="text-[10px] text-zinc-400">
+                <p className="text-[0.625rem] text-zinc-400">
                     Completed with adjusted values
                 </p>
             ) : null}
 
             {showDate ? (
-                <p className="pl-0 text-[11px] text-zinc-500">
+                <p className="pl-0 text-[0.6875rem] text-zinc-500">
                     {session.scheduledDate}
                 </p>
             ) : null}
@@ -336,7 +399,7 @@ export function SessionRow({
                     title={`Intensity: ${intensity}`}
                 />
             ) : null}
-        </div>
+        </Container>
     );
 }
 

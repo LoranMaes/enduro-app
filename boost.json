@@ -1,8 +1,14 @@
 {
-    "agents": ["codex"],
+    "agents": [
+        "codex"
+    ],
     "guidelines": true,
     "herd_mcp": false,
     "mcp": true,
+    "packages": [
+        "spatie/boost-spatie-guidelines",
+        "laravel/fortify"
+    ],
     "sail": true,
     "skills": [
         "wayfinder-development",

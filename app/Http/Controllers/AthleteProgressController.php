@@ -2,20 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TrainingSessionPlanningSource;
 use App\Enums\TrainingSessionStatus;
 use App\Http\Requests\Progress\IndexRequest;
 use App\Models\Activity;
 use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\Activities\TrainingSessionActualMetricsResolver;
+use App\Services\Metrics\WeeklyMetricsSnapshotService;
+use App\Services\Progress\ActualTssRecommendationService;
+use App\Services\Progress\ComplianceService;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class AthleteProgressController extends Controller
 {
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
+        private readonly ComplianceService $complianceService,
+        private readonly WeeklyMetricsSnapshotService $weeklyMetricsSnapshotService,
+        private readonly ActualTssRecommendationService $actualTssRecommendationService,
     ) {}
 
     public function __invoke(IndexRequest $request): Response
@@ -23,15 +31,25 @@ class AthleteProgressController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User && $user->isAthlete(), 403);
 
-        $rangeOptions = [4, 8, 12, 24];
+        $canUseExtendedRange = Feature::for($user)->active('progress.range.extended');
+        $rangeOptions = $canUseExtendedRange
+            ? [4, 8, 12, 24]
+            : [4];
         $selectedWeeks = (int) ($request->validated()['weeks'] ?? 12);
         $selectedWeeks = in_array($selectedWeeks, $rangeOptions, true)
             ? $selectedWeeks
-            : 12;
+            : $rangeOptions[0];
 
         $currentWeekStart = CarbonImmutable::today()->startOfWeek();
         $windowStart = $currentWeekStart->subWeeks($selectedWeeks - 1);
         $windowEnd = $currentWeekStart->addDays(6);
+        $weeklySnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $windowStart,
+            $windowEnd,
+        );
+        $trendSeedWeeks = $this->resolveTrendSeedWeeks($user, $windowStart);
+        $todaySnapshot = $this->resolveTodaySnapshot($user);
 
         $sessions = TrainingSession::query()
             ->where('user_id', $user->id)
@@ -46,6 +64,7 @@ class AthleteProgressController extends Controller
                 'id',
                 'scheduled_date',
                 'status',
+                'planning_source',
                 'duration_minutes',
                 'actual_duration_minutes',
                 'planned_tss',
@@ -104,9 +123,18 @@ class AthleteProgressController extends Controller
                 continue;
             }
 
-            $weeklyBuckets[$weekKey]['planned_sessions']++;
-            $weeklyBuckets[$weekKey]['planned_duration_minutes'] += $session->duration_minutes;
-            $weeklyBuckets[$weekKey]['planned_tss'] += $session->planned_tss ?? 0;
+            $isPlannedSession = (
+                ($session->planning_source instanceof TrainingSessionPlanningSource
+                    ? $session->planning_source
+                    : TrainingSessionPlanningSource::tryFrom((string) $session->planning_source))
+                ?? TrainingSessionPlanningSource::Planned
+            ) === TrainingSessionPlanningSource::Planned;
+
+            if ($isPlannedSession) {
+                $weeklyBuckets[$weekKey]['planned_sessions']++;
+                $weeklyBuckets[$weekKey]['planned_duration_minutes'] += $session->duration_minutes;
+                $weeklyBuckets[$weekKey]['planned_tss'] += $session->planned_tss ?? 0;
+            }
 
             $actualDurationMinutes = $this->actualMetricsResolver->resolveActualDurationMinutes($session);
             $actualTss = $this->actualMetricsResolver->resolveActualTss($session, $user);
@@ -121,10 +149,10 @@ class AthleteProgressController extends Controller
                 || $actualDurationMinutes !== null
                 || $actualTss !== null;
 
-            if (
-                $hasActualExecution
-            ) {
-                $weeklyBuckets[$weekKey]['completed_sessions']++;
+            if ($hasActualExecution) {
+                if ($isPlannedSession) {
+                    $weeklyBuckets[$weekKey]['completed_sessions']++;
+                }
                 $weeklyBuckets[$weekKey]['actual_duration_minutes'] += $actualDurationMinutes
                     ?? $session->duration_minutes;
                 $weeklyBuckets[$weekKey]['actual_tss'] += $actualTss
@@ -167,12 +195,57 @@ class AthleteProgressController extends Controller
             $weeklyBuckets[$weekKey]['actual_tss'] += $resolvedActivityTss ?? 0;
         }
 
+        $recommendationHistoryStart = $windowStart->subWeeks(4);
+        $recommendationHistoryEnd = $windowStart->subWeek()->endOfWeek();
+        $historicalRecommendationSnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $recommendationHistoryStart,
+            $recommendationHistoryEnd,
+        );
+        $weeklyActualTss = array_reduce(
+            $weeklyBuckets,
+            static function (array $carry, array $bucket): array {
+                $carry[(string) $bucket['week_start']] = max(
+                    0,
+                    (int) ($bucket['actual_tss'] ?? 0),
+                );
+
+                return $carry;
+            },
+            array_reduce(
+                $historicalRecommendationSnapshots,
+                static function (array $carry, array $snapshot): array {
+                    $carry[(string) $snapshot['week_start_date']] = max(
+                        0,
+                        (int) ($snapshot['completed_tss_total'] ?? 0),
+                    );
+
+                    return $carry;
+                },
+                [],
+            ),
+        );
+        $weekRecommendations = $this->actualTssRecommendationService->resolve(
+            $weeklyActualTss,
+            array_values(array_map(
+                static fn (array $bucket): string => (string) $bucket['week_start'],
+                $weeklyBuckets,
+            )),
+        );
+
         $progressWeeks = array_map(
-            function (array $bucket): array {
+            function (array $bucket) use ($weeklySnapshots, $weekRecommendations): array {
                 $hasPlannedSessions = $bucket['planned_sessions'] > 0;
                 $hasActualLoad = $bucket['completed_sessions'] > 0
                     || $bucket['actual_duration_minutes'] > 0
                     || $bucket['actual_tss'] > 0;
+                $snapshot = $weeklySnapshots[$bucket['week_start']] ?? null;
+                $recommendation = $weekRecommendations[$bucket['week_start']] ?? [
+                    'min_tss' => null,
+                    'max_tss' => null,
+                    'state' => 'insufficient',
+                    'source' => 'actual_tss_trailing_4w',
+                ];
 
                 return [
                     'week_start' => $bucket['week_start'],
@@ -189,8 +262,20 @@ class AthleteProgressController extends Controller
                     'actual_tss' => $hasActualLoad
                         ? $bucket['actual_tss']
                         : null,
-                    'planned_sessions' => $bucket['planned_sessions'],
-                    'completed_sessions' => $bucket['completed_sessions'],
+                    'planned_sessions' => $snapshot !== null
+                        ? (int) $snapshot['planned_sessions_count']
+                        : $bucket['planned_sessions'],
+                    'completed_sessions' => $snapshot !== null
+                        ? (int) $snapshot['planned_completed_count']
+                        : $bucket['completed_sessions'],
+                    'load_state' => (string) ($snapshot['load_state'] ?? 'insufficient'),
+                    'load_state_ratio' => $snapshot !== null && $snapshot['load_state_ratio'] !== null
+                        ? (float) $snapshot['load_state_ratio']
+                        : null,
+                    'recommended_tss_min' => $recommendation['min_tss'],
+                    'recommended_tss_max' => $recommendation['max_tss'],
+                    'recommended_tss_state' => $recommendation['state'],
+                    'recommended_tss_source' => $recommendation['source'],
                 ];
             },
             array_values($weeklyBuckets),
@@ -244,6 +329,7 @@ class AthleteProgressController extends Controller
         }
 
         return Inertia::render('progress/index', [
+            'load_metrics_enabled' => (bool) $user->enable_load_metrics,
             'range' => [
                 'weeks' => $selectedWeeks,
                 'options' => $rangeOptions,
@@ -265,6 +351,180 @@ class AthleteProgressController extends Controller
                 'current_streak_weeks' => $currentStreakWeeks,
             ],
             'weeks' => $progressWeeks,
+            'compliance' => $this->complianceService->resolve(
+                $user,
+                $windowStart,
+                $windowEnd,
+            ),
+            'trendSeedWeeks' => $trendSeedWeeks,
+            'todaySnapshot' => $todaySnapshot,
         ]);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function resolveTrendSeedWeeks(User $user, CarbonImmutable $windowStart): array
+    {
+        $seedRangeStart = $windowStart->subWeeks(4);
+        $seedRangeEnd = $windowStart->subDay();
+        $seedSnapshots = $this->weeklyMetricsSnapshotService->resolveRange(
+            $user,
+            $seedRangeStart,
+            $seedRangeEnd,
+        );
+
+        return array_values(array_map(
+            static fn (array $snapshot): int => (int) ($snapshot['completed_tss_total'] ?? 0),
+            $seedSnapshots,
+        ));
+    }
+
+    /**
+     * @return array{
+     *     date: string,
+     *     actual_tss_today: int,
+     *     planned_tss_today: int,
+     *     suggested_min_tss_today: int,
+     *     suggested_max_tss_today: int
+     * }
+     */
+    private function resolveTodaySnapshot(User $user): array
+    {
+        $today = CarbonImmutable::today();
+        $todayKey = $today->toDateString();
+        $dailyActualTss = $this->resolveActualTssByDate(
+            $user,
+            $today->subDays(27),
+            $today,
+        );
+        $averageDailyActualTss = (int) round(
+            collect($dailyActualTss)->sum() / max(1, count($dailyActualTss)),
+        );
+        $suggestedMinTss = max(
+            0,
+            (int) round($averageDailyActualTss * 0.85),
+        );
+        $suggestedMaxTss = max(
+            $suggestedMinTss,
+            (int) round($averageDailyActualTss * 1.15),
+        );
+
+        return [
+            'date' => $todayKey,
+            'actual_tss_today' => (int) ($dailyActualTss[$todayKey] ?? 0),
+            'planned_tss_today' => $this->resolvePlannedTssForDate($user, $today),
+            'suggested_min_tss_today' => $suggestedMinTss,
+            'suggested_max_tss_today' => $suggestedMaxTss,
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function resolveActualTssByDate(
+        User $user,
+        CarbonImmutable $from,
+        CarbonImmutable $to,
+    ): array {
+        $dateTotals = [];
+        $cursor = $from;
+
+        while ($cursor->lessThanOrEqualTo($to)) {
+            $dateTotals[$cursor->toDateString()] = 0;
+            $cursor = $cursor->addDay();
+        }
+
+        $sessions = TrainingSession::query()
+            ->where('user_id', $user->id)
+            ->whereDate('scheduled_date', '>=', $from->toDateString())
+            ->whereDate('scheduled_date', '<=', $to->toDateString())
+            ->with([
+                'activity:id,training_session_id,duration_seconds,raw_payload',
+            ])
+            ->orderBy('scheduled_date')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'scheduled_date',
+                'status',
+                'actual_tss',
+            ]);
+
+        foreach ($sessions as $session) {
+            if ($session->scheduled_date === null) {
+                continue;
+            }
+
+            $resolvedTss = $this->actualMetricsResolver->resolveActualTss($session, $user);
+            $isCompleted = (
+                ($session->status instanceof TrainingSessionStatus
+                    ? $session->status
+                    : TrainingSessionStatus::tryFrom((string) $session->status))
+                === TrainingSessionStatus::Completed
+            );
+            $hasActualExecution = $isCompleted
+                || $session->activity !== null
+                || $resolvedTss !== null;
+
+            if (! $hasActualExecution || $resolvedTss === null || $resolvedTss <= 0) {
+                continue;
+            }
+
+            $sessionDate = $session->scheduled_date->toDateString();
+
+            if (! array_key_exists($sessionDate, $dateTotals)) {
+                continue;
+            }
+
+            $dateTotals[$sessionDate] += $resolvedTss;
+        }
+
+        $activities = Activity::query()
+            ->where('athlete_id', $user->id)
+            ->whereNull('training_session_id')
+            ->whereDate('started_at', '>=', $from->toDateString())
+            ->whereDate('started_at', '<=', $to->toDateString())
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'started_at',
+                'raw_payload',
+                'duration_seconds',
+            ]);
+
+        foreach ($activities as $activity) {
+            if ($activity->started_at === null) {
+                continue;
+            }
+
+            $activityDate = $activity->started_at->toDateString();
+
+            if (! array_key_exists($activityDate, $dateTotals)) {
+                continue;
+            }
+
+            $resolvedTss = $this->actualMetricsResolver->resolveActivityTss($activity, $user);
+
+            if ($resolvedTss === null || $resolvedTss <= 0) {
+                continue;
+            }
+
+            $dateTotals[$activityDate] += $resolvedTss;
+        }
+
+        return $dateTotals;
+    }
+
+    private function resolvePlannedTssForDate(User $user, CarbonImmutable $date): int
+    {
+        return (int) TrainingSession::query()
+            ->where('user_id', $user->id)
+            ->whereDate('scheduled_date', $date->toDateString())
+            ->whereIn('planning_source', [
+                TrainingSessionPlanningSource::Planned->value,
+            ])
+            ->sum('planned_tss');
     }
 }

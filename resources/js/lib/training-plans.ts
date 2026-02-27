@@ -2,6 +2,10 @@ import type {
     ActivityApi,
     ActivityView,
     ApiCollectionResponse,
+    CalendarEntryApi,
+    CalendarEntryView,
+    GoalApi,
+    GoalView,
     TrainingPlanApi,
     TrainingSessionApi,
     TrainingPlanView,
@@ -19,9 +23,13 @@ export const mapTrainingSession = (
         trainingWeekId: session.training_week_id ?? null,
         scheduledDate: session.scheduled_date,
         sport: session.sport,
+        title: session.title ?? null,
         status: session.status,
+        planningSource: session.planning_source ?? 'planned',
+        completionSource: session.completion_source ?? null,
         isCompleted: session.is_completed ?? session.status === 'completed',
         completedAt: session.completed_at ?? null,
+        autoCompletedAt: session.auto_completed_at ?? null,
         durationMinutes: session.duration_minutes,
         actualDurationMinutes: session.actual_duration_minutes ?? null,
         plannedTss: session.planned_tss,
@@ -103,6 +111,38 @@ export const mapActivity = (activity: ActivityApi): ActivityView => {
     };
 };
 
+export const mapCalendarEntry = (
+    entry: CalendarEntryApi,
+): CalendarEntryView => {
+    return {
+        id: entry.id,
+        userId: entry.user_id,
+        scheduledDate: entry.scheduled_date,
+        type: entry.type,
+        title: entry.title,
+        body: entry.body,
+        meta: entry.meta,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+    };
+};
+
+export const mapGoal = (goal: GoalApi): GoalView => {
+    return {
+        id: goal.id,
+        userId: goal.user_id,
+        type: goal.type,
+        sport: goal.sport,
+        title: goal.title,
+        description: goal.description,
+        targetDate: goal.target_date,
+        priority: goal.priority,
+        status: goal.status,
+        createdAt: goal.created_at,
+        updatedAt: goal.updated_at,
+    };
+};
+
 const mapWeek = (
     week: TrainingPlanApi['training_weeks'][number],
 ): TrainingWeekView => {
@@ -141,4 +181,16 @@ export const mapActivityCollection = (
     response: ApiCollectionResponse<ActivityApi>,
 ): ActivityView[] => {
     return response.data.map(mapActivity);
+};
+
+export const mapCalendarEntryCollection = (
+    response: ApiCollectionResponse<CalendarEntryApi>,
+): CalendarEntryView[] => {
+    return response.data.map(mapCalendarEntry);
+};
+
+export const mapGoalCollection = (
+    response: ApiCollectionResponse<GoalApi>,
+): GoalView[] => {
+    return response.data.map(mapGoal);
 };

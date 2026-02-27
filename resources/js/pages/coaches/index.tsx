@@ -7,6 +7,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { index as coachesIndex } from '@/routes/coaches';
 import { show as showAthlete } from '@/routes/athletes';
 import type { BreadcrumbItem } from '@/types';
 import type { SharedData } from '@/types';
@@ -25,7 +26,7 @@ type CoachesIndexProps = {
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Coaches',
-        href: '/coaches',
+        href: coachesIndex().url,
     },
 ];
 
@@ -90,7 +91,7 @@ export default function CoachesIndex({ assignedAthletes }: CoachesIndexProps) {
                                             <p className="font-mono text-sm text-zinc-200">
                                                 {athlete.training_plans_count}
                                             </p>
-                                            <p className="text-[10px] tracking-wide text-zinc-500 uppercase">
+                                            <p className="text-[0.625rem] tracking-wide text-zinc-500 uppercase">
                                                 Plans
                                             </p>
                                         </div>

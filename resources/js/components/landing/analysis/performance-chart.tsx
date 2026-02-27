@@ -135,19 +135,19 @@ export function PerformanceChart({
             </svg>
 
             <div className="pointer-events-none absolute top-0 right-0 z-20 flex h-full flex-col justify-between py-1">
-                <span className="rounded-sm bg-background/80 px-1 font-mono text-[9px] text-zinc-500">
+                <span className="rounded-sm bg-background/80 px-1 font-mono text-[0.5625rem] text-zinc-500">
                     {showPower ? `${Math.round(maxPower)} W` : ''}
                 </span>
 
-                <span className="rounded-sm bg-background/80 px-1 font-mono text-[9px] text-zinc-500">
+                <span className="rounded-sm bg-background/80 px-1 font-mono text-[0.5625rem] text-zinc-500">
                     {showHr ? `${Math.round(maxHr)} bpm` : ''}
                 </span>
             </div>
 
-            <div className="absolute bottom-1 left-1 font-mono text-[9px] text-zinc-600">
+            <div className="absolute bottom-1 left-1 font-mono text-[0.5625rem] text-zinc-600">
                 0:00
             </div>
-            <div className="absolute right-1 bottom-1 font-mono text-[9px] text-zinc-600">
+            <div className="absolute right-1 bottom-1 font-mono text-[0.5625rem] text-zinc-600">
                 {Math.floor(duration / 60)}:
                 {(duration % 60).toString().padStart(2, '0')}
             </div>

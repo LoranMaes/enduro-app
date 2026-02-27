@@ -14,6 +14,8 @@ it('requires authentication for activity streams endpoint', function () {
 it('allows athletes to read normalized stream payload for own activities', function () {
     $athlete = User::factory()->athlete()->create([
         'strava_access_token' => 'strava-token',
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
     ]);
 
     $activity = Activity::factory()->create([

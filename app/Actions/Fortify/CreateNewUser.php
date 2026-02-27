@@ -9,6 +9,7 @@ use App\Models\CoachApplication;
 use App\Models\CoachApplicationFile;
 use App\Models\CoachProfile;
 use App\Models\User;
+use App\Rules\UniqueEmailBlindIndex;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -38,7 +39,7 @@ class CreateNewUser implements CreatesNewUsers
             ])],
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class)],
+            'email' => ['required', 'string', 'email', 'max:255', new UniqueEmailBlindIndex],
             'password' => $this->passwordRules(),
             'timezone' => ['nullable', 'string', 'timezone:all'],
             'unit_system' => ['nullable', Rule::in(['metric', 'imperial'])],

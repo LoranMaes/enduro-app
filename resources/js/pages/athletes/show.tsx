@@ -6,6 +6,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { index as athletesIndex, show as showAthlete } from '@/routes/athletes';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 type AthleteDetailProps = {
@@ -18,11 +19,11 @@ export default function AthletesShow({ athleteId }: AthleteDetailProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Athletes',
-            href: '/athletes',
+            href: athletesIndex().url,
         },
         {
             title: `Athlete ${athleteId}`,
-            href: `/athletes/${athleteId}`,
+            href: showAthlete(Number(athleteId)).url,
         },
     ];
 

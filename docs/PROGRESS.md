@@ -1,5 +1,888 @@
 # Endure — Progress Log
 
+## 2026-02-26 (Billing UX Polish + Subscribe CTA)
+
+- Reworked billing tab from technical status readout back to user-facing card design:
+    - hides internal Stripe technical fields from athlete-facing UI
+    - plan card now shows clear state (`Advanced Athlete` / `Free Athlete`)
+    - free users now get a visible `Subscribe` action
+    - subscribed users get a `Manage subscription` action
+    - still keeps live status updates via Reverb after webhook sync
+- Added billing action endpoints:
+    - `GET /settings/overview/billing/subscribe`
+    - `GET /settings/overview/billing/portal`
+    - both return to billing tab with user-facing status messages on configuration/link failures
+- Added Stripe config key for checkout:
+    - `services.stripe.default_price_id` (`STRIPE_DEFAULT_PRICE_ID`)
+- Added/updated tests:
+    - `tests/Feature/Settings/BillingActionsTest.php`
+    - `tests/Feature/Settings/SettingsOverviewTabsTest.php`
+    - `tests/Feature/Api/Billing/StripeWebhookApiTest.php`
+    - `tests/Feature/Billing/CashierWebhookRouteTest.php`
+
+## 2026-02-26 (Billing Panel Live State + Reverb Updates)
+
+- Replaced settings billing shell with real subscription status surface:
+    - now shows `is_subscribed`, Stripe status, customer id, and last sync timestamp
+    - retains current no-checkout scope (state visibility only)
+- Added live subscription updates on settings without manual reload:
+    - new broadcast event `BillingSubscriptionStatusUpdated`
+    - Stripe webhook now dispatches user-scoped billing update events after status sync
+    - settings page listens on user private channel and updates billing panel state in-place
+- Stripe webhook matching hardened for encrypted/blind-indexed customer ids:
+    - supports `stripe_customer_id_bidx`, fallback `stripe_customer_id`, fallback `stripe_id`
+- Validation:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/Billing/StripeWebhookApiTest.php tests/Feature/Settings/SettingsOverviewTabsTest.php tests/Feature/Billing/CashierWebhookRouteTest.php` ✅
+    - `vendor/bin/sail bin pint --dirty --format agent` ✅
+
+## 2026-02-26 (Wave: Progress/Performance Corrections + Theme Tab + Cashier Scaffold)
+
+- Completed the current wave scope with additive, behavior-preserving changes:
+    - progress/performance corrections:
+        - fixed performance forecast seeding to avoid anchoring on synthetic zero tail points
+        - performance chart now trims trailing synthetic zero snapshots before projection
+        - kept no-workout decay forecast and range-based horizon behavior
+        - load trend suggested-range warm-up now uses seeded history + immediate in-window context
+        - added one-shot snapshot rows:
+            - load trend: today actual/planned/suggested TSS range
+            - performance management: today (or latest real) CTL/ATL/TSB
+        - improved performance chart usability:
+            - legend tooltips for CTL/ATL/TSB interpretation
+            - series visibility toggles (CTL/ATL/TSB)
+            - colored-dot hover values
+            - taller chart and improved contrast
+        - improved target-range visibility in load trend with stronger range fill + boundaries
+    - settings/theme integration:
+        - added `Theme` tab in settings overview (system/light/dark)
+        - wired `/settings/appearance` compatibility route to `/settings/overview?tab=theme`
+        - extended allowed backend settings tabs accordingly
+    - light-mode hardening baseline:
+        - light palette now defined in `:root`, dark palette under `.dark`
+        - added utility compatibility overrides for dark-coded zinc classes under light mode
+        - adjusted progress chart surfaces to semantic theme tokens for light/dark readability
+    - cashier/stripe scaffold:
+        - installed `laravel/cashier`
+        - published cashier config + migrations
+        - enabled `Billable` on `User`
+        - added CSRF exception for `stripe/*` (Cashier webhook path)
+        - retained existing `/api/webhooks/stripe` compatibility endpoint
+- Added test coverage:
+    - `tests/Feature/Settings/SettingsOverviewTabsTest.php` (theme tab + fallback + appearance redirect)
+    - `tests/Feature/Billing/CashierWebhookRouteTest.php` (Cashier webhook path accepted without CSRF token)
+    - updated `tests/Feature/ProgressPageTest.php` for additive progress props resilience
+- Validation:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction` ✅
+    - `vendor/bin/sail npm run types` ❌ (blocked by existing repo-wide UUID/opaque-ID TS type migration mismatches outside this wave)
+    - `vendor/bin/sail artisan test --compact tests/Feature/ProgressPageTest.php tests/Feature/Settings/SettingsOverviewTabsTest.php tests/Feature/Billing/CashierWebhookRouteTest.php` ✅
+    - `vendor/bin/sail artisan test --compact` ❌ (existing repo-wide failures from ongoing UUID/encryption migration expectations; not introduced by this wave)
+    - `vendor/bin/sail bin pint --dirty --format agent` ✅
+
+## 2026-02-26 (UUID/Opaque ID Dual-Mode Hardening Continued)
+
+- Continued the UUID + opaque public ID migration pass with dual-mode safety hardening (behavior-preserving):
+    - training session API now supports `training_week_id` as opaque identifiers in dual mode during create/update validation and mutation paths
+    - training session API responses now consistently preload `trainingWeek` for route-key-safe serialization
+    - training session link/unlink mutation responses now return route-key IDs (`legacy` mode remains numeric, `dual` mode uses opaque IDs)
+    - calendar payload activity mapping now emits route-key IDs (`id`, `training_session_id`, `linked_session_id`, `athlete_id`) while preserving legacy mode output behavior
+- Added explicit migration coverage tests:
+    - new feature file: `tests/Feature/Api/UuidDualModeApiTest.php`
+    - verifies:
+        - opaque IDs in training-session resource payloads under dual mode
+        - session creation with `training_week_id` as public ID
+        - legacy numeric route fallback still resolves in dual mode
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/UuidDualModeApiTest.php`
+
+## 2026-02-25 (ATP + Progress + Session Detail Hardening Pass Complete)
+
+- Completed decision-locked hardening pass without route or payload breaking changes:
+    - ATP visuals/readability:
+        - fixed week-type color system (chart bars + row indicators + legend)
+        - goal flag moved below week number in ATP header chart
+        - ATP dates now render with browser-locale formatting and user timezone context
+        - ATP week rows now render TSS value or `—` (removed “Coming soon” placeholders)
+    - ATP backend correctness + maintainability:
+        - fixed ATP metrics so planned totals include only `planning_source=planned`
+        - completed totals now include completed sessions from both planned and unplanned sources
+        - decomposed ATP service into dedicated collaborators:
+            - `AtpWeekDefinitionFactory`
+            - `AtpWeekSessionMetricsResolver`
+            - `AtpWeekGoalResolver`
+            - `AthleteAnnualTrainingPlanService` now acts as orchestrator/caching layer
+    - Session detail interaction:
+        - interactive chart dotted hover line now snaps to the same sampled point index used by hover markers/map sync
+    - Calendar session card UX:
+        - removed calendar-row “Auto-completed” badge/text while preserving completion behavior
+    - Progress clarity:
+        - load trend target band visibility improved with stronger fill + explicit upper/lower boundary lines
+        - compliance panel switched to TSS-based actual/recommended display
+        - compliance row/header alignment fixed with shared grid-template contract
+        - introduced reusable `LoadStatePill` component and applied it to compliance rows + weekly logs
+- Added/updated test coverage:
+    - expanded `tests/Feature/Api/AnnualTrainingPlanApiTest.php` for planned-vs-unplanned ATP metrics correctness
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/AnnualTrainingPlanApiTest.php tests/Feature/ProgressPageTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-25 (ATP + Load/Progress Hardening Pass Complete)
+
+- Completed reusable weekly metrics hardening with persisted snapshots as single source for ATP/Progress/Calendar:
+    - added `athlete_week_metrics` table + `AthleteWeekMetric` model
+    - added `WeeklyMetricsCalculator`, `WeeklyLoadStateClassifier`, `WeeklyMetricsSnapshotService`
+    - added `RecalculateWeeklyMetricsJob` + `RecalculateRecentWeeklyMetricsJob`
+    - wired weekly metrics recalculation into load dispatch action, activity sync, full-history import, and `load:recompute`
+    - nightly weekly backfill scheduled (`02:15`)
+    - added cache-version bumping in snapshot service for fast invalidation with 60s cached reads
+- ATP payload/UX hardening:
+    - ATP weeks now include `is_current_week`, `load_state`, `load_state_ratio`, `goal_marker`
+    - header chart now supports current-week highlight, hover details, and goal flag markers
+    - week table now surfaces load-state badges and improved desktop viewport fit with sticky header behavior
+- Session detail interaction fixes:
+    - chart crosshair now snaps to the same reference sample as hover dots/values
+    - zoom reset moved from map double-click to chart double-click
+    - map double-click no longer resets chart zoom
+- Progress/compliance clarity upgrades:
+    - compliance and weekly logs now consume snapshot-based load state
+    - removed placeholder compliance wording and added explicit ratio-source metadata
+    - weekly log rows now show clear load-state indicators
+- Training preferences consolidation:
+    - added `AthletePerformanceProfileResolver` for centralized anchors/zones normalization
+    - integrated resolver into `TrainingSessionActualMetricsResolver` and athlete settings payload normalization
+- Settings/billing scaffolding:
+    - replaced timezone free-text with searchable IANA selector (ShadCN Popover + Command)
+    - added Stripe scaffold columns on `users` and webhook endpoint (`POST /api/webhooks/stripe`) with signature validation and subscription flag sync
+- Test coverage added/expanded:
+    - `tests/Unit/WeeklyLoadStateClassifierTest.php`
+    - `tests/Feature/Api/Billing/StripeWebhookApiTest.php`
+    - expanded `tests/Feature/Api/ProgressComplianceApiTest.php`
+    - expanded `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - aligned progress expectations in `tests/Feature/ProgressPageTest.php` with strict planned-session compliance semantics
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Training Load Engine Phase 1 Complete)
+
+- Implemented production load-engine backbone from `docs/TRAINING_LOAD_SYSTEM.md` with multi-athlete-safe service boundaries:
+    - database:
+        - added `training_load_snapshots` table with indexed `user_id` + `date`, and unique (`user_id`, `date`, `sport`)
+        - added `users.enable_load_metrics` boolean toggle (default `true`)
+    - domain:
+        - added `TrainingLoadSnapshot` model + `User::trainingLoadSnapshots()` relation
+    - calculation engine:
+        - added `app/Services/Load/TrainingLoadCalculator.php`
+        - implements day-walk recalculation with:
+            - per-sport daily TSS (`run`, `bike`, `swim`, `other`)
+            - combined daily TSS
+            - ATL (7d EWMA)
+            - CTL (42d EWMA)
+            - TSB (`CTL_yesterday - ATL_yesterday`)
+        - seeds from day-before snapshot, defaults to zeros if missing
+        - idempotent upsert storage
+    - load history API:
+        - added `GET /api/progress`
+        - added `LoadHistoryService` + `LoadHistoryResource`
+        - response now includes:
+            - `combined` series
+            - `per_sport` series
+            - latest ATL/CTL/TSB point
+    - recalculation jobs/dispatch:
+        - added `RecalculateUserLoadJob`
+        - added `RecalculateRecentLoadJob` (nightly backfill, 90 days, chunked by 100 athletes)
+        - wired scheduler in `routes/console.php`
+        - added `DispatchRecentLoadRecalculation` action
+        - dispatch points wired for:
+            - session completion
+            - session unlink
+            - session planned TSS update
+            - activity sync reconciliation completion
+    - command:
+        - added `php artisan load:recompute`
+        - supports `--user=`, `--all`, `--from=`
+        - queues recalculation jobs (no inline heavy compute)
+    - strava full history import:
+        - added `StravaFullHistoryImportJob`
+        - imports paginated activities only
+        - enqueues load recalculation after each imported batch
+    - frontend:
+        - added `PerformanceManagementChart` widget to progress page
+        - added `/api/progress` consumer hook for chart data
+        - supports combined/per-sport toggle
+        - hides load widgets when `load_metrics_enabled = false`
+- Added/updated test coverage:
+    - `tests/Unit/TrainingLoadCalculatorTest.php`
+    - `tests/Feature/RecalculateUserLoadJobTest.php`
+    - `tests/Feature/LoadRebuildCommandTest.php`
+    - `tests/Feature/PerformanceManagementApiTest.php`
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Unit/TrainingLoadCalculatorTest.php tests/Feature/RecalculateUserLoadJobTest.php tests/Feature/LoadRebuildCommandTest.php tests/Feature/PerformanceManagementApiTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Calendar Create/Library UX + Drag/Drop Hardening Complete)
+
+- Completed post-wave UX hardening and behavior-preserving fixes for calendar creation and workout library interactions:
+    - restored intended creation flow:
+        - day click / `+` opens first-step picker
+        - selecting workout type opens the regular session editor (`Details` + `Structure`)
+        - library flow is now separate from in-modal sport selection flow
+    - moved workout library interaction to a dedicated calendar side sheet:
+        - opened from calendar header action
+        - non-blocking sheet behavior so calendar remains visible/interactable
+        - mode-specific sheet width (browse vs create/edit)
+    - improved workout template preview fidelity:
+        - template previews now render variable-height block bars to better reflect intensity/structure differences
+    - added workout template edit support in the library panel
+    - hardened calendar drag-and-drop:
+        - uncompleted sessions can be moved to different days
+        - library template drop creates planned sessions on target date
+        - normalized dropped planned-structure payload into API-expected shape (`duration_minutes` fields, nested items)
+        - added defensive fallback for invalid `training_week_id` scenarios by retrying with `null`
+    - added `hideOverlay` support on shared sheet primitive for non-modal sidepanel usage
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php tests/Feature/WorkoutLibraryApiTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (ATP + Workout Library + Merge Polish + Settings Refactor Complete)
+
+- Completed strict behavior-preserving wave for ATP, workout library, merge hardening, and settings entitlements refactor:
+    - ATP moved to dedicated athlete page:
+        - page route: `/atp/{year}`
+        - API: `GET /api/atp/{year}`, `PATCH /api/atp/{year}/weeks/{week_start}`
+        - added persisted week metadata model (`annual_training_plan_weeks`) with week type/priority/notes and planned/completed minutes + placeholder TSS values
+        - ATP read payload is cached for 60 seconds
+        - ATP row/bar interactions navigate to calendar week context (`/calendar?week=YYYY-MM-DD`)
+    - workout library added as athlete-owned reusable structure catalog:
+        - API: `GET/POST/PATCH/DELETE /api/workout-library...`
+        - owner-only policy enforcement
+        - integrated into calendar create flow (`Workout -> New Workout | From Library`)
+        - selecting a library item creates a planned session with structure + estimated metrics
+    - merge/completion hardening:
+        - reconciler now handles ambiguous multi-match cases safely (no auto-link, no duplicate free-workout creation)
+        - deterministic matching improved with sport/day/tolerance/proximity checks
+        - completion source visibility hardened (`Auto-completed` vs manual)
+    - settings refactor:
+        - removed separate admin entitlements page
+        - moved workout type gating management into `Admin Settings` tabs (`Workout Types`)
+        - admin-only and hidden during impersonation
+    - resolved Wayfinder generation corruption by regenerating and replacing generated route/action artifacts
+- Added/updated test coverage:
+    - `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - `tests/Feature/AtpPageTest.php`
+    - `tests/Feature/WorkoutLibraryApiTest.php`
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+    - `tests/Feature/AdminSettingsPageTest.php`
+- Validation completed:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Completion & Compliance Phase 2 Complete)
+
+- Completed coach-grade compliance and entitlement hardening pass with behavior-preserving scope:
+    - added read-only compliance API endpoint:
+        - `GET /api/progress/compliance?from=...&to=...`
+    - added modular progress services:
+        - `app/Services/Progress/ComplianceService.php`
+        - `app/Services/Progress/WeeklyRecommendationBandService.php`
+    - compliance now uses planned sessions only for denominator:
+        - `planned_sessions_count`
+        - `planned_completed_count`
+        - `compliance_ratio`
+    - added placeholder weekly recommendation band plumbing (minutes-based, no load science):
+        - min/max derived from prior 4 weeks completed-minute average
+        - returns `null` when fewer than 2 history weeks exist
+    - integrated compliance + placeholder band into frontend:
+        - progress page now includes a dedicated Compliance panel
+        - calendar week headers now show subtle compliance and range-state indicators (`In range`/`High`/`Low`/`No baseline`)
+        - week compliance chip can jump into `/progress` with an appropriate range window
+    - added dedicated admin entitlement management surface:
+        - web page: `/admin/settings/entitlements`
+        - API: `GET/PATCH /api/admin/entitlements/entry-types`, `POST /api/admin/entitlements/entry-types/reset`
+        - DB overrides now include `updated_by_admin_id`
+        - effective source now exposed per entry type (`config_default` vs `customized`)
+        - entitlement resolution now uses 60-second cache
+    - completion-source UX polish:
+        - calendar session row shows subtle `Auto-completed` vs `Completed`
+        - session completion section now surfaces completion source meta
+- Added/updated test coverage:
+    - `tests/Feature/Api/ProgressComplianceApiTest.php`
+    - `tests/Feature/Api/Admin/EntryTypeEntitlementApiTest.php`
+    - `tests/Feature/AdminEntitlementPageTest.php`
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/ProgressComplianceApiTest.php tests/Feature/Api/Admin/EntryTypeEntitlementApiTest.php tests/Feature/AdminEntitlementPageTest.php tests/Feature/ProgressPageTest.php tests/Feature/DashboardTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-13 (Training Completion Flow v2 Foundations Complete)
+
+- Completed behavior-preserving Phase 1 foundation pass:
+    - verified existing activity reconciliation pipeline and duplicate-card filtering
+    - fixed athlete context gating in calendar selection to treat `role: null` and impersonation as athlete context (restores session edit/title input behavior)
+    - added Goals domain backbone:
+        - `goals` table + model + resource + API controller + requests + policy
+        - endpoints: `GET/POST /api/goals`, `GET/PATCH /api/goals/{goal}`
+    - added ATP scaffold:
+        - `annual_training_plans` table + model
+        - endpoint: `GET /api/annual-training-plan/{year}` with create-if-missing behavior
+    - wired goals into calendar payload and frontend loading:
+        - goals now load with initial dashboard payload and infinite-window fetches
+        - goals render in day columns and open a dedicated goal modal
+        - create-entry flow now routes `Other -> Goal` to goal creation modal
+    - added config-driven entitlement defaults (`config/training.php`) while retaining DB override behavior
+    - constrained completion write behavior so `actual_tss` is copied only from provider `raw_payload.tss` during completion writes
+    - added plans-page ATP placeholder link (`Annual Training Plan (coming soon)`)
+- Added/updated test coverage:
+    - `tests/Feature/Api/GoalApiTest.php`
+    - `tests/Feature/Api/AnnualTrainingPlanApiTest.php`
+    - `tests/Feature/DashboardTest.php`
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Activities/ActivityToSessionReconcilerTest.php tests/Feature/Api/GoalApiTest.php tests/Feature/Api/AnnualTrainingPlanApiTest.php tests/Feature/DashboardTest.php tests/Feature/Api/CalendarEntryApiTest.php`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Unified Completion + Calendar Entry Types Pass Complete)
+
+- Completed feature pass for unified completion and calendar entry types:
+    - linked activities now collapse to a single calendar card (session card only)
+    - provider sync now reconciles activities into sessions automatically:
+        - planned match -> auto-link + auto-complete
+        - no planned match -> create plan-less `Free Workout` session + auto-complete
+    - introduced first-step calendar creation flow:
+        - `Workout` -> existing session editor flow
+        - `Other` -> dedicated calendar entry editor (`event` / `goal` / `note`)
+    - introduced subscription-gated entry/workout types with admin-managed entitlement flags
+    - updated calendar compliance logic to:
+        - `Completed Planned Sessions / Planned Sessions`
+    - kept manual completion/linking flows available
+- Added backend and feature coverage:
+    - `tests/Feature/Activities/ActivityToSessionReconcilerTest.php`
+    - `tests/Feature/Api/CalendarEntryApiTest.php`
+    - `tests/Feature/AdminEntitlementsTest.php`
+    - updated `tests/Feature/AdminImpersonationTest.php` for impersonated-athlete write expectations
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/Activities/ActivityToSessionReconcilerTest.php tests/Feature/Api/CalendarEntryApiTest.php tests/Feature/AdminEntitlementsTest.php tests/Feature/AdminImpersonationTest.php`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Unified Completion + Calendar Entry Types Pass Start)
+
+- Started feature pass for:
+    - unified session/activity completion flow (auto-link + auto-complete)
+    - first-step calendar entry creation flow (`Workout` vs `Other`)
+    - subscription-gated entry types with admin-configured entitlements
+    - single-card calendar rendering for linked workout activity/session pairs
+- Scope guardrails:
+    - no training-science/load-modeling expansion
+    - keep provider and API boundaries explicit
+    - preserve role/impersonation rules
+
+## 2026-02-12 (Refactor Wave 8 Complete: Final Smoke + Full Quality Gates)
+
+- Completed final validation sweep:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npx eslint resources/js/components/two-factor-setup-modal.tsx resources/js/pages/admin/users/index.tsx resources/js/pages/admin/users/show/components/LogsTab.tsx resources/js/lib/pagination.ts`
+- Result:
+    - no API/backend/route contract regressions detected
+    - no behavior drift detected in touched surfaces
+
+## 2026-02-12 (Refactor Wave 8 Start: Final Smoke + Full Quality Gates)
+
+- Wave 8 started with behavior-preserving scope:
+    - run final full quality gates after Waves 6 and 7
+    - verify no regressions in notifications/ticket selection and policy/provider behavior
+
+## 2026-02-12 (Refactor Wave 7 Complete: Security + Content Hardening)
+
+- Completed Wave 7 with behavior preserved:
+    - removed `dangerouslySetInnerHTML` pagination rendering in admin user/log tables via safe label decoder
+    - added explicit QR SVG sanitization boundary in two-factor setup modal before HTML injection
+    - kept existing UX and payload behavior unchanged
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminUserManagementTest.php tests/Feature/Auth/AuthenticationTest.php tests/Feature/Auth/TwoFactorChallengeTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 7 Start: Security + Content Hardening)
+
+- Wave 7 started with behavior-preserving scope:
+    - harden rich-text rendering boundaries that use `dangerouslySetInnerHTML`
+    - preserve existing payload shapes and UI behavior while making trust boundaries explicit
+
+## 2026-02-12 (Refactor Wave 6 Complete: Backend Hardening Pass)
+
+- Completed Wave 6 with behavior preserved:
+    - replaced `whereRaw('1 = 0')` fallbacks in `TrainingScope` with explicit empty-key constraints
+    - consolidated duplicated impersonation checks into shared policy trait:
+        - `app/Policies/Concerns/DetectsImpersonation.php`
+    - split Strava provider responsibilities without contract changes:
+        - `StravaApiClient` (HTTP/token/request)
+        - `StravaActivityMapper` (payload mapping)
+        - `StravaActivityProvider` (orchestration)
+- Validation completed:
+    - `vendor/bin/sail artisan test --compact tests/Feature/ActivityProviders/StravaActivityProviderTest.php tests/Feature/ActivityProviders/ActivityProviderManagerTest.php tests/Unit/ActivityProviders/ActivityProviderTokenManagerTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/AdminTicketsTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 6 Start: Backend Hardening Pass)
+
+- Wave 6 started with behavior-preserving scope:
+    - remove `whereRaw('1 = 0')` style fallbacks in favor of expressive empty-result constraints
+    - centralize impersonation checks used repeatedly in policies
+    - split Strava provider responsibilities for maintainability boundaries
+
+## 2026-02-12 (Refactor Wave 5 Complete: Session Analysis Chart Decomposition)
+
+- Completed Wave 5 with behavior preserved:
+    - decomposed `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - extracted:
+        - `session-analysis-chart/InteractiveStreamChart.tsx`
+        - `session-analysis-chart/SelectionStatLine.tsx`
+    - preserved zoom drag, hover behavior, axis behavior, stream rendering, and selection summary output
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 5 Start: Session Analysis Chart Decomposition)
+
+- Wave 5 started with behavior-preserving scope:
+    - split `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - isolate chart UI/state helpers without changing math, zoom, hover, or map-sync behavior
+
+## 2026-02-12 (Refactor Wave 4 Complete: Admin Page Decomposition)
+
+- Completed Wave 4 with behavior preserved:
+    - decomposed `resources/js/pages/admin/analytics.tsx` into feature-scoped types/utils/hook/components
+    - decomposed `resources/js/pages/admin/users/show.tsx` into feature-scoped types/utils/components
+    - preserved all route contracts, payload shapes, and interaction flows
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=AdminUserManagementTest`
+    - `vendor/bin/sail artisan test --compact --filter=AdminAnalytics` (no tests matched)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 4 Start: Admin + Session Analysis Decomposition)
+
+- Wave 4 started with behavior-preserving scope:
+    - decompose remaining oversized admin pages:
+        - `resources/js/pages/admin/analytics.tsx`
+        - `resources/js/pages/admin/users/show.tsx`
+    - decompose `resources/js/pages/calendar/session-detail/components/SessionAnalysisChart.tsx`
+    - preserve API contracts, route contracts, and visual behavior
+
+## 2026-02-12 (Refactor Wave 3 Complete: Legacy Surface Cleanup + Auth/Register Decomposition)
+
+- Completed Wave 3 with behavior preserved:
+    - removed unused legacy `resources/js/pages/calendar/components/plan-section.tsx`
+    - rewired `resources/js/pages/auth/register.tsx` into a modular orchestrator
+    - extracted and integrated missing coach application step component:
+        - `resources/js/pages/auth/register/components/CoachApplicationStep.tsx`
+    - retained existing registration flow, payload shape, and validation/error-step behavior
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Auth`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 2 Complete: Ticket Description Editor Decomposition)
+
+- Decomposed `resources/js/pages/admin/tickets/components/ticket-description-editor.tsx` into isolated modules while preserving behavior:
+    - new orchestrator:
+        - `ticket-description-editor.tsx`
+    - extracted hook:
+        - `ticket-description-editor/useTicketDescriptionEditor.ts`
+    - extracted UI modules:
+        - `ticket-description-editor/TicketDescriptionToolbar.tsx`
+        - `ticket-description-editor/TicketSuggestionPopover.tsx`
+    - extracted shared types/utilities:
+        - `ticket-description-editor/types.ts`
+        - `ticket-description-editor/utils.ts`
+- Preserved mention/slash UX:
+    - `@admin` suggestions
+    - `/user ...` suggestions
+    - keyboard selection (`ArrowUp/ArrowDown/Tab/Enter/Escape`)
+    - click selection and token insertion
+    - payload output shape (`html`, `text`, `mentionAdminIds`, `userRefs`)
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail npx eslint resources/js/pages/admin/tickets/components/ticket-description-editor.tsx resources/js/pages/admin/tickets/components/ticket-description-editor/useTicketDescriptionEditor.ts resources/js/pages/admin/tickets/components/ticket-description-editor/TicketDescriptionToolbar.tsx resources/js/pages/admin/tickets/components/ticket-description-editor/TicketSuggestionPopover.tsx`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 3 Start: Legacy Surface Cleanup + Auth/Register Decomposition)
+
+- Wave 3 started with behavior-preserving scope:
+    - resolve legacy `plan-section.tsx` dead-weight risk (remove if unused)
+    - decompose oversized auth register page into stable step components/hooks
+    - keep existing onboarding flow and payload behavior identical
+
+## 2026-02-12 (Refactor Wave 1 Complete: Stability + Wayfinder Completion)
+
+- Completed behavior-preserving Wave 1 batch:
+    - stabilized ticket selection state without `set-state-in-effect` patterns
+    - stabilized coach-application active selection derivation without effect-driven state writes
+    - finished strict Wayfinder migration in remaining targeted pages:
+        - `plans/index`
+        - `coaches/index`
+        - `athletes/index`
+        - `athletes/show`
+        - `calendar/session-detail`
+    - added/validated admin ticket notification mark-seen feature coverage
+- Validation completed:
+    - `vendor/bin/sail npx eslint resources/js/pages/admin/tickets/hooks/useTicketSelection.ts resources/js/pages/admin/coach-applications/index.tsx`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=AdminTicketsTest`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-12 (Refactor Wave 2 Start: Ticket Description Editor Decomposition)
+
+- Wave 2 started for highest frontend maintainability risk:
+    - decompose `ticket-description-editor.tsx` into smaller hooks/components/utilities
+    - preserve exact mention/slash command behavior, keyboard selection, and payload format
+    - no backend/API/route changes
+
+## 2026-02-12 (Refactor Wave 1 Start: Stability + Wayfinder Completion)
+
+- Wave 1 started for full hardening request:
+    - smoke-test and stabilize ticket notification actions + ticket query selection
+    - fix remaining React stability blockers
+    - complete strict Wayfinder migration on targeted remaining frontend pages
+- Scope is behavior-preserving only (no backend contract or UX flow change).
+
+## 2026-02-12 (Wave D: Global Frontend Hardening Pass)
+
+- Completed a behavior-preserving frontend hardening pass across `resources/js` with no backend/API/route/policy changes.
+- ShadCN standardization updates:
+    - native `<select>` usage fully migrated to ShadCN `Select` (including remaining admin/auth/workout-builder usage)
+    - remaining admin status/event pills standardized to ShadCN `Badge`
+    - coach-application status switcher standardized to ShadCN `ToggleGroup`
+- Pixel utility cleanup:
+    - arbitrary Tailwind pixel utilities reduced from 219 to 10
+    - remaining pixel utilities are shadow/border accent exceptions only
+- Semantic + accessibility hardening:
+    - converted remaining clickable non-semantic wrappers in calendar/landing cards to semantic button patterns
+    - preserved keyboard and focus behavior for interactive cards/day cells
+- Stability + test hardening:
+    - resolved metadata test drift by moving session-detail helper files under `session-detail/components`
+    - added missing page `<Head>` declarations in thin wrappers to keep title metadata coverage green
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Wave C5: Session Detail Decomposition)
+
+- Completed structural decomposition of the session detail page with no backend/API/route changes:
+    - `resources/js/pages/calendar/session-detail.tsx` reduced from ~2473 lines to 347 lines (thin orchestrator)
+    - extracted UI modules:
+        - `SessionDetailLayout`
+        - `SessionMap`
+        - `SessionStatisticsCard`
+        - `SessionInternalNotes`
+        - `SessionPlannedStructurePreview`
+        - `SessionAnalysisChart`
+    - extracted state/derivation hooks:
+        - `useSessionStreams`
+        - `useSessionZoom`
+        - `useSessionHover`
+        - `useSessionStats`
+    - extracted shared session-detail constants/types/utils modules for stable reuse
+- Preserved session-detail behavior:
+    - chart drag-to-zoom + reset
+    - hover sync between chart and map
+    - route highlight segment + hover marker
+    - x-axis mode toggle behavior
+    - planned structure conditional rendering
+    - internal notes save flow and validation handling
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Wave C4: Tickets Full Decomposition + Hook Isolation)
+
+- Completed ticket-page decomposition with behavior preserved:
+    - `resources/js/pages/admin/tickets/index.tsx` reduced to 395 lines (thin orchestrator)
+    - extracted detail dialog into dedicated component:
+        - `TicketDetailSheet`
+        - `TicketDetailOverviewTab`
+        - `TicketDetailAuditTab`
+    - extracted mutation/network boundary into `useTicketMutations`
+    - extracted selection + URL ticket-query synchronization into `useTicketSelection`
+    - extracted detail draft/sync state into `useTicketDetailState`
+- Kept strict Wayfinder route usage in extracted mutation flows (no hardcoded API paths introduced).
+- Moved filter UI to single-payload update contract (`onFiltersChange`) to reduce parent coupling.
+- Preserved ticket UX behavior:
+    - notification/query-driven ticket open still works through selection state
+    - realtime board refresh + selected-ticket refresh remains active
+    - create/edit/auto-sync/audit/attachments flows unchanged from user perspective
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Wave C3: Tickets ShadCN + Semantics Hardening)
+
+- Hardened ticket UI primitives without API/backend changes:
+    - ticket detail status control migrated to ShadCN `ToggleGroup`
+    - ticket create type selector migrated to ShadCN `ToggleGroup`
+    - editor toolbar toggles migrated to ShadCN `Toggle`
+- Standardized badge/pill rendering with ShadCN `Badge`:
+    - importance indicator badges
+    - assignee badges
+    - status badges in archived table
+- Semantic/a11y hardening in ticket board:
+    - ticket columns now expose region semantics
+    - column contents switched to list semantics (`ul/li`)
+    - archived ticket open action moved to explicit button in title cell (no clickable row anti-pattern)
+    - suggestion popover now has explicit listbox/option ARIA attributes
+- Ticket realtime hook optimized to reduce unnecessary channel re-subscriptions by using refs for mutable callbacks/state.
+- Removed remaining ticket-system arbitrary `px` utilities in notification bell:
+    - `w-[360px]` → `w-[22.5rem]`
+    - `text-[10px]/text-[11px]` → rem equivalents
+- Validation completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Ticket Editor Stabilization + Tickets Decomposition Increment)
+
+- Follow-up fixes applied:
+    - removed duplicate TipTap underline extension registration to eliminate duplicate-extension warning noise
+    - suggestion `Enter` handling now runs in capture phase so active mention/user suggestions are selected before editor newline handling
+- Stabilized admin ticket editor trigger behavior in existing-ticket edit mode:
+    - mention and slash-user trigger detection now supports non-whitespace boundaries (for example `...text@name` and `...text/user name`)
+    - reduced stale suggestion churn by keeping async user-search request guards in place
+    - maintained focus after suggestion insertions
+- Hardened ticket query-driven open behavior from notifications:
+    - stabilized `openTicketDetail` callback identity to prevent repeated URL-effect re-open loops
+    - improved query parsing in realtime hook and skip re-open when selected ticket is already open
+- Hardened admin notification actions:
+    - mark-seen/mark-all-seen calls now use direct Wayfinder route definitions (PATCH with JSON body) for consistency
+    - notification navigation now uses explicit Inertia visit options (`preserveState: false`) to ensure query transitions are applied
+- Decomposition increment:
+    - extracted large New Ticket modal into `TicketCreateDialog` component
+    - kept behavior, field validation rendering, and payload format unchanged
+- Verification completed:
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact --filter=Ticket`
+    - `vendor/bin/sail bin pint --dirty --format agent`
+
+## 2026-02-11 (Phase 9 Wave C Start: Frontend Decomposition + ShadCN Alignment)
+
+- Wave C execution started with behavior-preserving frontend-only constraints.
+- Scope locked to:
+    - decomposition of oversized frontend pages/components into hooks + presentational units
+    - strict ShadCN/Radix primitive alignment for suggestion lists, popovers, tabs, table/scroll containers, and dialog structure
+    - ticket rich-text editor migration from fragile `contentEditable` to TipTap foundation while preserving payload format
+    - pixel cleanup + semantic/a11y hardening in touched surfaces
+- Added frontend dependencies via Sail for this wave:
+    - `@radix-ui/react-popover`
+    - `@radix-ui/react-tabs`
+    - `@radix-ui/react-scroll-area`
+    - `cmdk`
+    - `@tiptap/react`
+    - `@tiptap/starter-kit`
+    - `@tiptap/extension-placeholder`
+    - `@tiptap/extension-underline`
+- Guardrails:
+    - no backend, route, policy, or API contract changes
+    - no behavioral regressions
+    - slicing-aligned UI preserved
+
+## 2026-02-11 (Phase 9 Wave B Complete: Backend Boundary Extraction)
+
+- Extracted shared calendar payload orchestration:
+    - added `AthleteCalendarPayloadService`
+    - moved duplicated dashboard/calendar aggregation out of controllers
+    - preserved `trainingPlans`, `trainingSessions`, `activities`, `calendarWindow`, `providerStatus`, and athlete target payload shapes
+- Centralized role-based visibility query scoping:
+    - added `TrainingScope` helper with scoped methods for plans, weeks, sessions, and activities
+    - replaced inline role conditionals and `whereRaw('1 = 0')` duplication in API/controllers
+- Split training session business actions from controller:
+    - added action classes:
+        - `LinkActivityAction`
+        - `UnlinkActivityAction`
+        - `CompleteSessionAction`
+        - `RevertCompletionAction`
+    - `TrainingSessionController` now validates/authorizes/delegates/returns resources
+- Consolidated duplicate training session request logic:
+    - added `HasTrainingSessionRules` concern
+    - `StoreTrainingSessionRequest` and `UpdateTrainingSessionRequest` now share the same rules + post-validation logic
+- Added users indexing migration for admin table scale paths:
+    - `users(created_at)`
+    - `users(role, created_at)`
+- Added 60-second cache layer to admin analytics aggregates with range-aware cache keys.
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail artisan test --compact tests/Feature/DashboardTest.php tests/Feature/CoachCalendarReadAccessTest.php tests/Feature/Api/TrainingPlanReadApiTest.php tests/Feature/Api/TrainingPlanCrudApiTest.php tests/Feature/Api/TrainingWeekReadApiTest.php tests/Feature/Api/TrainingWeekCrudApiTest.php tests/Feature/Api/TrainingSessionReadApiTest.php tests/Feature/Api/TrainingSessionCrudApiTest.php tests/Feature/Api/TrainingSessionActivityLinkApiTest.php tests/Feature/Api/TrainingSessionCompletionApiTest.php tests/Feature/Api/ActivityReadApiTest.php tests/Feature/NavigationShellPagesTest.php tests/Feature/AdminUserManagementTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminImpersonationTest.php`
+
+## 2026-02-11 (Phase 9 Wave B Start: Backend Boundary Extraction)
+
+- Wave B execution started with behavior-preserving constraints.
+- Scope locked to:
+    - calendar payload service extraction
+    - centralized role-based training/activity visibility scoping
+    - training session action extraction (link/unlink/complete/revert)
+    - shared training session request rule concern
+    - users index migration (`created_at`, potential role composite)
+    - admin analytics 60-second caching
+- Guardrails:
+    - no API contract/payload changes
+    - impersonation and policy behavior preserved
+    - slicing behavior preserved
+
+## 2026-02-11 (Phase 9 Wave A Complete: Mechanical Cleanup)
+
+- Completed strict Wayfinder migration for remaining frontend API calls in Wave A scope:
+    - admin tickets board/detail fetches now use generated Wayfinder helpers
+    - admin notification bell fetches now use generated Wayfinder helpers
+    - session detail activity-stream fetch now uses generated Wayfinder helper
+    - removed ticket API URL prop injection from `AdminTicketBoardController`
+- Extracted ticket index filter validation into dedicated FormRequest:
+    - added `TicketIndexRequest`
+    - moved `TicketController@index` inline validation into request class
+    - preserved response/query behavior
+- De-duplicated shared ticket constants:
+    - backend enums now expose `values()` for rule reuse
+    - ticket store/update/move-status requests now consume enum `values()`
+    - frontend ticket status/type/importance constants centralized in `resources/js/pages/admin/tickets/constants.ts`
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail npm run build`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php`
+    - `vendor/bin/sail artisan test --compact tests/Feature/Calendar/SessionDetailPageTest.php`
+
+## 2026-02-11 (Phase 9 Wave A Start: Mechanical Cleanup)
+
+- Wave A execution started with strict behavior-preservation constraints.
+- Scope locked to:
+    - strict Wayfinder migration for remaining frontend API fetches
+    - ticket filter validation extraction to FormRequest
+    - shared ticket constant cleanup (status/type/importance string de-duplication)
+- No functional UX or policy changes are included in this wave.
+
+## 2026-02-11 (Phase 1 Global Codebase Audit Baseline)
+
+- Completed a structured, no-refactor audit across backend, frontend, styling, accessibility, and performance.
+- Confirmed key backend hotspots:
+    - fat controllers (`DashboardController`, `AthleteCalendarController`, `TrainingSessionController`, `Api/Admin/TicketController`, `AdminAnalyticsController`)
+    - duplicated validation rules (`Store/UpdateTrainingSessionRequest`, `Store/UpdateTrainingWeekRequest`)
+    - repeated impersonation checks duplicated across policies
+    - repeated role-scope query logic (`whereRaw('1 = 0')` fallback pattern in multiple controllers)
+- Confirmed key frontend hotspots:
+    - very large components mixing orchestration + rendering + API calls (tickets board/detail, session detail, workout builder, session editor)
+    - remaining hardcoded API URLs instead of Wayfinder route usage (notably admin tickets, notifications, activity streams)
+    - custom UI patterns where shadcn primitives are available but not yet adopted consistently (tabs/command/popover/table/sonner patterns)
+- Confirmed styling/accessibility/responsive debt:
+    - high concentration of fixed pixel utility usage in critical screens
+    - dialog/modal overflow logic still fragile in large content views
+    - semantic and keyboard patterns are inconsistent across complex interactive components
+- No structural refactor was applied in this audit step.
+- Next step: execute prioritized cleanup phases after explicit approval.
+
+## 2026-02-11 (Admin Tickets UX Hardening: Auto-Sync + Editor + Dialog Scroll)
+
+- Hardened ticket detail editing to auto-sync by default:
+    - removed manual “Save Changes” action from ticket detail
+    - debounced auto-sync now persists title/type/importance/assignee/description edits
+    - internal notes now auto-sync with the same flow
+    - added persistent in-modal sync state indicator (`pending`, `syncing`, `saved`, `error`)
+- Improved ticket create/edit error feedback:
+    - request error parser now surfaces backend validation messages
+    - create and detail forms now render field-level validation feedback
+    - field-level errors clear as users edit related inputs
+- Hardened ticket description editor interaction quality:
+    - active formatting state is now visible for bold/italic/underline/list controls
+    - heading control now supports explicit heading level selection
+    - slash commands added for quick formatting (`/h1`, `/h2`, `/h3`, `/paragraph`, `/bullet`, `/bold`, `/italic`, `/underline`)
+    - list and heading output now renders with visible typography/list styling
+    - editor height is constrained to prevent modal growth beyond viewport
+- Fixed ticket detail audit trail scroll behavior:
+    - dialog content now uses a constrained viewport-aware layout
+    - audit list switched to proper `min-h-0 flex-1 overflow-y-auto` structure
+    - audit metadata payload preview now has max-height caps to avoid overflow lockups
+- Updated shared dialog primitive default sizing:
+    - wider default max-width for shadcn dialog content to reduce content clipping in complex admin modals
+- Documented dialog implementation guardrails in `docs/DESIGN_SYSTEM.md`:
+    - required semantic structure
+    - required scroll-container pattern for overflow-safe dialog layouts
+
+## 2026-02-10 (Admin Tickets Board + Archive + Mentions + Realtime Notifications)
+
+- Implemented new admin-only Tickets module (`/admin/tickets`) with strict impersonation blocking:
+    - middleware alias added: `not_impersonating`
+    - admin web/API ticket routes now require `admin` + `not_impersonating`
+    - sidebar now includes admin `Tickets` icon entry
+- Added tickets domain schema + models:
+    - tables: `tickets`, `ticket_internal_notes`, `ticket_comments`, `ticket_attachments`, `ticket_mentions`, `ticket_audit_logs`, `admin_settings`
+    - Laravel notifications table added for in-app admin mentions
+    - enums: `TicketStatus`, `TicketType`, `TicketImportance`
+    - model relationships and casts wired for explicit, typed domain behavior
+- Added ticket policy + service layer:
+    - `TicketPolicy` (admin-only, blocked while impersonating)
+    - `TicketArchiveDelayResolver` (config + persisted admin setting fallback)
+    - `TicketAuditLogger` (explicit audit event persistence)
+    - `TicketMentionService` (mention sync + database notifications + realtime push)
+    - reusable upload service: `FileUploadService`
+- Implemented admin ticket APIs:
+    - board/archived listing + filtering + sorting + pagination
+    - create/update/delete ticket
+    - status move endpoint (kanban drag target)
+    - attachment upload/download/remove
+    - private internal note upsert/delete (per-admin scoped)
+    - audit log fetch endpoint
+    - admin notification endpoints (list, mark seen, mark all seen)
+    - `/user` helper endpoint for athlete/coach lookup (top-3 search)
+- Added realtime events over Reverb:
+    - `TicketUpdated` (board refresh signal)
+    - `AdminNotificationCreated` (mention notification push)
+- Added delayed-archive job + scheduler:
+    - job: `ArchiveDoneTicketsJob`
+    - schedule: every 5 minutes
+    - archives `done` tickets older than configured delay
+    - writes explicit archive audit events
+- Added admin tickets UI (Inertia + React):
+    - Board tab with 4 columns: `Todo`, `In Progress`, `To Review`, `Done`
+    - drag/drop status transitions
+    - ticket create dialog
+    - ticket detail dialog:
+        - editable title/type/importance/assignee/description
+        - attachments section
+        - private internal notes section
+        - audit trail tab
+    - Archived tab with header-click sorting + pagination
+    - filtering by assignee/creator/type/importance + global search
+    - archive delay setting control wired to backend
+- Added global admin notification bell in app layout:
+    - unread badge
+    - realtime mention updates
+    - mark seen / mark all seen actions
+- Hardened existing request activity logger:
+    - safe serialization for uploaded file payloads to prevent JSON encoding failures in production paths
+- Added targeted tests:
+    - `tests/Feature/AdminTicketsTest.php`
+    - coverage includes authorization, impersonation blocking, mentions → notifications, internal-note privacy search, delayed archive behavior, and attachment auth flow
+- Verification completed:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php tests/Feature/AdminImpersonationTest.php tests/Feature/AdminUserManagementTest.php tests/Feature/NavigationShellPagesTest.php`
+
 ## 2026-02-10 (Coach Registration Upload Guardrails + S3-Ready Storage)
 
 - Hardened coach certification upload UX on register flow:
@@ -969,3 +1852,73 @@ Next milestone:
 
 Next milestone:
 → Add provider operational hardening phase: webhook subscription lifecycle management + background worker deployment guidance + scheduled sync orchestration (no metrics derivation yet).
+
+- Admin tickets UX hardening pass completed:
+    - notification bell moved into integrated admin layout chrome (no floating corner placement)
+    - archive delay control moved out of tickets page to dedicated admin settings page (`/admin/settings`)
+    - tickets page now uses debounced auto-apply filters (removed manual “Apply Filters” action)
+    - all ticket selects now use the shadcn `Select` primitives (themed to Endure dark system)
+    - new ticket flow upgraded:
+        - type picker as interactive badges
+        - importance slider interaction
+        - assignee text input with avatar suggestions
+    - ticket description upgraded from plain textarea to lightweight WYSIWYG editor:
+        - bold / heading / underline / bullet list controls
+        - `@admin` mention insertion
+        - `/user` reference insertion with dropdown anchored to typing position
+        - inserted mention/user references render as clickable badges
+    - ticket opening bug fixed by normalizing resource JSON payload shape (`{ data: ... }` vs flat object) for show/create/update flows
+- Validation completed for this pass:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php tests/Feature/AdminImpersonationTest.php` (19 passed)
+
+- Wave C frontend decomposition + ShadCN alignment slice (tickets/session editor):
+    - added reusable ShadCN primitive wrappers:
+        - `command`
+        - `popover`
+        - `tabs`
+        - `table`
+        - `scroll-area`
+    - added reusable ticket UI modules:
+        - `components/ticket-assignee-combobox.tsx` (`Popover + Command`, keyboard-safe assignee selection)
+        - `components/ticket-ui.tsx` (shared badges/labels/table header controls/search highlighting)
+        - `lib/ticket-utils.ts` (payload parsing/serialization + formatting + request error helpers)
+    - refactored `admin/tickets/index.tsx` to consume shared ticket modules (reduced inline helper surface and removed custom assignee dropdown implementation)
+    - stabilized TipTap editor integration:
+        - corrected editor attribute typing for current TipTap API
+        - corrected `setContent` options typing
+        - fixed suggestion state typing to keep mention command menu behavior intact
+    - standardized session editor modal structure:
+        - fixed missing `Tabs` closure after tab migration
+        - modal remains viewport-safe with dialog size contract
+    - converted remaining hardcoded pixel text sizes in session editor to rem-based equivalents in touched areas
+- Validation completed for this Wave C slice:
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types`
+    - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php` (6 passed)
+
+- Dynamic subscription feature matrix (Pennant-based) implemented:
+    - added config catalog: `config/subscription-features.php`
+    - added DB override table/model: `subscription_feature_entitlements` / `SubscriptionFeatureEntitlement`
+    - added resolver + cache layer: `App\Services\Entitlements\SubscriptionFeatureMatrixService`
+    - registered runtime feature checks through Pennant in `AppServiceProvider`
+    - added admin API management:
+        - `GET /api/admin/entitlements/subscription-features`
+        - `PATCH /api/admin/entitlements/subscription-features`
+        - `POST /api/admin/entitlements/subscription-features/reset`
+    - extended admin settings with `Feature Matrix` tab and autosave
+    - added shared `feature_access` map to Inertia props for frontend gating
+    - enforcement wired for:
+        - ATP read/edit
+        - progress extended-range options and chart visibility
+        - activity streams API
+        - workout library API
+        - structured workout payload guard in session create/update
+        - free-athlete calendar/progress history clamp via `HistoryWindowLimiter`
+    - session detail stream panel now handles feature-lock 403 with an in-context lock card
+- Validation completed for this wave:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail artisan test --compact tests/Unit/SubscriptionFeatureMatrixServiceTest.php tests/Feature/Api/Admin/SubscriptionFeatureEntitlementApiTest.php tests/Feature/SubscriptionFeatureEnforcementTest.php tests/Feature/AdminSettingsPageTest.php` (13 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types` remains failing on existing UUID/public-id Wayfinder TS migration backlog outside this wave

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Goal;
 use App\Models\TrainingSession;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
@@ -53,4 +54,24 @@ test('dashboard includes plan-less sessions in calendar payload', function () {
             ->where('trainingSessions.data.0.training_week_id', null)
             ->where('trainingSessions.data.0.scheduled_date', '2026-08-05')
             ->where('trainingSessions.data.0.sport', 'run'));
+});
+
+test('dashboard includes goals in calendar payload window', function () {
+    $athlete = User::factory()->athlete()->create();
+    Goal::factory()->for($athlete)->create([
+        'title' => 'Spring target',
+        'target_date' => '2026-05-10',
+    ]);
+
+    $this
+        ->actingAs($athlete)
+        ->get(route('dashboard', [
+            'starts_from' => '2026-05-01',
+            'ends_to' => '2026-05-31',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('dashboard')
+            ->where('goals.data.0.title', 'Spring target')
+            ->where('goals.data.0.target_date', '2026-05-10'));
 });

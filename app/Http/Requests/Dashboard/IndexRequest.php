@@ -25,6 +25,7 @@ class IndexRequest extends FormRequest
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'starts_from' => ['nullable', 'date'],
             'ends_to' => ['nullable', 'date', 'after_or_equal:starts_from'],
+            'week' => ['nullable', 'date'],
         ];
     }
 }

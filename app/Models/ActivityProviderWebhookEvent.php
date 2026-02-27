@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesDualUuidIdentity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ActivityProviderWebhookEvent extends Model
 {
     use HasFactory;
+    use UsesDualUuidIdentity;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'uuid_id',
+        'public_id',
         'provider',
         'external_event_id',
         'object_type',

@@ -37,6 +37,7 @@ it('allows athletes to create update and delete their own sessions', function ()
             'training_week_id' => $week->id,
             'date' => '2026-07-03',
             'sport' => 'run',
+            'title' => 'Easy Run',
             'planned_duration_minutes' => 90,
             'planned_tss' => 65,
             'notes' => 'Endurance run',
@@ -59,21 +60,27 @@ it('allows athletes to create update and delete their own sessions', function ()
         ]);
 
     $created->assertCreated()
-        ->assertJsonPath('data.training_week_id', $week->id)
+        ->assertJsonPath('data.training_week_id', $week->getRouteKey())
         ->assertJsonPath('data.scheduled_date', '2026-07-03')
+        ->assertJsonPath('data.title', 'Easy Run')
         ->assertJsonPath('data.duration_minutes', 90)
         ->assertJsonPath('data.planned_tss', 65)
         ->assertJsonPath('data.status', 'planned')
         ->assertJsonPath('data.planned_structure.unit', 'threshold_hr_percent');
 
-    $sessionId = $created->json('data.id');
+    $sessionRouteKey = $created->json('data.id');
+    $createdSession = TrainingSession::query()
+        ->where('public_id', $sessionRouteKey)
+        ->orWhere('id', $sessionRouteKey)
+        ->firstOrFail();
 
     $this->assertDatabaseHas('training_sessions', [
-        'id' => $sessionId,
+        'id' => $createdSession->id,
         'user_id' => $athlete->id,
         'training_week_id' => $week->id,
         'scheduled_date' => '2026-07-03',
         'sport' => 'run',
+        'title' => 'Easy Run',
         'duration_minutes' => 90,
         'planned_tss' => 65,
         'notes' => 'Endurance run',
@@ -82,10 +89,11 @@ it('allows athletes to create update and delete their own sessions', function ()
 
     $this
         ->actingAs($athlete)
-        ->putJson("/api/training-sessions/{$sessionId}", [
+        ->putJson("/api/training-sessions/{$sessionRouteKey}", [
             'training_week_id' => $week->id,
             'date' => '2026-07-04',
             'sport' => 'bike',
+            'title' => 'Tempo Ride',
             'planned_duration_minutes' => 120,
             'planned_tss' => 80,
             'notes' => 'Long aerobic ride',
@@ -109,6 +117,7 @@ it('allows athletes to create update and delete their own sessions', function ()
         ->assertOk()
         ->assertJsonPath('data.scheduled_date', '2026-07-04')
         ->assertJsonPath('data.sport', 'bike')
+        ->assertJsonPath('data.title', 'Tempo Ride')
         ->assertJsonPath('data.duration_minutes', 120)
         ->assertJsonPath('data.planned_tss', 80)
         ->assertJsonPath('data.notes', 'Long aerobic ride')
@@ -116,7 +125,7 @@ it('allows athletes to create update and delete their own sessions', function ()
 
     $this
         ->actingAs($athlete)
-        ->putJson("/api/training-sessions/{$sessionId}", [
+        ->putJson("/api/training-sessions/{$sessionRouteKey}", [
             'training_week_id' => null,
             'date' => '2026-07-05',
             'sport' => 'run',
@@ -126,22 +135,24 @@ it('allows athletes to create update and delete their own sessions', function ()
         ])
         ->assertOk()
         ->assertJsonPath('data.training_week_id', null)
-        ->assertJsonPath('data.scheduled_date', '2026-07-05');
+        ->assertJsonPath('data.scheduled_date', '2026-07-05')
+        ->assertJsonPath('data.title', 'Tempo Ride');
 
     $this->assertDatabaseHas('training_sessions', [
-        'id' => $sessionId,
+        'id' => $createdSession->id,
         'user_id' => $athlete->id,
         'training_week_id' => null,
         'scheduled_date' => '2026-07-05',
+        'title' => 'Tempo Ride',
     ]);
 
     $this
         ->actingAs($athlete)
-        ->deleteJson("/api/training-sessions/{$sessionId}")
+        ->deleteJson("/api/training-sessions/{$sessionRouteKey}")
         ->assertNoContent();
 
     $this->assertDatabaseMissing('training_sessions', [
-        'id' => $sessionId,
+        'id' => $createdSession->id,
     ]);
 });
 
@@ -164,8 +175,14 @@ it('allows athletes to create sessions without assigning a training week', funct
         ->assertJsonPath('data.scheduled_date', '2026-07-05')
         ->assertJsonPath('data.duration_minutes', 50);
 
+    $standaloneRouteKey = $created->json('data.id');
+    $standaloneSession = TrainingSession::query()
+        ->where('public_id', $standaloneRouteKey)
+        ->orWhere('id', $standaloneRouteKey)
+        ->firstOrFail();
+
     $this->assertDatabaseHas('training_sessions', [
-        'id' => $created->json('data.id'),
+        'id' => $standaloneSession->id,
         'user_id' => $athlete->id,
         'training_week_id' => null,
         'scheduled_date' => '2026-07-05',

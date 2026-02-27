@@ -6,19 +6,31 @@ use App\Data\Collections\ActivityCollection;
 use App\Data\ExternalActivityDTO;
 use App\Models\Activity;
 use App\Models\User;
+use App\Support\Ids\BlindIndex;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class ExternalActivityPersister
 {
+    public function __construct(
+        private readonly BlindIndex $blindIndex,
+    ) {}
+
     public function persist(User $athlete, ExternalActivityDTO $activity): Activity
     {
+        $externalIdBlindIndex = $this->blindIndex->forExternalActivityId(
+            $athlete->id,
+            $activity->provider,
+            $activity->external_id,
+        );
+
         $attributes = [
             'athlete_id' => $athlete->id,
             'provider' => $activity->provider,
-            'external_id' => $activity->external_id,
+            'external_id_bidx' => $externalIdBlindIndex,
         ];
 
         $values = [
+            'external_id' => $activity->external_id,
             'sport' => $activity->sport,
             'started_at' => $activity->started_at,
             'duration_seconds' => $activity->duration_seconds,
