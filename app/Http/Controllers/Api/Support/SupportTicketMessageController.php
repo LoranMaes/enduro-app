@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Tickets\SupportTicketService;
 use Illuminate\Http\JsonResponse;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 class SupportTicketMessageController extends Controller
@@ -23,6 +24,11 @@ class SupportTicketMessageController extends Controller
     ): JsonResponse {
         $author = $request->user();
         abort_unless($author instanceof User, 403);
+        abort_unless(
+            Feature::for($author)->active('support.tickets'),
+            Response::HTTP_FORBIDDEN,
+            'Support requires an active subscription.',
+        );
 
         $this->authorize('createSupportMessage', $ticket);
 

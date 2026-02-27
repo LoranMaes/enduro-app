@@ -29,6 +29,13 @@ class WorkoutLibraryService
             ->get();
     }
 
+    public function countForUser(User $user): int
+    {
+        return WorkoutLibraryItem::query()
+            ->where('user_id', $user->id)
+            ->count();
+    }
+
     /**
      * @param  array{
      *     title: string,

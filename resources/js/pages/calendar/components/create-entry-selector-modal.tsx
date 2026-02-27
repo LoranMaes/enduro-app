@@ -47,6 +47,8 @@ export function CreateEntrySelectorModal({
     onSelectOther,
 }: CreateEntrySelectorModalProps) {
     const [activeTab, setActiveTab] = useState<'workout' | 'other'>('workout');
+    const unlockedWorkoutOptions = workoutOptions.filter((option) => !option.locked);
+    const lockedWorkoutOptions = workoutOptions.filter((option) => option.locked);
 
     useEffect(() => {
         if (!open) {
@@ -91,43 +93,72 @@ export function CreateEntrySelectorModal({
                     </Tabs>
 
                     {activeTab === 'workout' ? (
-                        <div className="grid grid-cols-2 gap-2">
-                            {workoutOptions.map((option) => {
-                                const OptionIcon = option.icon;
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                                {unlockedWorkoutOptions.map((option) => {
+                                    const OptionIcon = option.icon;
 
-                                return (
-                                <button
-                                    key={option.sport}
-                                    type="button"
-                                    disabled={option.locked}
-                                    onClick={() => {
-                                        if (option.locked) {
-                                            return;
-                                        }
+                                    return (
+                                        <button
+                                            key={option.sport}
+                                            type="button"
+                                            disabled={option.locked}
+                                            onClick={() => {
+                                                if (option.locked) {
+                                                    return;
+                                                }
 
-                                        onSelectWorkout(option.sport);
-                                    }}
-                                    className={cn(
-                                        'rounded-md border border-border bg-background/60 px-3 py-2.5 text-left text-xs text-zinc-200 transition-colors',
-                                        option.locked
-                                            ? 'cursor-not-allowed opacity-65'
-                                            : 'hover:border-zinc-600 hover:bg-background',
-                                    )}
-                                >
-                                    <span className="flex items-center justify-between gap-2">
-                                        <span className="flex items-center gap-2">
-                                            <OptionIcon className="h-3.5 w-3.5 text-zinc-400" />
-                                            <span>{option.label}</span>
-                                        </span>
-                                        {option.locked ? (
-                                            <Badge variant="outline" className="text-[0.625rem]">
-                                                Locked
-                                            </Badge>
-                                        ) : null}
-                                    </span>
-                                </button>
-                                );
-                            })}
+                                                onSelectWorkout(option.sport);
+                                            }}
+                                            className={cn(
+                                                'rounded-md border border-border bg-background/60 px-3 py-2.5 text-left text-xs text-zinc-200 transition-colors',
+                                                option.locked
+                                                    ? 'cursor-not-allowed opacity-65'
+                                                    : 'hover:border-zinc-600 hover:bg-background',
+                                            )}
+                                        >
+                                            <span className="flex items-center justify-between gap-2">
+                                                <span className="flex items-center gap-2">
+                                                    <OptionIcon className="h-3.5 w-3.5 text-zinc-400" />
+                                                    <span>{option.label}</span>
+                                                </span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {lockedWorkoutOptions.length > 0 ? (
+                                <div className="space-y-2 rounded-md border border-border/70 bg-background/30 p-2.5">
+                                    <p className="text-[0.6875rem] tracking-wide text-zinc-500 uppercase">
+                                        Only for paid athletes
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {lockedWorkoutOptions.map((option) => {
+                                            const OptionIcon = option.icon;
+
+                                            return (
+                                                <button
+                                                    key={option.sport}
+                                                    type="button"
+                                                    disabled
+                                                    className="cursor-not-allowed rounded-md border border-border bg-background/50 px-3 py-2.5 text-left text-xs text-zinc-300 opacity-75"
+                                                >
+                                                    <span className="flex items-center justify-between gap-2">
+                                                        <span className="flex items-center gap-2">
+                                                            <OptionIcon className="h-3.5 w-3.5 text-zinc-500" />
+                                                            <span>{option.label}</span>
+                                                        </span>
+                                                        <Badge variant="outline" className="text-[0.625rem]">
+                                                            Locked
+                                                        </Badge>
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     ) : (
                         <div className="space-y-2">

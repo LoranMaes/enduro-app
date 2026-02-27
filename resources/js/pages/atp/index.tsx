@@ -12,6 +12,7 @@ export default function AtpIndex({
     plan,
     weekTypeOptions,
     priorityOptions,
+    isLocked,
 }: AtpInertiaPageProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -29,6 +30,7 @@ export default function AtpIndex({
                 plan={plan}
                 weekTypeOptions={weekTypeOptions}
                 priorityOptions={priorityOptions}
+                isLocked={isLocked}
             />
         </AppLayout>
     );

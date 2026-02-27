@@ -457,3 +457,33 @@ LOCKED for MVP
     - approve/reject with review notes
     - one-at-a-time file preview with navigation controls
 - Admin dashboard now includes pending coach-application visibility for faster triage.
+
+## Subscription Matrix State (Pennant)
+
+- Dynamic subscription feature gating is now active through Laravel Pennant with config+DB matrix resolution.
+- Source of truth:
+    - definitions: `config/subscription-features.php`
+    - overrides: `subscription_feature_entitlements`
+    - resolver: `App\Services\Entitlements\SubscriptionFeatureMatrixService`
+- User segments:
+    - `athlete_free`
+    - `athlete_paid`
+    - `coach_paid` (coaches treated as paid for this wave)
+- Admin management:
+    - matrix controls are in existing `/admin/settings` under `Feature Matrix` tab
+    - autosave updates both workout-type entitlements and subscription-feature overrides
+    - row source is visible (`Config default` vs `Customized`)
+- Active gated surfaces:
+    - ATP read/edit
+    - progress extended ranges
+    - progress chart visibility (`load_trend`, `performance_management`)
+    - workout library API
+    - activity streams API
+    - structured workout payload writes
+    - free-athlete historical window clamp (8 weeks)
+- Frontend integration:
+    - `feature_access` shared prop map exposed through Inertia middleware
+    - lock-state UI now shown with upgrade CTA instead of hard-hidden sections in key athlete surfaces
+- Compatibility notes:
+    - entry-type entitlement system remains separate and unchanged for workout/other entry-type gating
+    - existing UUID/public-id TypeScript migration backlog is still present in unrelated files and can fail global `npm run types`

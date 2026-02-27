@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AnnualTrainingPlan\AthleteAnnualTrainingPlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 class AtpController extends Controller
@@ -22,6 +23,8 @@ class AtpController extends Controller
         if (! $user instanceof User || ! $user->isAthlete()) {
             abort(Response::HTTP_FORBIDDEN);
         }
+
+        abort_unless(Feature::for($user)->active('atp.read'), Response::HTTP_FORBIDDEN);
 
         if ($year < 2000 || $year > 2100) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'The selected year is invalid.');

@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Save } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Activity, Bike, Droplets, Footprints, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Sheet,
     SheetContent,
@@ -9,7 +16,6 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
     index as listWorkoutLibraryItems,
     store as storeWorkoutLibraryItem,
@@ -24,6 +30,7 @@ import { WorkoutLibraryList, type WorkoutLibraryItemView } from './WorkoutLibrar
 type WorkoutLibraryDialogProps = {
     open: boolean;
     trainingTargets: AthleteTrainingTargets | null;
+    workoutTemplateLimit: number | null;
     onOpenChange: (open: boolean) => void;
     onTemplateDragStart: (
         item: WorkoutLibraryItemView,
@@ -34,20 +41,29 @@ type WorkoutLibraryDialogProps = {
 };
 
 type PanelSport = WorkoutEntrySport;
+type ApiErrorPayload = {
+    message?: string;
+    errors?: Record<string, string[]>;
+};
 
-const SPORT_OPTIONS: Array<{ sport: PanelSport; label: string }> = [
-    { sport: 'run', label: 'Run' },
-    { sport: 'bike', label: 'Bike' },
-    { sport: 'swim', label: 'Swim' },
-    { sport: 'walk', label: 'Walk' },
-    { sport: 'mtn_bike', label: 'MTB' },
-    { sport: 'day_off', label: 'Day Off' },
-    { sport: 'custom', label: 'Custom' },
+const SPORT_OPTIONS: Array<{
+    sport: PanelSport;
+    label: string;
+    icon: typeof Activity;
+}> = [
+    { sport: 'run', label: 'Run', icon: Footprints },
+    { sport: 'bike', label: 'Bike', icon: Bike },
+    { sport: 'swim', label: 'Swim', icon: Droplets },
+    { sport: 'walk', label: 'Walk', icon: Footprints },
+    { sport: 'mtn_bike', label: 'MTB', icon: Bike },
+    { sport: 'day_off', label: 'Day Off', icon: Activity },
+    { sport: 'custom', label: 'Custom', icon: Activity },
 ];
 
 export function WorkoutLibraryDialog({
     open,
     trainingTargets,
+    workoutTemplateLimit,
     onOpenChange,
     onTemplateDragStart,
     onTemplateDragEnd,
@@ -65,10 +81,16 @@ export function WorkoutLibraryDialog({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isDraggingTemplate, setIsDraggingTemplate] = useState(false);
     const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+    const [totalTemplateCount, setTotalTemplateCount] = useState(0);
+    const saveRequestInFlight = useRef(false);
+
+    const activeSportOption = useMemo(() => {
+        return SPORT_OPTIONS.find((option) => option.sport === activeSport) ?? null;
+    }, [activeSport]);
 
     const activeSportLabel = useMemo(() => {
-        return SPORT_OPTIONS.find((option) => option.sport === activeSport)?.label ?? 'Workout';
-    }, [activeSport]);
+        return activeSportOption?.label ?? 'Workout';
+    }, [activeSportOption]);
 
     const resetTemplateDraft = useCallback((sport: PanelSport): void => {
         setTemplateTitle('');
@@ -101,11 +123,24 @@ export function WorkoutLibraryDialog({
                 throw new Error('Unable to load workout templates.');
             }
 
-            const payload = (await response.json()) as { data?: WorkoutLibraryItemView[] };
+            const payload = (await response.json()) as {
+                data?: WorkoutLibraryItemView[];
+                meta?: {
+                    total_count?: number;
+                };
+            };
             setItems(Array.isArray(payload.data) ? payload.data : []);
+            setTotalTemplateCount(
+                typeof payload.meta?.total_count === 'number'
+                    ? payload.meta.total_count
+                    : Array.isArray(payload.data)
+                      ? payload.data.length
+                      : 0,
+            );
             setErrorMessage(null);
         } catch {
             setItems([]);
+            setTotalTemplateCount(0);
             setErrorMessage('Unable to load workout templates.');
         } finally {
             setLoadingItems(false);
@@ -136,7 +171,7 @@ export function WorkoutLibraryDialog({
     }, [isCreatingTemplate, onPanelModeChange]);
 
     const saveTemplate = useCallback(async (): Promise<void> => {
-        if (templateStructure === null || isSavingTemplate) {
+        if (templateStructure === null || saveRequestInFlight.current) {
             return;
         }
 
@@ -147,6 +182,7 @@ export function WorkoutLibraryDialog({
             return;
         }
 
+        saveRequestInFlight.current = true;
         setIsSavingTemplate(true);
 
         try {
@@ -174,7 +210,29 @@ export function WorkoutLibraryDialog({
             });
 
             if (!response.ok) {
-                setErrorMessage('Unable to save workout template.');
+                let nextError = 'Unable to save workout template.';
+
+                try {
+                    const payload = (await response.json()) as ApiErrorPayload;
+                    const workoutLibraryErrors = payload.errors?.workout_library;
+
+                    if (
+                        Array.isArray(workoutLibraryErrors) &&
+                        workoutLibraryErrors.length > 0 &&
+                        typeof workoutLibraryErrors[0] === 'string'
+                    ) {
+                        nextError = workoutLibraryErrors[0];
+                    } else if (
+                        typeof payload.message === 'string' &&
+                        payload.message.trim() !== ''
+                    ) {
+                        nextError = payload.message;
+                    }
+                } catch {
+                    nextError = 'Unable to save workout template.';
+                }
+
+                setErrorMessage(nextError);
                 return;
             }
 
@@ -185,17 +243,24 @@ export function WorkoutLibraryDialog({
         } catch {
             setErrorMessage('Unable to save workout template.');
         } finally {
+            saveRequestInFlight.current = false;
             setIsSavingTemplate(false);
         }
     }, [
         activeSport,
-        isSavingTemplate,
         loadItems,
         resetTemplateDraft,
         templateStructure,
         templateTitle,
         editingTemplateId,
     ]);
+
+    const hasTemplateLimit = typeof workoutTemplateLimit === 'number' && workoutTemplateLimit > 0;
+    const remainingTemplates =
+        hasTemplateLimit && workoutTemplateLimit !== null
+            ? Math.max(workoutTemplateLimit - totalTemplateCount, 0)
+            : null;
+    const isTemplateLimitReached = hasTemplateLimit && remainingTemplates === 0;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
@@ -219,19 +284,27 @@ export function WorkoutLibraryDialog({
                 </SheetHeader>
 
                 <div className="flex min-h-0 h-full flex-col px-5 py-4">
+                    {hasTemplateLimit && workoutTemplateLimit !== null ? (
+                        <p
+                            className={`mb-3 rounded-md border px-3 py-2 text-xs ${
+                                isTemplateLimitReached
+                                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                                    : 'border-border/80 bg-background/60 text-zinc-300'
+                            }`}
+                        >
+                            Templates used: {totalTemplateCount} / {workoutTemplateLimit}
+                            {isTemplateLimitReached
+                                ? ' (limit reached)'
+                                : remainingTemplates === 1
+                                  ? ' (1 slot left)'
+                                  : ` (${remainingTemplates} slots left)`}
+                        </p>
+                    ) : null}
+
                     <div className="mb-4 flex items-center justify-between gap-3">
-                        <ToggleGroup
-                            type="single"
+                        <Select
                             value={activeSport}
                             onValueChange={(value) => {
-                                if (value === '') {
-                                    return;
-                                }
-
-                                if (value === activeSport) {
-                                    return;
-                                }
-
                                 const nextSport = SPORT_OPTIONS.find(
                                     (option) => option.sport === value,
                                 );
@@ -242,20 +315,29 @@ export function WorkoutLibraryDialog({
 
                                 setActiveSport(nextSport.sport);
                             }}
-                            variant="outline"
-                            size="sm"
-                            className="flex flex-wrap items-center justify-start gap-1 rounded-lg border border-border bg-background/60 p-1"
                         >
-                            {SPORT_OPTIONS.map((option) => (
-                                <ToggleGroupItem
-                                    key={option.sport}
-                                    value={option.sport}
-                                    className="h-7 rounded-md border border-transparent px-2 text-xs text-zinc-400 hover:text-zinc-200 data-[state=on]:border-border data-[state=on]:bg-zinc-800 data-[state=on]:text-zinc-100"
-                                >
-                                    {option.label}
-                                </ToggleGroupItem>
-                            ))}
-                        </ToggleGroup>
+                            <SelectTrigger className="h-9 w-44 border-border bg-background/60 text-xs text-zinc-200">
+                                <SelectValue placeholder="Select sport" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {SPORT_OPTIONS.map((option) => {
+                                    const OptionIcon = option.icon;
+
+                                    return (
+                                        <SelectItem
+                                            key={option.sport}
+                                            value={option.sport}
+                                            className="text-xs"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <OptionIcon className="h-3.5 w-3.5 text-zinc-400" />
+                                                <span>{option.label}</span>
+                                            </span>
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
 
                         <Button
                             type="button"

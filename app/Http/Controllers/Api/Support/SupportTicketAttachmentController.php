@@ -12,6 +12,7 @@ use App\Services\Tickets\SupportTicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SupportTicketAttachmentController extends Controller
@@ -26,6 +27,11 @@ class SupportTicketAttachmentController extends Controller
     ): JsonResponse {
         $author = $request->user();
         abort_unless($author instanceof User, 403);
+        abort_unless(
+            Feature::for($author)->active('support.tickets'),
+            403,
+            'Support requires an active subscription.',
+        );
         $file = $request->file('file');
         abort_unless($file !== null, 422);
 
@@ -49,6 +55,13 @@ class SupportTicketAttachmentController extends Controller
         Ticket $ticket,
         TicketAttachment $ticketAttachment,
     ): StreamedResponse {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        abort_unless(
+            Feature::for($user)->active('support.tickets'),
+            403,
+            'Support requires an active subscription.',
+        );
         $this->authorize('viewSupport', $ticket);
         abort_unless($ticketAttachment->ticket_id === $ticket->id, 404);
 

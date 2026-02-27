@@ -19,12 +19,14 @@ use App\Services\Progress\ComplianceService;
 use App\Support\QueryScopes\TrainingScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Laravel\Pennant\Feature;
 
 class AthleteCalendarPayloadService
 {
     public function __construct(
         private readonly TrainingSessionActualMetricsResolver $actualMetricsResolver,
         private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
+        private readonly HistoryWindowLimiter $historyWindowLimiter,
         private readonly ComplianceService $complianceService,
     ) {}
 
@@ -40,6 +42,7 @@ class AthleteCalendarPayloadService
      *     providerStatus: array<string, array{connected: bool, last_synced_at: string|null, last_sync_status: string|null, provider_athlete_id: string|null}>|null,
      *     entryTypeEntitlements: array<int, array{key: string, category: string, label: string, requires_subscription: bool}>,
      *     isSubscribed: bool,
+     *     featureAccess: array<string, bool>,
      *     compliance: array{
      *         weeks: array<int, array{
      *             week_starts_at: string,
@@ -73,7 +76,8 @@ class AthleteCalendarPayloadService
     public function build(User $authenticatedUser, array $validated = [], ?User $athlete = null): array
     {
         $perPage = (int) ($validated['per_page'] ?? 20);
-        $calendarWindow = $this->resolveCalendarWindow($validated);
+        $windowSubject = $athlete ?? $authenticatedUser;
+        $calendarWindow = $this->resolveCalendarWindow($validated, $windowSubject);
 
         $plans = $this->queryPlans($authenticatedUser, $athlete)
             ->when(
@@ -182,6 +186,9 @@ class AthleteCalendarPayloadService
             'providerStatus' => $this->resolveProviderStatus($athleteSettingsSubject),
             'entryTypeEntitlements' => $this->entryTypeEntitlementService->resolvedDefinitions(),
             'isSubscribed' => (bool) ($athleteSettingsSubject?->is_subscribed ?? false),
+            'featureAccess' => $this->resolveFeatureAccess(
+                $athleteSettingsSubject instanceof User ? $athleteSettingsSubject : $authenticatedUser,
+            ),
             'compliance' => $complianceSubject instanceof User
                 ? $this->complianceService->resolve(
                     $complianceSubject,
@@ -197,7 +204,7 @@ class AthleteCalendarPayloadService
      * @param  array<string, mixed>  $validated
      * @return array{starts_at: string, ends_at: string}
      */
-    private function resolveCalendarWindow(array $validated): array
+    private function resolveCalendarWindow(array $validated, User $subject): array
     {
         $anchorDate = isset($validated['week'])
             ? CarbonImmutable::parse((string) $validated['week'])
@@ -211,10 +218,44 @@ class AthleteCalendarPayloadService
             ->addWeeks(4)
             ->toDateString();
 
+        $startsAt = (string) ($validated['starts_from'] ?? $defaultStartsAt);
+        $endsAt = (string) ($validated['ends_to'] ?? $defaultEndsAt);
+        $minimumAllowedStart = $this->historyWindowLimiter->minimumAllowedStart($subject);
+
+        if ($minimumAllowedStart !== null && CarbonImmutable::parse($startsAt)->lt($minimumAllowedStart)) {
+            $startsAt = $minimumAllowedStart->toDateString();
+        }
+
+        if (CarbonImmutable::parse($endsAt)->lt(CarbonImmutable::parse($startsAt))) {
+            $endsAt = CarbonImmutable::parse($startsAt)->endOfWeek()->toDateString();
+        }
+
         return [
-            'starts_at' => (string) ($validated['starts_from'] ?? $defaultStartsAt),
-            'ends_at' => (string) ($validated['ends_to'] ?? $defaultEndsAt),
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
         ];
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function resolveFeatureAccess(User $user): array
+    {
+        /** @var array<int, array{key: string}> $definitions */
+        $definitions = (array) config('subscription-features.definitions', []);
+        $featureAccess = [];
+
+        foreach ($definitions as $definition) {
+            $featureKey = strtolower(trim((string) ($definition['key'] ?? '')));
+
+            if ($featureKey === '') {
+                continue;
+            }
+
+            $featureAccess[$featureKey] = Feature::for($user)->active($featureKey);
+        }
+
+        return $featureAccess;
     }
 
     private function queryPlans(User $authenticatedUser, ?User $athlete): Builder

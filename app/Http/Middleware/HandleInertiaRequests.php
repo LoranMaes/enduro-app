@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\Entitlements\SubscriptionFeatureMatrixService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -48,6 +50,8 @@ class HandleInertiaRequests extends Middleware
                 'original_user' => $impersonationContext['original_user'],
                 'impersonated_user' => $impersonationContext['impersonated_user'],
             ],
+            'feature_access' => $this->resolveFeatureAccess($user),
+            'feature_limits' => $this->resolveFeatureLimits($user),
             'admin_notifications' => [
                 'unread_count' => $this->resolveAdminUnreadNotifications($user, $impersonationContext['impersonating']),
             ],
@@ -125,5 +129,58 @@ class HandleInertiaRequests extends Middleware
         }
 
         return $user->unreadNotifications()->count();
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function resolveFeatureAccess(?User $user): array
+    {
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        /** @var array<int, array{key: string}> $definitions */
+        $definitions = (array) config('subscription-features.definitions', []);
+        $featureFlags = [];
+
+        foreach ($definitions as $definition) {
+            $featureKey = strtolower(trim((string) ($definition['key'] ?? '')));
+
+            if ($featureKey === '') {
+                continue;
+            }
+
+            $featureFlags[$featureKey] = Feature::for($user)->active($featureKey);
+        }
+
+        return $featureFlags;
+    }
+
+    /**
+     * @return array<string, int|null>
+     */
+    private function resolveFeatureLimits(?User $user): array
+    {
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        /** @var array<int, array{key: string}> $definitions */
+        $definitions = (array) config('subscription-features.definitions', []);
+        $limits = [];
+        $matrixService = app(SubscriptionFeatureMatrixService::class);
+
+        foreach ($definitions as $definition) {
+            $featureKey = strtolower(trim((string) ($definition['key'] ?? '')));
+
+            if ($featureKey === '') {
+                continue;
+            }
+
+            $limits[$featureKey] = $matrixService->limitFor($user, $featureKey);
+        }
+
+        return $limits;
     }
 }

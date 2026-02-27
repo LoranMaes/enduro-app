@@ -40,4 +40,5 @@ export type AtpPageProps = {
     plan: AtpPlan;
     weekTypeOptions: string[];
     priorityOptions: string[];
+    isLocked: boolean;
 };

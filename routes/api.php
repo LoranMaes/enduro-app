@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\ActivityProviderSyncController;
 use App\Http\Controllers\Api\ActivityStreamController;
 use App\Http\Controllers\Api\Admin\EntryTypeEntitlementController;
+use App\Http\Controllers\Api\Admin\SubscriptionFeatureEntitlementController;
 use App\Http\Controllers\Api\Admin\TicketAttachmentController;
 use App\Http\Controllers\Api\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Api\Admin\TicketInternalNoteController;
@@ -125,6 +126,12 @@ Route::middleware([
             ->name('entitlements.entry-types.update');
         Route::post('entitlements/entry-types/reset', [EntryTypeEntitlementController::class, 'reset'])
             ->name('entitlements.entry-types.reset');
+        Route::get('entitlements/subscription-features', [SubscriptionFeatureEntitlementController::class, 'index'])
+            ->name('entitlements.subscription-features.index');
+        Route::patch('entitlements/subscription-features', [SubscriptionFeatureEntitlementController::class, 'update'])
+            ->name('entitlements.subscription-features.update');
+        Route::post('entitlements/subscription-features/reset', [SubscriptionFeatureEntitlementController::class, 'reset'])
+            ->name('entitlements.subscription-features.reset');
         Route::get('tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
         Route::post('tickets', [AdminTicketController::class, 'store'])->name('tickets.store');
         Route::get('tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');

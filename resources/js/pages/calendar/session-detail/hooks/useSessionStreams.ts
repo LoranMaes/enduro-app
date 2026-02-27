@@ -25,6 +25,7 @@ type UseSessionStreamsOptions = {
 type UseSessionStreamsResult = {
     streamData: StreamPayload | null;
     streamError: string | null;
+    isStreamLocked: boolean;
     isLoadingStreams: boolean;
     activeStreams: Record<string, boolean>;
     setActiveStreams: Dispatch<SetStateAction<Record<string, boolean>>>;
@@ -57,6 +58,7 @@ export function useSessionStreams({
 }: UseSessionStreamsOptions): UseSessionStreamsResult {
     const [streamData, setStreamData] = useState<StreamPayload | null>(null);
     const [streamError, setStreamError] = useState<string | null>(null);
+    const [isStreamLocked, setIsStreamLocked] = useState(false);
     const [isLoadingStreams, setIsLoadingStreams] = useState(false);
     const [activeStreams, setActiveStreams] = useState<Record<string, boolean>>(
         {},
@@ -72,6 +74,7 @@ export function useSessionStreams({
 
         setIsLoadingStreams(true);
         setStreamError(null);
+        setIsStreamLocked(false);
 
         const route = activityStreams(linkedActivityId);
 
@@ -85,6 +88,13 @@ export function useSessionStreams({
         })
             .then(async (response) => {
                 if (!response.ok) {
+                    if (response.status === 403) {
+                        setIsStreamLocked(true);
+                        throw new Error(
+                            'Activity streams require an active subscription.',
+                        );
+                    }
+
                     throw new Error('Unable to load activity streams.');
                 }
 
@@ -114,6 +124,7 @@ export function useSessionStreams({
                         ? 'distance'
                         : 'time',
                 );
+                setIsStreamLocked(false);
             })
             .catch((error: unknown) => {
                 if (abortController.signal.aborted) {
@@ -371,6 +382,7 @@ export function useSessionStreams({
     return {
         streamData,
         streamError,
+        isStreamLocked,
         isLoadingStreams,
         activeStreams,
         setActiveStreams,

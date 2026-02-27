@@ -13,7 +13,10 @@ it('requires authentication for progress page', function () {
 });
 
 it('allows athletes to view training progress derived from sessions', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     TrainingSession::factory()->create([
         'user_id' => $athlete->id,
@@ -62,7 +65,10 @@ it('forbids non-athletes from training progress page', function () {
 });
 
 it('uses linked activity payload TSS for actual trend when session actual_tss is missing', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $session = TrainingSession::factory()->create([
         'user_id' => $athlete->id,
@@ -95,7 +101,10 @@ it('uses linked activity payload TSS for actual trend when session actual_tss is
 });
 
 it('estimates actual tss from linked activity power and ftp when payload tss is missing', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     AthleteProfile::query()->create([
         'user_id' => $athlete->id,
@@ -135,7 +144,10 @@ it('estimates actual tss from linked activity power and ftp when payload tss is 
 });
 
 it('includes unlinked activities in weekly actual progress totals', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     Activity::factory()->create([
         'training_session_id' => null,
@@ -159,7 +171,10 @@ it('includes unlinked activities in weekly actual progress totals', function () 
 it('includes today snapshot and seeded trend weeks props', function () {
     CarbonImmutable::setTestNow('2026-03-18 09:00:00');
 
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
     $today = CarbonImmutable::today();
 
     TrainingSession::factory()->create([

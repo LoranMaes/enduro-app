@@ -13,14 +13,19 @@ beforeEach(function (): void {
 });
 
 it('allows athletes and coaches to access support while blocking admin context', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
     $coach = User::factory()->coach()->create();
     $admin = User::factory()->admin()->create();
 
     $this->actingAs($athlete)
         ->get('/support')
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('support/index'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('support/index')
+            ->where('isLocked', false));
 
     $this->actingAs($athlete)
         ->getJson('/api/support/tickets')
@@ -43,9 +48,30 @@ it('allows athletes and coaches to access support while blocking admin context',
         ->assertForbidden();
 });
 
+it('blocks free athletes from support page and support apis', function () {
+    $freeAthlete = User::factory()->athlete()->create([
+        'is_subscribed' => false,
+        'stripe_subscription_status' => null,
+    ]);
+
+    $this->actingAs($freeAthlete)
+        ->get('/support')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('support/index')
+            ->where('isLocked', true));
+
+    $this->actingAs($freeAthlete)
+        ->getJson('/api/support/tickets')
+        ->assertForbidden();
+});
+
 it('allows support access while impersonating an athlete', function () {
     $admin = User::factory()->admin()->create();
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $this->actingAs($admin)
         ->post("/admin/impersonate/{$athlete->id}")
@@ -53,14 +79,19 @@ it('allows support access while impersonating an athlete', function () {
 
     $this->get('/support')
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('support/index'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('support/index')
+            ->where('isLocked', false));
 
     $this->getJson('/api/support/tickets')
         ->assertOk();
 });
 
 it('creates support tickets with user source and reporter linkage', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $response = $this->actingAs($athlete)
         ->postJson('/api/support/tickets', [
@@ -69,6 +100,9 @@ it('creates support tickets with user source and reporter linkage', function () 
             'message' => 'My synced workout appears twice on the calendar.',
         ])
         ->assertCreated();
+
+    expect($response->json('messages'))->toBeArray();
+    expect($response->json('attachments'))->toBeArray();
 
     $ticketIdentifier = (string) $response->json('id');
     $ticket = Ticket::query()
@@ -92,8 +126,14 @@ it('creates support tickets with user source and reporter linkage', function () 
 it('enforces ownership on support ticket detail, messages, and attachments', function () {
     Storage::fake((string) config('tickets.attachments.disk', 'local'));
 
-    $owner = User::factory()->athlete()->create();
-    $other = User::factory()->athlete()->create();
+    $owner = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
+    $other = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $ticket = Ticket::query()->create([
         'title' => 'Owner ticket',
@@ -133,7 +173,10 @@ it('enforces ownership on support ticket detail, messages, and attachments', fun
 
 it('records first admin response timestamp when admin replies to user tickets', function () {
     $admin = User::factory()->admin()->create();
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $ticket = Ticket::query()->create([
         'title' => 'Need follow-up',
@@ -172,7 +215,10 @@ it('records first admin response timestamp when admin replies to user tickets', 
 it('locks messages and attachments once ticket is done', function () {
     Storage::fake((string) config('tickets.attachments.disk', 'local'));
 
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
     $admin = User::factory()->admin()->create();
 
     $ticket = Ticket::query()->create([
@@ -219,7 +265,10 @@ it('locks messages and attachments once ticket is done', function () {
 it('enforces support attachment size and total file limits', function () {
     Storage::fake((string) config('tickets.attachments.disk', 'local'));
 
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
     $ticket = Ticket::query()->create([
         'title' => 'Attachment limits',
         'description' => [['type' => 'rich_text', 'text' => 'Limits']],
@@ -277,7 +326,10 @@ it('enforces support attachment size and total file limits', function () {
 });
 
 it('moves done tickets to archived bucket after archive job delay', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+        'stripe_subscription_status' => 'active',
+    ]);
 
     $ticket = Ticket::query()->create([
         'title' => 'Archive me',

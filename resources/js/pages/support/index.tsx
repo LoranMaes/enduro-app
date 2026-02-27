@@ -10,6 +10,7 @@ import type {
 } from './types';
 
 type SupportIndexPageProps = {
+    isLocked: boolean;
     initialTickets: SupportTicketBuckets;
     statusLabels: SupportTicketStatusLabels;
     attachmentLimits: SupportAttachmentLimits;
@@ -23,6 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function SupportIndexPage({
+    isLocked,
     initialTickets,
     statusLabels,
     attachmentLimits,
@@ -31,6 +33,7 @@ export default function SupportIndexPage({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Support" />
             <SupportPage
+                isLocked={isLocked}
                 initialTickets={initialTickets}
                 statusLabels={statusLabels}
                 attachmentLimits={attachmentLimits}

@@ -37,6 +37,7 @@ type SidebarItem = {
     href: string;
     icon: LucideIcon;
     isActive: (currentPath: string) => boolean;
+    locked?: boolean;
 };
 
 export function AppSidebar() {
@@ -46,6 +47,7 @@ export function AppSidebar() {
         page.url,
         window?.location.origin ?? 'http://localhost',
     ).pathname;
+    const featureAccess = page.props.feature_access ?? {};
     const role = (auth.user.role ?? 'athlete') as AppRole;
     const { isImpersonating, visualImpersonating } =
         useImpersonationVisualState();
@@ -59,6 +61,8 @@ export function AppSidebar() {
         (auth.user.is_subscribed === true ||
             subscriptionStatus === 'active' ||
             subscriptionStatus === 'trialing');
+    const canAccessAtp = featureAccess['atp.read'] ?? true;
+    const canAccessSupport = featureAccess['support.tickets'] ?? true;
 
     const items: SidebarItem[] = isAdminConsoleMode
         ? [
@@ -119,6 +123,7 @@ export function AppSidebar() {
                                       icon: CalendarRange,
                                       isActive: (path: string) =>
                                           path.startsWith('/atp'),
+                                      locked: !canAccessAtp,
                                   } satisfies SidebarItem,
                               ]
                             : []),
@@ -158,6 +163,7 @@ export function AppSidebar() {
                             icon: LifeBuoy,
                             isActive: (path: string) =>
                                 path.startsWith('/support'),
+                            locked: !canAccessSupport,
                         } satisfies SidebarItem,
                     ]
                   : []),
@@ -203,6 +209,8 @@ export function AppSidebar() {
                                     ? visualImpersonating
                                         ? 'bg-amber-900/40 text-amber-100'
                                         : 'bg-zinc-800 text-white'
+                                    : item.locked
+                                      ? 'text-amber-300 hover:bg-amber-900/20 hover:text-amber-200'
                                     : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300'
                             }`}
                             title={item.title}

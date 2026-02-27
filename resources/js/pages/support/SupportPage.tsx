@@ -6,7 +6,9 @@ import {
     useState,
 } from 'react';
 import { Plus } from 'lucide-react';
+import { FeatureLockedCard } from '@/components/feature-locked-card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
     SupportAttachmentLimits,
@@ -23,12 +25,14 @@ import { useSupportTicketMutations } from './hooks/useSupportTicketMutations';
 import { useSupportTicketSelection } from './hooks/useSupportTicketSelection';
 
 type SupportPageProps = {
+    isLocked: boolean;
     initialTickets: SupportTicketBuckets;
     statusLabels: SupportTicketStatusLabels;
     attachmentLimits: SupportAttachmentLimits;
 };
 
 export function SupportPage({
+    isLocked,
     initialTickets,
     statusLabels,
     attachmentLimits,
@@ -73,6 +77,10 @@ export function SupportPage({
     );
 
     useEffect(() => {
+        if (isLocked) {
+            return;
+        }
+
         if (selectedTicketId === null) {
             return;
         }
@@ -92,9 +100,13 @@ export function SupportPage({
         return () => {
             cancelled = true;
         };
-    }, [fetchTicket, selectedTicketId, upsertTicket]);
+    }, [fetchTicket, isLocked, selectedTicketId, upsertTicket]);
 
     const handleCreateTicket = useCallback(async (): Promise<void> => {
+        if (isLocked) {
+            return;
+        }
+
         setCreateBusy(true);
         setCreateError(null);
         setCreateFieldErrors({});
@@ -127,12 +139,17 @@ export function SupportPage({
         createTicket,
         createTitle,
         createType,
+        isLocked,
         setActiveTab,
         setSelectedTicketId,
         upsertTicket,
     ]);
 
     const handleSendMessage = useCallback(async (): Promise<void> => {
+        if (isLocked) {
+            return;
+        }
+
         if (selectedTicket === null || conversationDraft.trim() === '') {
             return;
         }
@@ -158,10 +175,14 @@ export function SupportPage({
         } finally {
             setMessageBusy(false);
         }
-    }, [conversationDraft, createMessage, selectedTicket, upsertTicket]);
+    }, [conversationDraft, createMessage, isLocked, selectedTicket, upsertTicket]);
 
     const handleUploadAttachment = useCallback(
         async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+            if (isLocked) {
+                return;
+            }
+
             if (selectedTicket === null) {
                 return;
             }
@@ -191,7 +212,7 @@ export function SupportPage({
                 event.target.value = '';
             }
         },
-        [selectedTicket, uploadAttachment, upsertTicket],
+        [isLocked, selectedTicket, uploadAttachment, upsertTicket],
     );
 
     return (
@@ -210,57 +231,92 @@ export function SupportPage({
                             the team.
                         </p>
                     </div>
-                    <Button type="button" onClick={() => setCreateOpen(true)}>
+                    {isLocked ? (
+                        <Badge variant="outline" className="text-xs text-amber-300">
+                            Premium preview
+                        </Badge>
+                    ) : null}
+                    <Button
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => {
+                            if (isLocked) {
+                                return;
+                            }
+
+                            setCreateOpen(true);
+                        }}
+                    >
                         <Plus className="mr-1.5 h-4 w-4" />
                         New ticket
                     </Button>
                 </div>
             </header>
 
-            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
-                <section className="min-h-0 overflow-y-auto">
-                    <Tabs
-                        value={activeTab}
-                        onValueChange={(value) => {
-                            setActiveTab(value === 'archived' ? 'archived' : 'active');
-                        }}
-                    >
-                        <TabsList className="mb-3 grid w-full grid-cols-2 border-border bg-surface">
-                            <TabsTrigger value="active">Active</TabsTrigger>
-                            <TabsTrigger value="archived">Archived</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    <SupportTicketList
-                        tickets={visibleTickets}
-                        selectedTicketId={selectedTicketId}
-                        statusLabels={statusLabels}
-                        loading={loading}
-                        emptyMessage={
-                            activeTab === 'active'
-                                ? 'No active support tickets.'
-                                : 'No archived tickets yet.'
-                        }
-                        onSelectTicket={setSelectedTicketId}
-                    />
-                </section>
+            <div className="relative min-h-0 flex-1">
+                <div
+                    className={`grid min-h-0 h-full grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-[22rem_minmax(0,1fr)] ${
+                        isLocked
+                            ? 'pointer-events-none select-none blur-sm saturate-50'
+                            : ''
+                    }`}
+                >
+                    <section className="min-h-0 overflow-y-auto">
+                        <Tabs
+                            value={activeTab}
+                            onValueChange={(value) => {
+                                setActiveTab(value === 'archived' ? 'archived' : 'active');
+                            }}
+                        >
+                            <TabsList className="mb-3 grid w-full grid-cols-2 border-border bg-surface">
+                                <TabsTrigger value="active">Active</TabsTrigger>
+                                <TabsTrigger value="archived">Archived</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        <SupportTicketList
+                            tickets={visibleTickets}
+                            selectedTicketId={selectedTicketId}
+                            statusLabels={statusLabels}
+                            loading={loading}
+                            emptyMessage={
+                                activeTab === 'active'
+                                    ? 'No active support tickets.'
+                                    : 'No archived tickets yet.'
+                            }
+                            onSelectTicket={setSelectedTicketId}
+                        />
+                    </section>
 
-                <SupportTicketDetail
-                    ticket={selectedTicket}
-                    statusLabels={statusLabels}
-                    attachmentLimits={attachmentLimits}
-                    conversationDraft={conversationDraft}
-                    messageBusy={messageBusy}
-                    messageError={messageError}
-                    messageFieldError={messageFieldError}
-                    attachmentBusy={attachmentBusy}
-                    onConversationDraftChange={setConversationDraft}
-                    onSendMessage={() => {
-                        void handleSendMessage();
-                    }}
-                    onUploadAttachment={(event) => {
-                        void handleUploadAttachment(event);
-                    }}
-                />
+                    <SupportTicketDetail
+                        ticket={selectedTicket}
+                        statusLabels={statusLabels}
+                        attachmentLimits={attachmentLimits}
+                        conversationDraft={conversationDraft}
+                        messageBusy={messageBusy}
+                        messageError={messageError}
+                        messageFieldError={messageFieldError}
+                        attachmentBusy={attachmentBusy}
+                        forceReadOnly={isLocked}
+                        onConversationDraftChange={setConversationDraft}
+                        onSendMessage={() => {
+                            void handleSendMessage();
+                        }}
+                        onUploadAttachment={(event) => {
+                            void handleUploadAttachment(event);
+                        }}
+                    />
+                </div>
+
+                {isLocked ? (
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 py-6">
+                        <div className="pointer-events-auto w-full max-w-md">
+                            <FeatureLockedCard
+                                title="Support is a premium feature"
+                                description="Unlock direct support tickets, file uploads, and status tracking from the team."
+                            />
+                        </div>
+                    </div>
+                ) : null}
             </div>
 
             <SupportCreateTicketDialog

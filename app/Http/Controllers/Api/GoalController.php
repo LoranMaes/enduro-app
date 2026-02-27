@@ -9,6 +9,8 @@ use App\Http\Requests\Api\UpdateGoalRequest;
 use App\Http\Resources\GoalResource;
 use App\Models\Goal;
 use App\Models\User;
+use App\Services\Calendar\HistoryWindowLimiter;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,6 +19,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class GoalController extends Controller
 {
+    public function __construct(
+        private readonly HistoryWindowLimiter $historyWindowLimiter,
+    ) {}
+
     public function index(ListGoalRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Goal::class);
@@ -25,16 +31,27 @@ class GoalController extends Controller
         $perPage = (int) ($validated['per_page'] ?? 100);
         $user = $request->user();
         $ownerId = $this->resolveOwnerIdForIndex($user, $validated);
+        $from = $this->historyWindowLimiter->clampDate(
+            $user,
+            isset($validated['from']) ? (string) $validated['from'] : null,
+        );
+        $to = isset($validated['to'])
+            ? CarbonImmutable::parse((string) $validated['to'])->toDateString()
+            : null;
+
+        if ($from !== null && $to !== null && CarbonImmutable::parse($to)->lt(CarbonImmutable::parse($from))) {
+            $to = CarbonImmutable::parse($from)->toDateString();
+        }
 
         $goals = Goal::query()
             ->where('user_id', $ownerId)
             ->when(
-                isset($validated['from']),
-                fn (Builder $query) => $query->whereDate('target_date', '>=', $validated['from']),
+                $from !== null,
+                fn (Builder $query) => $query->whereDate('target_date', '>=', $from),
             )
             ->when(
-                isset($validated['to']),
-                fn (Builder $query) => $query->whereDate('target_date', '<=', $validated['to']),
+                $to !== null,
+                fn (Builder $query) => $query->whereDate('target_date', '<=', $to),
             )
             ->orderByRaw('target_date is null')
             ->orderBy('target_date')

@@ -1,5 +1,7 @@
+import { Link } from '@inertiajs/react';
 import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { overview as settingsOverview } from '@/routes/settings';
 import { streamColors, streamLabels } from '../constants';
 import type {
     SelectionRangeSummary,
@@ -26,6 +28,7 @@ type SessionAnalysisChartProps = {
     activeStreams: Record<string, boolean>;
     onStreamToggle: (streamKey: string) => void;
     isLoadingStreams: boolean;
+    isStreamLocked: boolean;
     streamError: string | null;
     zoomedSeries: StreamSeries[];
     visibleReferencePoints: Array<{ x: number; sampleIndex: number }>;
@@ -52,6 +55,7 @@ export function SessionAnalysisChart({
     activeStreams,
     onStreamToggle,
     isLoadingStreams,
+    isStreamLocked,
     streamError,
     zoomedSeries,
     visibleReferencePoints,
@@ -166,6 +170,20 @@ export function SessionAnalysisChart({
                                 <p className="text-xs text-zinc-500">
                                     Loading activity streams...
                                 </p>
+                            ) : isStreamLocked ? (
+                                <div className="flex h-full min-h-[13.75rem] flex-col items-start justify-center gap-3 rounded-md border border-border/70 bg-background/50 px-4 py-3">
+                                    <p className="text-xs text-zinc-300">
+                                        Activity streams require an active subscription.
+                                    </p>
+                                    <Link
+                                        href={settingsOverview({
+                                            query: { tab: 'billing' },
+                                        }).url}
+                                        className="rounded border border-border bg-surface px-2 py-1 text-[0.6875rem] text-zinc-200 transition-colors hover:border-zinc-600"
+                                    >
+                                        Upgrade
+                                    </Link>
+                                </div>
                             ) : streamError !== null ? (
                                 <p className="text-xs text-red-300">
                                     {streamError}

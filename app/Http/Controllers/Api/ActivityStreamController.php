@@ -9,6 +9,7 @@ use App\Services\Activities\ActivityStreamService;
 use App\Services\ActivityProviders\Exceptions\UnsupportedActivityProviderException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 
 class ActivityStreamController extends Controller
 {
@@ -25,6 +26,7 @@ class ActivityStreamController extends Controller
 
         $user = $request->user();
         abort_unless($user instanceof User, 403);
+        abort_unless(Feature::for($user)->active('activity.streams'), 403);
 
         $requestedKeys = $this->resolveRequestedStreamKeys($request);
         try {

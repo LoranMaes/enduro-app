@@ -15,6 +15,7 @@ use App\Services\Progress\ComplianceService;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class AthleteProgressController extends Controller
 {
@@ -30,11 +31,14 @@ class AthleteProgressController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User && $user->isAthlete(), 403);
 
-        $rangeOptions = [4, 8, 12, 24];
+        $canUseExtendedRange = Feature::for($user)->active('progress.range.extended');
+        $rangeOptions = $canUseExtendedRange
+            ? [4, 8, 12, 24]
+            : [4];
         $selectedWeeks = (int) ($request->validated()['weeks'] ?? 12);
         $selectedWeeks = in_array($selectedWeeks, $rangeOptions, true)
             ? $selectedWeeks
-            : 12;
+            : $rangeOptions[0];
 
         $currentWeekStart = CarbonImmutable::today()->startOfWeek();
         $windowStart = $currentWeekStart->subWeeks($selectedWeeks - 1);

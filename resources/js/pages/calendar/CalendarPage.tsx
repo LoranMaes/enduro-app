@@ -34,6 +34,7 @@ import {
     type CalendarWindow,
 } from './lib/calendar-weeks';
 import { index as progressIndex } from '@/routes/progress';
+import { overview as settingsOverview } from '@/routes/settings';
 import {
     store as storeTrainingSession,
     update as updateTrainingSession,
@@ -251,7 +252,20 @@ export default function CalendarPage({
     >('browse');
 
     const page = usePage<SharedData>();
-    const { auth } = page.props;
+    const {
+        auth,
+        feature_access: featureAccess = {},
+        feature_limits: featureLimits = {},
+    } = page.props;
+    const canUseWorkoutLibrary = featureAccess['workout.library'] ?? true;
+    const canUseWorkoutStructure =
+        featureAccess['workout.structure_builder'] ?? true;
+    const canUseExtendedProgressRange =
+        featureAccess['progress.range.extended'] ?? true;
+    const workoutLibraryTemplateLimit =
+        typeof featureLimits['workout.library'] === 'number'
+            ? featureLimits['workout.library']
+            : null;
     const previousSyncStatusRef = useRef<string | null>(null);
     const hydratedWindowRef = useRef(
         `${initialWindow.starts_at}:${initialWindow.ends_at}`,
@@ -332,7 +346,13 @@ export default function CalendarPage({
                 key,
                 items.slice().sort((left, right) => {
                     if (left.startedAt === right.startedAt) {
-                        return left.id - right.id;
+                        return String(left.id).localeCompare(
+                            String(right.id),
+                            undefined,
+                            {
+                                numeric: true,
+                            },
+                        );
                     }
 
                     return (left.startedAt ?? '').localeCompare(
@@ -360,7 +380,15 @@ export default function CalendarPage({
         entriesByWeek.forEach((entries, key) => {
             entriesByWeek.set(
                 key,
-                entries.slice().sort((left, right) => left.id - right.id),
+                entries.slice().sort((left, right) => {
+                    return String(left.id).localeCompare(
+                        String(right.id),
+                        undefined,
+                        {
+                            numeric: true,
+                        },
+                    );
+                }),
             );
         });
 
@@ -386,7 +414,15 @@ export default function CalendarPage({
         goalsByWeek.forEach((goals, key) => {
             goalsByWeek.set(
                 key,
-                goals.slice().sort((left, right) => left.id - right.id),
+                goals.slice().sort((left, right) => {
+                    return String(left.id).localeCompare(
+                        String(right.id),
+                        undefined,
+                        {
+                            numeric: true,
+                        },
+                    );
+                }),
             );
         });
 
@@ -414,6 +450,9 @@ export default function CalendarPage({
             {},
         );
     }, [entryTypeEntitlements]);
+    const availableProgressRanges = useMemo(() => {
+        return canUseExtendedProgressRange ? [4, 8, 12, 24] : [4];
+    }, [canUseExtendedProgressRange]);
 
     const workoutCreateOptions = useMemo(() => {
         const options: Array<{
@@ -672,6 +711,16 @@ export default function CalendarPage({
     ]);
 
     useEffect(() => {
+        if (canUseWorkoutLibrary) {
+            return;
+        }
+
+        if (isWorkoutLibraryOpen) {
+            setIsWorkoutLibraryOpen(false);
+        }
+    }, [canUseWorkoutLibrary, isWorkoutLibraryOpen]);
+
+    useEffect(() => {
         if (
             requestedWeekFromQuery === null ||
             requestedWeekFromQuery === lastJumpedWeekRef.current
@@ -721,8 +770,19 @@ export default function CalendarPage({
                     void sessionState.triggerProviderSync();
                 }}
                 onOpenWorkoutLibrary={() => {
+                    if (!canUseWorkoutLibrary) {
+                        const route = settingsOverview({
+                            query: { tab: 'billing' },
+                        });
+
+                        router.get(route.url);
+
+                        return;
+                    }
+
                     setIsWorkoutLibraryOpen(true);
                 }}
+                isWorkoutLibraryLocked={!canUseWorkoutLibrary}
                 viewModes={VIEW_MODES}
                 calendarViewMode={calendarWindowState.calendarViewMode}
                 onModeChange={calendarWindowState.setCalendarViewMode}
@@ -780,9 +840,10 @@ export default function CalendarPage({
                         ),
                     );
                     const weeksNeeded = Math.max(1, Math.ceil(daysDiff / 7) + 1);
-                    const rangeOptions = [4, 8, 12, 24];
                     const selectedRange =
-                        rangeOptions.find((option) => option >= weeksNeeded) ?? 24;
+                        availableProgressRanges.find(
+                            (option) => option >= weeksNeeded,
+                        ) ?? availableProgressRanges[availableProgressRanges.length - 1];
                     const route = progressIndex({
                         query: { weeks: selectedRange },
                     });
@@ -811,6 +872,7 @@ export default function CalendarPage({
                     }
                 }}
                 canManageSessionWrites={selection.canManageSessionWrites}
+                canUseWorkoutStructure={canUseWorkoutStructure}
                 canManageSessionLinks={selection.canManageSessionLinks}
                 athleteTrainingTargets={athleteTrainingTargets}
                 onSaved={() => {
@@ -856,8 +918,9 @@ export default function CalendarPage({
             />
 
             <WorkoutLibraryDialog
-                open={isWorkoutLibraryOpen}
+                open={isWorkoutLibraryOpen && canUseWorkoutLibrary}
                 trainingTargets={athleteTrainingTargets}
+                workoutTemplateLimit={workoutLibraryTemplateLimit}
                 onOpenChange={(nextOpen) => {
                     setIsWorkoutLibraryOpen(nextOpen);
                 }}

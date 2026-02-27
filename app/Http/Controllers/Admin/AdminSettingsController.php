@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\UpdateAdminEntitlementsRequest;
 use App\Models\AdminSetting;
 use App\Models\User;
 use App\Services\Entitlements\EntryTypeEntitlementService;
+use App\Services\Entitlements\SubscriptionFeatureMatrixService;
 use App\Services\Tickets\TicketArchiveDelayResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class AdminSettingsController extends Controller
     public function __construct(
         private readonly TicketArchiveDelayResolver $ticketArchiveDelayResolver,
         private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
+        private readonly SubscriptionFeatureMatrixService $subscriptionFeatureMatrixService,
     ) {}
 
     public function show(Request $request): Response
@@ -28,6 +30,7 @@ class AdminSettingsController extends Controller
         return Inertia::render('admin/settings/index', [
             'ticketArchiveDelayHours' => $this->ticketArchiveDelayResolver->resolveHours(),
             'entryTypeEntitlements' => $this->entryTypeEntitlementService->resolvedDefinitions(),
+            'subscriptionFeatureEntitlements' => $this->subscriptionFeatureMatrixService->resolvedDefinitions(),
         ]);
     }
 
@@ -47,6 +50,13 @@ class AdminSettingsController extends Controller
         if (array_key_exists('entitlements', $validated)) {
             $this->entryTypeEntitlementService->updateMany(
                 $validated['entitlements'],
+                $user,
+            );
+        }
+
+        if (array_key_exists('subscription_entitlements', $validated)) {
+            $this->subscriptionFeatureMatrixService->updateMany(
+                $validated['subscription_entitlements'],
                 $user,
             );
         }

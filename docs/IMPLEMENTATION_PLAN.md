@@ -1157,3 +1157,38 @@ Scope: full codebase quality pass with behavior stability and slicing parity pre
    - further decomposition of oversized calendar surfaces (`session-detail`, `workout-structure-builder`, deeper `session-editor-modal` internals)
    - broader semantic/a11y pass on remaining clickable non-button patterns
    - additional rem-based cleanup in untouched large files where fixed px text sizing remains
+
+### 9.7 Wave D1 — Dynamic Subscription Feature Matrix (COMPLETED)
+
+1. Runtime engine
+   - installed Laravel Pennant and registered matrix-defined features in `AppServiceProvider`
+   - introduced canonical feature catalog in `config/subscription-features.php`
+2. Dynamic admin overrides
+   - added `subscription_feature_entitlements` table + model
+   - implemented `SubscriptionFeatureMatrixService` for:
+     - config/default resolution
+     - DB override merge
+     - segment resolution (`athlete_free`, `athlete_paid`, `coach_paid`)
+     - 60-second cache + invalidation on updates/resets
+3. Admin operations
+   - added admin APIs:
+     - `GET /api/admin/entitlements/subscription-features`
+     - `PATCH /api/admin/entitlements/subscription-features`
+     - `POST /api/admin/entitlements/subscription-features/reset`
+   - integrated matrix controls into existing admin settings page (`Feature Matrix` tab, autosave, source badges)
+4. Enforcement integration
+   - ATP read/edit gates
+   - progress extended-range gate (free athletes locked to 4 weeks)
+   - progress chart visibility gates (load trend/performance management)
+   - workout library API gate
+   - activity streams API gate
+   - structured workout payload guard in training session create/update
+   - free-athlete history depth clamp through `HistoryWindowLimiter` (8 weeks)
+5. Frontend lock UX
+   - added shared `feature_access` Inertia prop map
+   - added reusable `FeatureLockedCard`
+   - applied lock states in progress, calendar/session detail, sidebar ATP access
+6. Validation status
+   - targeted new/updated tests pass
+   - formatting pass complete
+   - known existing global TS UUID/public-id migration errors remain outside this wave

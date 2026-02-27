@@ -12,6 +12,7 @@ it('shows the workout types tab in admin settings for admins', function () {
         ->assertInertia(fn ($page) => $page
             ->component('admin/settings/index')
             ->has('entryTypeEntitlements')
+            ->has('subscriptionFeatureEntitlements')
             ->where('entryTypeEntitlements.0.category', 'workout')
         );
 });

@@ -14,6 +14,7 @@ type CalendarHeaderProps = {
     isStravaSyncInProgress: boolean;
     onSync: () => void;
     onOpenWorkoutLibrary: () => void;
+    isWorkoutLibraryLocked: boolean;
     viewModes: CalendarViewMode[];
     calendarViewMode: CalendarViewMode;
     onModeChange: (mode: CalendarViewMode) => void;
@@ -38,6 +39,7 @@ export function CalendarHeader({
     isStravaSyncInProgress,
     onSync,
     onOpenWorkoutLibrary,
+    isWorkoutLibraryLocked,
     viewModes,
     calendarViewMode,
     onModeChange,
@@ -118,10 +120,17 @@ export function CalendarHeader({
                         <button
                             type="button"
                             onClick={onOpenWorkoutLibrary}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                            className={cn(
+                                'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
+                                isWorkoutLibraryLocked
+                                    ? 'border-amber-700/60 bg-amber-900/20 text-amber-200 hover:border-amber-500'
+                                    : 'border-border bg-surface text-zinc-300 hover:border-zinc-600 hover:text-white',
+                            )}
                         >
                             <BookOpen className="h-3.5 w-3.5" />
-                            Library
+                            {isWorkoutLibraryLocked
+                                ? 'Library • Upgrade'
+                                : 'Library'}
                         </button>
                     ) : null}
                     <div className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-xs font-medium text-zinc-200">

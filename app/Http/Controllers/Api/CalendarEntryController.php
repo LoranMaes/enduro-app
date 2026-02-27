@@ -9,7 +9,9 @@ use App\Http\Requests\Api\UpdateCalendarEntryRequest;
 use App\Http\Resources\CalendarEntryResource;
 use App\Models\CalendarEntry;
 use App\Models\User;
+use App\Services\Calendar\HistoryWindowLimiter;
 use App\Services\Entitlements\EntryTypeEntitlementService;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,6 +22,7 @@ class CalendarEntryController extends Controller
 {
     public function __construct(
         private readonly EntryTypeEntitlementService $entryTypeEntitlementService,
+        private readonly HistoryWindowLimiter $historyWindowLimiter,
     ) {}
 
     public function index(ListCalendarEntryRequest $request): AnonymousResourceCollection
@@ -27,17 +30,32 @@ class CalendarEntryController extends Controller
         $this->authorize('viewAny', CalendarEntry::class);
 
         $validated = $request->validated();
+        $user = $request->user();
+        abort_unless($user instanceof User, Response::HTTP_UNAUTHORIZED);
+
+        $from = $this->historyWindowLimiter->clampDate(
+            $user,
+            isset($validated['from']) ? (string) $validated['from'] : null,
+        );
+        $to = isset($validated['to'])
+            ? CarbonImmutable::parse((string) $validated['to'])->toDateString()
+            : null;
+
+        if ($from !== null && $to !== null && CarbonImmutable::parse($to)->lt(CarbonImmutable::parse($from))) {
+            $to = CarbonImmutable::parse($from)->toDateString();
+        }
+
         $perPage = (int) ($validated['per_page'] ?? 100);
 
         $entries = CalendarEntry::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->when(
-                isset($validated['from']),
-                fn (Builder $query) => $query->whereDate('scheduled_date', '>=', $validated['from']),
+                $from !== null,
+                fn (Builder $query) => $query->whereDate('scheduled_date', '>=', $from),
             )
             ->when(
-                isset($validated['to']),
-                fn (Builder $query) => $query->whereDate('scheduled_date', '<=', $validated['to']),
+                $to !== null,
+                fn (Builder $query) => $query->whereDate('scheduled_date', '<=', $to),
             )
             ->when(
                 isset($validated['type']),

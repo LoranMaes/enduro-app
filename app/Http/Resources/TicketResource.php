@@ -80,8 +80,8 @@ class TicketResource extends JsonResource
                     'role' => $this->reporterUser->role?->value ?? 'athlete',
                 ];
             }),
-            'attachments' => TicketAttachmentResource::collection($this->whenLoaded('attachments')),
-            'messages' => TicketMessageResource::collection($this->whenLoaded('messages')),
+            'attachments' => $this->resolveAttachments($request),
+            'messages' => $this->resolveMessages($request),
             'internal_note' => $internalNote === null
                 ? null
                 : [
@@ -106,5 +106,39 @@ class TicketResource extends JsonResource
             'updated_at' => $this->updated_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveAttachments(Request $request): array
+    {
+        if (! $this->relationLoaded('attachments')) {
+            return [];
+        }
+
+        return $this->attachments
+            ->map(
+                static fn ($attachment): array => (new TicketAttachmentResource($attachment))->toArray($request),
+            )
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveMessages(Request $request): array
+    {
+        if (! $this->relationLoaded('messages')) {
+            return [];
+        }
+
+        return $this->messages
+            ->map(
+                static fn ($message): array => (new TicketMessageResource($message))->toArray($request),
+            )
+            ->values()
+            ->all();
     }
 }

@@ -19,6 +19,7 @@ export function SessionEditorModal({
     open,
     context,
     canManageSessionWrites,
+    canUseWorkoutStructure,
     canManageSessionLinks,
     athleteTrainingTargets,
     onOpenChange,
@@ -195,6 +196,13 @@ export function SessionEditorModal({
                         <Tabs
                             value={activeEditorTab}
                             onValueChange={(nextTab) => {
+                                if (
+                                    nextTab === 'structure' &&
+                                    !canUseWorkoutStructure
+                                ) {
+                                    return;
+                                }
+
                                 setActiveEditorTab(
                                     nextTab === 'structure' ? 'structure' : 'details',
                                 );
@@ -206,7 +214,15 @@ export function SessionEditorModal({
                                     <TabsTrigger value="details" className="text-xs font-medium">
                                         Session Details
                                     </TabsTrigger>
-                                    <TabsTrigger value="structure" className="text-xs font-medium">
+                                    <TabsTrigger
+                                        value="structure"
+                                        disabled={!canUseWorkoutStructure}
+                                        className={cn(
+                                            'text-xs font-medium',
+                                            !canUseWorkoutStructure &&
+                                                'cursor-not-allowed opacity-60',
+                                        )}
+                                    >
                                         Workout Structure
                                     </TabsTrigger>
                                 </TabsList>
@@ -229,15 +245,23 @@ export function SessionEditorModal({
                                 ) : null}
 
                                 {activeEditorTab === 'structure' ? (
-                                    <SessionStructureTab
-                                        plannedStructure={plannedStructure}
-                                        sport={sport}
-                                        athleteTrainingTargets={athleteTrainingTargets}
-                                        canManageSessionWrites={canManageSessionWrites}
-                                        errors={errors}
-                                        clearFieldError={clearFieldError}
-                                        setPlannedStructure={setPlannedStructure}
-                                    />
+                                    canUseWorkoutStructure ? (
+                                        <SessionStructureTab
+                                            plannedStructure={plannedStructure}
+                                            sport={sport}
+                                            athleteTrainingTargets={athleteTrainingTargets}
+                                            canManageSessionWrites={canManageSessionWrites}
+                                            errors={errors}
+                                            clearFieldError={clearFieldError}
+                                            setPlannedStructure={setPlannedStructure}
+                                        />
+                                    ) : (
+                                        <div className="rounded-md border border-border bg-background/60 px-4 py-4">
+                                            <p className="text-sm text-zinc-300">
+                                                Workout structure requires an active subscription.
+                                            </p>
+                                        </div>
+                                    )
                                 ) : (
                                     <SessionDetailsTab
                                         context={context}

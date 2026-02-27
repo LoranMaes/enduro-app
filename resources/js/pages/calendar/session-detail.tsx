@@ -49,6 +49,7 @@ export default function SessionDetailPage({
     const {
         streamData,
         streamError,
+        isStreamLocked,
         isLoadingStreams,
         activeStreams,
         setActiveStreams,
@@ -325,6 +326,7 @@ export default function SessionDetailPage({
                                     }));
                                 }}
                                 isLoadingStreams={isLoadingStreams}
+                                isStreamLocked={isStreamLocked}
                                 streamError={streamError}
                                 zoomedSeries={zoomedSeries}
                                 visibleReferencePoints={visibleReferencePoints}

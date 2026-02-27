@@ -86,6 +86,7 @@ export type SessionEditorModalProps = {
     open: boolean;
     context: SessionEditorContext | null;
     canManageSessionWrites: boolean;
+    canUseWorkoutStructure: boolean;
     canManageSessionLinks: boolean;
     athleteTrainingTargets: AthleteTrainingTargets | null;
     onOpenChange: (open: boolean) => void;

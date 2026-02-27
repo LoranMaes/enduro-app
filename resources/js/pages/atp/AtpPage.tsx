@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useCallback } from 'react';
+import { FeatureLockedCard } from '@/components/feature-locked-card';
 import { Badge } from '@/components/ui/badge';
 import { dashboard } from '@/routes';
 import { AtpHeaderChart } from './components/AtpHeaderChart';
@@ -15,6 +16,7 @@ export function AtpPage({
     year,
     plan,
     weekTypeOptions,
+    isLocked,
 }: AtpPageProps) {
     const navigation = useAtpNavigation(year);
     const {
@@ -65,6 +67,11 @@ export function AtpPage({
                     <Badge variant="outline" className="text-xs text-zinc-300">
                         Completed {minutesToHourLabel(summary.completedMinutes)}
                     </Badge>
+                    {isLocked ? (
+                        <Badge variant="outline" className="text-xs text-amber-300">
+                            Premium preview
+                        </Badge>
+                    ) : null}
                 </div>
                 <div className="mt-3">
                     <AtpLegend />
@@ -78,17 +85,44 @@ export function AtpPage({
                     </p>
                 ) : null}
 
-                <AtpHeaderChart weeks={weeks} onSelectWeek={openCalendarWeek} />
+                <div className="relative min-h-[24rem]">
+                    <div
+                        className={
+                            isLocked
+                                ? 'pointer-events-none select-none blur-sm saturate-50'
+                                : ''
+                        }
+                    >
+                        <AtpHeaderChart weeks={weeks} onSelectWeek={openCalendarWeek} />
 
-                <AtpWeekTable
-                    weeks={weeks}
-                    weekTypeOptions={weekTypeOptions}
-                    updatingWeekStart={updatingWeekStart}
-                    onOpenWeek={openCalendarWeek}
-                    onUpdateWeek={(weekStart, payload) => {
-                        void updateWeek(weekStart, payload);
-                    }}
-                />
+                        <div className="mt-4">
+                            <AtpWeekTable
+                                weeks={weeks}
+                                weekTypeOptions={weekTypeOptions}
+                                updatingWeekStart={updatingWeekStart}
+                                onOpenWeek={openCalendarWeek}
+                                onUpdateWeek={(weekStart, payload) => {
+                                    if (isLocked) {
+                                        return;
+                                    }
+
+                                    void updateWeek(weekStart, payload);
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {isLocked ? (
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
+                            <div className="pointer-events-auto w-full max-w-md">
+                                <FeatureLockedCard
+                                    title="Annual Training Plan is a premium feature"
+                                    description="Unlock ATP editing, yearly overview insights, and week-level planning tools."
+                                />
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
             </div>
         </div>
     );

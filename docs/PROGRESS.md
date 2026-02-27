@@ -1897,3 +1897,28 @@ Next milestone:
     - `vendor/bin/sail bin pint --dirty --format agent`
     - `vendor/bin/sail npm run types`
     - `vendor/bin/sail artisan test --compact tests/Feature/AdminTicketsTest.php` (6 passed)
+
+- Dynamic subscription feature matrix (Pennant-based) implemented:
+    - added config catalog: `config/subscription-features.php`
+    - added DB override table/model: `subscription_feature_entitlements` / `SubscriptionFeatureEntitlement`
+    - added resolver + cache layer: `App\Services\Entitlements\SubscriptionFeatureMatrixService`
+    - registered runtime feature checks through Pennant in `AppServiceProvider`
+    - added admin API management:
+        - `GET /api/admin/entitlements/subscription-features`
+        - `PATCH /api/admin/entitlements/subscription-features`
+        - `POST /api/admin/entitlements/subscription-features/reset`
+    - extended admin settings with `Feature Matrix` tab and autosave
+    - added shared `feature_access` map to Inertia props for frontend gating
+    - enforcement wired for:
+        - ATP read/edit
+        - progress extended-range options and chart visibility
+        - activity streams API
+        - workout library API
+        - structured workout payload guard in session create/update
+        - free-athlete calendar/progress history clamp via `HistoryWindowLimiter`
+    - session detail stream panel now handles feature-lock 403 with an in-context lock card
+- Validation completed for this wave:
+    - `vendor/bin/sail artisan wayfinder:generate --no-interaction`
+    - `vendor/bin/sail artisan test --compact tests/Unit/SubscriptionFeatureMatrixServiceTest.php tests/Feature/Api/Admin/SubscriptionFeatureEntitlementApiTest.php tests/Feature/SubscriptionFeatureEnforcementTest.php tests/Feature/AdminSettingsPageTest.php` (13 passed)
+    - `vendor/bin/sail bin pint --dirty --format agent`
+    - `vendor/bin/sail npm run types` remains failing on existing UUID/public-id Wayfinder TS migration backlog outside this wave

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Tickets\SupportTicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 class SupportTicketController extends Controller
@@ -22,6 +23,7 @@ class SupportTicketController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
+        $this->ensureSupportAccess($user);
 
         $this->authorize('viewSupportAny', Ticket::class);
 
@@ -37,6 +39,7 @@ class SupportTicketController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
+        $this->ensureSupportAccess($user);
 
         $this->authorize('createSupport', Ticket::class);
 
@@ -53,10 +56,22 @@ class SupportTicketController extends Controller
 
     public function show(Request $request, Ticket $ticket): TicketResource
     {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $this->ensureSupportAccess($user);
         $this->authorize('viewSupport', $ticket);
 
         return new TicketResource(
             $this->supportTicketService->loadTicketForSupport($ticket),
+        );
+    }
+
+    private function ensureSupportAccess(User $user): void
+    {
+        abort_unless(
+            Feature::for($user)->active('support.tickets'),
+            Response::HTTP_FORBIDDEN,
+            'Support requires an active subscription.',
         );
     }
 }

@@ -3,6 +3,8 @@ import type { ChangeEvent } from 'react';
 import { formatDateTime, formatDuration } from '@/pages/admin/tickets/lib/ticket-utils';
 import type {
     SupportAttachmentLimits,
+    SupportTicketAttachment,
+    SupportTicketMessage,
     SupportTicketRecord,
     SupportTicketStatusLabels,
 } from '../types';
@@ -15,6 +17,7 @@ type SupportTicketDetailProps = {
     ticket: SupportTicketRecord | null;
     statusLabels: SupportTicketStatusLabels;
     attachmentLimits: SupportAttachmentLimits;
+    forceReadOnly?: boolean;
     conversationDraft: string;
     messageBusy: boolean;
     messageError: string | null;
@@ -27,10 +30,28 @@ type SupportTicketDetailProps = {
     ) => void;
 };
 
+function unwrapResourceCollection<T>(value: unknown): T[] {
+    if (Array.isArray(value)) {
+        return value as T[];
+    }
+
+    if (
+        typeof value === 'object' &&
+        value !== null &&
+        'data' in value &&
+        Array.isArray((value as { data?: unknown[] }).data)
+    ) {
+        return ((value as { data?: unknown[] }).data ?? []) as T[];
+    }
+
+    return [];
+}
+
 export function SupportTicketDetail({
     ticket,
     statusLabels,
     attachmentLimits,
+    forceReadOnly = false,
     conversationDraft,
     messageBusy,
     messageError,
@@ -49,6 +70,12 @@ export function SupportTicketDetail({
     }
 
     const isResolved = ticket.status === 'done';
+    const isComposerDisabled = isResolved || forceReadOnly;
+    const normalizedMessages = unwrapResourceCollection<SupportTicketMessage>(
+        ticket.messages,
+    );
+    const normalizedAttachments =
+        unwrapResourceCollection<SupportTicketAttachment>(ticket.attachments);
 
     return (
         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-surface">
@@ -86,12 +113,12 @@ export function SupportTicketDetail({
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
                 <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
                     <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-background p-3">
-                        <SupportConversation messages={ticket.messages} />
+                        <SupportConversation messages={normalizedMessages} />
                     </div>
                     <SupportComposer
                         value={conversationDraft}
                         busy={messageBusy}
-                        disabled={isResolved}
+                        disabled={isComposerDisabled}
                         error={messageError}
                         fieldError={messageFieldError}
                         onChange={onConversationDraftChange}
@@ -100,10 +127,10 @@ export function SupportTicketDetail({
                 </div>
 
                 <SupportAttachmentsCard
-                    attachments={ticket.attachments}
+                    attachments={normalizedAttachments}
                     limits={attachmentLimits}
                     uploading={attachmentBusy}
-                    disabled={isResolved}
+                    disabled={isComposerDisabled}
                     onUpload={onUploadAttachment}
                 />
             </div>

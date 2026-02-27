@@ -1,5 +1,7 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
+import { FeatureLockedCard } from '@/components/feature-locked-card';
 import AppLayout from '@/layouts/app-layout';
+import type { SharedData } from '@/types';
 import { ProgressHeader } from './components/ProgressHeader';
 import { ProgressLoadTrendChart } from './components/ProgressLoadTrendChart';
 import { PerformanceManagementChart } from './components/PerformanceManagementChart';
@@ -22,13 +24,18 @@ export function ProgressPage({
     trendSeedWeeks,
     todaySnapshot,
 }: ProgressPageProps) {
+    const { feature_access: featureAccess = {} } = usePage<SharedData>().props;
+    const canViewLoadTrend =
+        featureAccess['progress.chart.load_trend'] ?? true;
+    const canViewPerformanceManagement =
+        featureAccess['progress.chart.performance_management'] ?? true;
     const { isSwitchingRange, hoveredIndex, setHoveredIndex, switchRange } =
         useProgressState(range.weeks);
 
     const trend = useProgressChartData(weeks, trendSeedWeeks);
     const performanceLoad = usePerformanceManagementData(
         weeks,
-        load_metrics_enabled,
+        load_metrics_enabled && canViewPerformanceManagement,
     );
 
     const { hasVisibleLoadData, activePointIndex, activePoint } = useProgressMetrics(
@@ -52,22 +59,36 @@ export function ProgressPage({
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
                     {load_metrics_enabled ? (
                         <>
-                            <ProgressLoadTrendChart
-                                summary={summary}
-                                trend={trend}
-                                hasVisibleLoadData={hasVisibleLoadData}
-                                activePointIndex={activePointIndex}
-                                activePoint={activePoint}
-                                weeksCount={weeks.length}
-                                todaySnapshot={todaySnapshot}
-                                onSetHoveredIndex={setHoveredIndex}
-                            />
-                            <PerformanceManagementChart
-                                data={performanceLoad.data}
-                                loading={performanceLoad.loading}
-                                error={performanceLoad.error}
-                                selectedWeeks={range.weeks}
-                            />
+                            {canViewLoadTrend ? (
+                                <ProgressLoadTrendChart
+                                    summary={summary}
+                                    trend={trend}
+                                    hasVisibleLoadData={hasVisibleLoadData}
+                                    activePointIndex={activePointIndex}
+                                    activePoint={activePoint}
+                                    weeksCount={weeks.length}
+                                    todaySnapshot={todaySnapshot}
+                                    onSetHoveredIndex={setHoveredIndex}
+                                />
+                            ) : (
+                                <FeatureLockedCard
+                                    title="Load Trend"
+                                    description="Load trend is available with an active subscription."
+                                />
+                            )}
+                            {canViewPerformanceManagement ? (
+                                <PerformanceManagementChart
+                                    data={performanceLoad.data}
+                                    loading={performanceLoad.loading}
+                                    error={performanceLoad.error}
+                                    selectedWeeks={range.weeks}
+                                />
+                            ) : (
+                                <FeatureLockedCard
+                                    title="Performance Management"
+                                    description="Performance management metrics require an active subscription."
+                                />
+                            )}
                         </>
                     ) : null}
 
