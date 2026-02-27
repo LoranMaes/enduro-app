@@ -54,6 +54,11 @@ return [
         'sync_lock_seconds' => (int) env('ACTIVITY_PROVIDER_SYNC_LOCK_SECONDS', 300),
         'lock_retry_seconds' => (int) env('ACTIVITY_PROVIDER_LOCK_RETRY_SECONDS', 30),
         'stream_cache_seconds' => (int) env('ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS', 900),
+        'initial_full_import_enabled' => filter_var(
+            env('ACTIVITY_PROVIDER_INITIAL_FULL_IMPORT', true),
+            FILTER_VALIDATE_BOOL,
+            FILTER_NULL_ON_FAILURE,
+        ) ?? true,
     ],
 
     'strava' => [

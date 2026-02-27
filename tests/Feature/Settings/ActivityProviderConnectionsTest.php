@@ -1,8 +1,10 @@
 <?php
 
+use App\Jobs\StravaFullHistoryImportJob;
 use App\Models\ActivityProviderConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 it('requires authentication for activity provider connect routes', function () {
     $this
@@ -64,8 +66,11 @@ it('returns an inertia location redirect for inertia connect requests', function
 });
 
 it('stores tokens on callback and supports reconnect overwrites', function () {
+    Queue::fake();
+
     config()->set('services.strava.client_id', 'client-123');
     config()->set('services.strava.client_secret', 'secret-123');
+    config()->set('services.activity_providers.initial_full_import_enabled', true);
 
     Http::fake([
         'https://www.strava.com/oauth/token' => Http::sequence()
@@ -107,6 +112,9 @@ it('stores tokens on callback and supports reconnect overwrites', function () {
     expect($connection?->refresh_token)->toBe('first-refresh-token');
     expect($connection?->provider_athlete_id)->toBe('91823');
     expect($connection?->token_expires_at)->not->toBeNull();
+    expect($connection?->initial_full_import_requested_at)->not->toBeNull();
+
+    Queue::assertPushed(StravaFullHistoryImportJob::class, 1);
 
     $this
         ->actingAs($athlete)
@@ -120,9 +128,49 @@ it('stores tokens on callback and supports reconnect overwrites', function () {
     expect($connection->access_token)->toBe('updated-access-token');
     expect($connection->refresh_token)->toBe('updated-refresh-token');
 
+    Queue::assertPushed(StravaFullHistoryImportJob::class, 1);
+
     $athlete->refresh();
     expect($athlete->strava_access_token)->toBe('updated-access-token');
     expect($athlete->strava_refresh_token)->toBe('updated-refresh-token');
+});
+
+it('does not queue initial full history import when feature flag is disabled', function () {
+    Queue::fake();
+
+    config()->set('services.strava.client_id', 'client-123');
+    config()->set('services.strava.client_secret', 'secret-123');
+    config()->set('services.activity_providers.initial_full_import_enabled', false);
+
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'first-access-token',
+            'refresh_token' => 'first-refresh-token',
+            'expires_at' => now()->addHour()->timestamp,
+            'athlete' => [
+                'id' => 91823,
+            ],
+        ]),
+    ]);
+
+    $athlete = User::factory()->athlete()->create();
+
+    $this
+        ->actingAs($athlete)
+        ->withSession([
+            'activity_provider_oauth_state.strava' => 'state-123',
+        ])
+        ->get('/settings/connections/strava/callback?state=state-123&code=abc')
+        ->assertRedirect('/settings/connections');
+
+    Queue::assertNotPushed(StravaFullHistoryImportJob::class);
+
+    $connection = ActivityProviderConnection::query()
+        ->where('user_id', $athlete->id)
+        ->where('provider', 'strava')
+        ->first();
+
+    expect($connection?->initial_full_import_requested_at)->toBeNull();
 });
 
 it('disconnects strava and clears persisted tokens', function () {
