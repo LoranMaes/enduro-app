@@ -6,7 +6,9 @@ use App\Models\User;
 use App\Services\Activities\ExternalActivityPersister;
 use App\Services\ActivityProviders\ActivityProviderManager;
 use App\Services\ActivityProviders\Contracts\ActivityProvider;
+use App\Services\Training\ActivityToSessionReconciler;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -28,6 +30,7 @@ class StravaFullHistoryImportJob implements ShouldQueue
     public function handle(
         ActivityProviderManager $activityProviderManager,
         ExternalActivityPersister $externalActivityPersister,
+        ActivityToSessionReconciler $activityToSessionReconciler,
     ): void {
         $athlete = User::query()->find($this->user->id);
 
@@ -43,6 +46,7 @@ class StravaFullHistoryImportJob implements ShouldQueue
 
         $page = 1;
         $normalizedPerPage = max(1, min(200, $this->perPage));
+        $earliestImportedDate = null;
 
         while (true) {
             $batch = $provider->fetchActivities($athlete, [
@@ -58,6 +62,7 @@ class StravaFullHistoryImportJob implements ShouldQueue
                 $athlete,
                 $batch,
             );
+            $activityToSessionReconciler->reconcileMany($persistedActivities);
             $batchStart = $persistedActivities
                 ->pluck('started_at')
                 ->filter()
@@ -65,16 +70,10 @@ class StravaFullHistoryImportJob implements ShouldQueue
                 ->first();
 
             if ($batchStart !== null) {
-                RecalculateUserLoadJob::dispatch(
-                    $athlete,
-                    Carbon::parse($batchStart)->startOfDay(),
-                    Carbon::parse(now())->endOfDay(),
-                );
-                RecalculateWeeklyMetricsJob::dispatch(
-                    $athlete,
-                    Carbon::parse($batchStart)->startOfDay(),
-                    Carbon::parse(now())->endOfDay(),
-                );
+                $batchStartDate = CarbonImmutable::parse($batchStart)->startOfDay();
+                $earliestImportedDate = $earliestImportedDate instanceof CarbonImmutable
+                    ? $earliestImportedDate->min($batchStartDate)
+                    : $batchStartDate;
             }
 
             if ($batch->count() < $normalizedPerPage) {
@@ -83,5 +82,20 @@ class StravaFullHistoryImportJob implements ShouldQueue
 
             $page++;
         }
+
+        if (! $earliestImportedDate instanceof CarbonImmutable) {
+            return;
+        }
+
+        RecalculateUserLoadJob::dispatch(
+            $athlete,
+            Carbon::parse($earliestImportedDate)->startOfDay(),
+            Carbon::parse(now())->endOfDay(),
+        );
+        RecalculateWeeklyMetricsJob::dispatch(
+            $athlete,
+            Carbon::parse($earliestImportedDate)->startOfDay(),
+            Carbon::parse(now())->endOfDay(),
+        );
     }
 }
