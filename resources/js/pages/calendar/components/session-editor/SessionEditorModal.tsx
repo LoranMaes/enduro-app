@@ -84,6 +84,8 @@ export function SessionEditorModal({
     const derived = useSessionDerivedValues({
         context,
         sessionDetails,
+        sport,
+        trainingTargets: athleteTrainingTargets,
         plannedStructure,
         activeEditorTab,
         canManageSessionWrites,

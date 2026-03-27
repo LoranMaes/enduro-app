@@ -49,16 +49,16 @@ return [
         'oauth_providers' => [
             'strava' => StravaOAuthProvider::class,
         ],
-        'sync_lookback_days' => (int) env('ACTIVITY_PROVIDER_SYNC_LOOKBACK_DAYS', 90),
+        'sync_lookback_days' => (int) env('ACTIVITY_PROVIDER_SYNC_LOOKBACK_DAYS', 30),
         'token_refresh_buffer_seconds' => (int) env('ACTIVITY_PROVIDER_TOKEN_REFRESH_BUFFER_SECONDS', 300),
         'sync_lock_seconds' => (int) env('ACTIVITY_PROVIDER_SYNC_LOCK_SECONDS', 300),
         'lock_retry_seconds' => (int) env('ACTIVITY_PROVIDER_LOCK_RETRY_SECONDS', 30),
         'stream_cache_seconds' => (int) env('ACTIVITY_PROVIDER_STREAM_CACHE_SECONDS', 900),
         'initial_full_import_enabled' => filter_var(
-            env('ACTIVITY_PROVIDER_INITIAL_FULL_IMPORT', true),
+            env('ACTIVITY_PROVIDER_INITIAL_FULL_IMPORT', false),
             FILTER_VALIDATE_BOOL,
             FILTER_NULL_ON_FAILURE,
-        ) ?? true,
+        ) ?? false,
     ],
 
     'strava' => [

@@ -7,7 +7,12 @@ import {
     type RefObject,
     type SetStateAction,
 } from 'react';
-import { sportOptions, workoutStructureBlockTypes, workoutStructureUnits } from '../constants';
+import {
+    resolveAllowedWorkoutStructureUnitsForSport,
+    sportOptions,
+    workoutStructureBlockTypes,
+    workoutStructureUnits,
+} from '../constants';
 import type {
     SessionEditorContext,
     Sport,
@@ -142,6 +147,31 @@ export function useSessionEditorState({
     }, [open, context]);
 
     useEffect(() => {
+        if (plannedStructure === null) {
+            return;
+        }
+
+        const allowedUnits = resolveAllowedWorkoutStructureUnitsForSport(sport);
+
+        if (allowedUnits.includes(plannedStructure.unit)) {
+            return;
+        }
+
+        const nextUnit = allowedUnits[0] ?? 'rpe';
+
+        setPlannedStructure((currentStructure) => {
+            if (currentStructure === null) {
+                return null;
+            }
+
+            return {
+                ...currentStructure,
+                unit: nextUnit,
+            };
+        });
+    }, [plannedStructure, setPlannedStructure, sport]);
+
+    useEffect(() => {
         if (!open) {
             return;
         }
@@ -217,7 +247,25 @@ function normalizeEditorWorkoutStructure(
             )
                 ? (step.type as WorkoutStructureStep['type'])
                 : 'active',
-            durationMinutes: Math.max(1, Math.round(step.durationMinutes)),
+            durationSeconds: Math.max(
+                60,
+                Math.round(
+                    step.durationSeconds ??
+                        step.durationMinutes * 60,
+                ),
+            ),
+            durationMinutes: Math.max(
+                1,
+                Math.round(
+                    (step.durationSeconds ?? step.durationMinutes * 60) / 60,
+                ),
+            ),
+            durationType:
+                step.durationType === 'distance' ? 'distance' : 'time',
+            distanceMeters:
+                step.durationType === 'distance'
+                    ? Math.max(1, Math.round(step.distanceMeters ?? 1000))
+                    : null,
             target:
                 step.target === null ||
                 step.target === undefined ||
@@ -236,13 +284,37 @@ function normalizeEditorWorkoutStructure(
                 Number.isNaN(step.rangeMax)
                     ? null
                     : step.rangeMax,
+            zoneLabel:
+                step.zoneLabel !== undefined &&
+                step.zoneLabel !== null &&
+                ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].includes(step.zoneLabel)
+                    ? step.zoneLabel
+                    : null,
             repeatCount: Math.max(1, Math.round(step.repeatCount ?? 1)),
             note: step.note ?? '',
             items:
                 step.items?.map((item, itemIndex) => ({
                     id: item.id ?? `item-${Date.now()}-${index}-${itemIndex}`,
                     label: item.label ?? `Step ${itemIndex + 1}`,
-                    durationMinutes: Math.max(1, Math.round(item.durationMinutes)),
+                    durationSeconds: Math.max(
+                        60,
+                        Math.round(
+                            item.durationSeconds ??
+                                item.durationMinutes * 60,
+                        ),
+                    ),
+                    durationMinutes: Math.max(
+                        1,
+                        Math.round(
+                            (item.durationSeconds ?? item.durationMinutes * 60) / 60,
+                        ),
+                    ),
+                    durationType:
+                        item.durationType === 'distance' ? 'distance' : 'time',
+                    distanceMeters:
+                        item.durationType === 'distance'
+                            ? Math.max(1, Math.round(item.distanceMeters ?? 1000))
+                            : null,
                     target:
                         item.target === null ||
                         item.target === undefined ||
@@ -261,6 +333,12 @@ function normalizeEditorWorkoutStructure(
                         Number.isNaN(item.rangeMax)
                             ? null
                             : item.rangeMax,
+                    zoneLabel:
+                        item.zoneLabel !== undefined &&
+                        item.zoneLabel !== null &&
+                        ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].includes(item.zoneLabel)
+                            ? item.zoneLabel
+                            : null,
                 })) ?? null,
         })),
     };

@@ -1,5 +1,14 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
 import type {
@@ -23,6 +32,7 @@ import { WorkoutLibraryDialog } from '@/features/workout-library/WorkoutLibraryD
 import { DAY_HEADERS, SYNC_PENDING_STATUSES, VIEW_MODES } from './constants';
 import { useCalendarDragDrop } from './hooks/useCalendarDragDrop';
 import { useCalendarInfiniteLoading } from './hooks/useCalendarInfiniteLoading';
+import { useCalendarActivityActions } from './hooks/useCalendarActivityActions';
 import { useCalendarScroll } from './hooks/useCalendarScroll';
 import { useCalendarSelection } from './hooks/useCalendarSelection';
 import { useCalendarSessions } from './hooks/useCalendarSessions';
@@ -83,9 +93,21 @@ function normalizePlannedStructureForRequest(
                 id: step.id ?? null,
                 type: step.type,
                 duration_minutes: Math.max(1, Math.round(step.durationMinutes)),
+                duration_seconds: Math.max(
+                    60,
+                    Math.round(
+                        step.durationSeconds ?? step.durationMinutes * 60,
+                    ),
+                ),
+                duration_type: step.durationType ?? 'time',
+                distance_meters:
+                    step.durationType === 'distance'
+                        ? Math.max(1, Math.round(step.distanceMeters ?? 1000))
+                        : null,
                 target: step.target ?? null,
                 range_min: step.rangeMin ?? null,
                 range_max: step.rangeMax ?? null,
+                zone_label: step.zoneLabel ?? null,
                 repeat_count: step.repeatCount ?? 1,
                 note: step.note?.trim() === '' ? null : (step.note ?? null),
                 items:
@@ -97,9 +119,25 @@ function normalizePlannedStructureForRequest(
                                 1,
                                 Math.round(item.durationMinutes),
                             ),
+                            duration_seconds: Math.max(
+                                60,
+                                Math.round(
+                                    item.durationSeconds ??
+                                        item.durationMinutes * 60,
+                                ),
+                            ),
+                            duration_type: item.durationType ?? 'time',
+                            distance_meters:
+                                item.durationType === 'distance'
+                                    ? Math.max(
+                                          1,
+                                          Math.round(item.distanceMeters ?? 1000),
+                                      )
+                                    : null,
                             target: item.target ?? null,
                             range_min: item.rangeMin ?? null,
                             range_max: item.rangeMax ?? null,
+                            zone_label: item.zoneLabel ?? null,
                         };
                     }) ?? null,
             };
@@ -142,11 +180,19 @@ function normalizeLibraryStructureForRequest(
                     type?: string;
                     duration_minutes?: number;
                     durationMinutes?: number;
+                    duration_seconds?: number;
+                    durationSeconds?: number;
+                    duration_type?: 'time' | 'distance';
+                    durationType?: 'time' | 'distance';
+                    distance_meters?: number;
+                    distanceMeters?: number;
                     target?: number | null;
                     range_min?: number | null;
                     range_max?: number | null;
                     rangeMin?: number | null;
                     rangeMax?: number | null;
+                    zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
+                    zoneLabel?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
                     repeat_count?: number | null;
                     repeatCount?: number | null;
                     note?: string | null;
@@ -168,9 +214,42 @@ function normalizeLibraryStructureForRequest(
                             ),
                         ),
                     ),
+                    duration_seconds: Math.max(
+                        60,
+                        Math.round(
+                            Number(
+                                step.duration_seconds ??
+                                    step.durationSeconds ??
+                                    (step.duration_minutes ??
+                                        step.durationMinutes ??
+                                        1) *
+                                        60,
+                            ),
+                        ),
+                    ),
+                    duration_type:
+                        step.duration_type === 'distance' ||
+                        step.durationType === 'distance'
+                            ? 'distance'
+                            : 'time',
+                    distance_meters:
+                        step.duration_type === 'distance' ||
+                        step.durationType === 'distance'
+                            ? Math.max(
+                                  1,
+                                  Math.round(
+                                      Number(
+                                          step.distance_meters ??
+                                              step.distanceMeters ??
+                                              1000,
+                                      ),
+                                  ),
+                              )
+                            : null,
                     target: step.target ?? null,
                     range_min: step.range_min ?? step.rangeMin ?? null,
                     range_max: step.range_max ?? step.rangeMax ?? null,
+                    zone_label: step.zone_label ?? step.zoneLabel ?? null,
                     repeat_count: Math.max(
                         1,
                         Math.round(
@@ -196,11 +275,19 @@ function normalizeLibraryStructureForRequest(
                                 label?: string;
                                 duration_minutes?: number;
                                 durationMinutes?: number;
+                                duration_seconds?: number;
+                                durationSeconds?: number;
+                                duration_type?: 'time' | 'distance';
+                                durationType?: 'time' | 'distance';
+                                distance_meters?: number;
+                                distanceMeters?: number;
                                 target?: number | null;
                                 range_min?: number | null;
                                 range_max?: number | null;
                                 rangeMin?: number | null;
                                 rangeMax?: number | null;
+                                zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
+                                zoneLabel?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
                             };
 
                             return {
@@ -216,9 +303,42 @@ function normalizeLibraryStructureForRequest(
                                         ),
                                     ),
                                 ),
+                                duration_seconds: Math.max(
+                                    60,
+                                    Math.round(
+                                        Number(
+                                            item.duration_seconds ??
+                                                item.durationSeconds ??
+                                                (item.duration_minutes ??
+                                                    item.durationMinutes ??
+                                                    1) *
+                                                    60,
+                                        ),
+                                    ),
+                                ),
+                                duration_type:
+                                    item.duration_type === 'distance' ||
+                                    item.durationType === 'distance'
+                                        ? 'distance'
+                                        : 'time',
+                                distance_meters:
+                                    item.duration_type === 'distance' ||
+                                    item.durationType === 'distance'
+                                        ? Math.max(
+                                              1,
+                                              Math.round(
+                                                  Number(
+                                                      item.distance_meters ??
+                                                          item.distanceMeters ??
+                                                          1000,
+                                                  ),
+                                              ),
+                                          )
+                                        : null,
                                 target: item.target ?? null,
                                 range_min: item.range_min ?? item.rangeMin ?? null,
                                 range_max: item.range_max ?? item.rangeMax ?? null,
+                                zone_label: item.zone_label ?? item.zoneLabel ?? null,
                             };
                         })?.filter((item): item is NonNullable<typeof item> => {
                             return item !== null;
@@ -321,6 +441,12 @@ export default function CalendarPage({
         setGoals: sessionState.setGoals,
         setComplianceWeeks: sessionState.setComplianceWeeks,
         setCalendarWindow: calendarWindowState.setCalendarWindow,
+    });
+    const activityActions = useCalendarActivityActions({
+        calendarWindow: calendarWindowState.calendarWindow,
+        canManageActivityActions: selection.canManageSessionWrites,
+        refreshCalendarData: sessionState.refreshCalendarData,
+        onOpenActivityDetails: selection.openActivityDetails,
     });
     const scrollContainerRef = scrollState.scrollContainerRef;
     const weekElementsRef = scrollState.weekElementsRef;
@@ -805,6 +931,23 @@ export default function CalendarPage({
                 activeDayHeaders={activeDayHeaders}
             />
 
+            {activityActions.activityError !== null ? (
+                <div className="border-b border-red-500/20 bg-red-500/10 px-6 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-red-200">
+                            {activityActions.activityError}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={activityActions.clearActivityError}
+                            className="text-[0.6875rem] text-red-200/80 transition-colors hover:text-red-100"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+
             <CalendarWeekGrid
                 visibleWeeks={calendarWindowState.visibleWeeks}
                 weekActivities={weekActivities}
@@ -825,7 +968,16 @@ export default function CalendarPage({
                 }}
                 draggingSessionId={dragDrop.draggingSessionId}
                 isDayDropTarget={dragDrop.isDropTarget}
-                onOpenActivity={selection.openActivityDetails}
+                onOpenActivity={activityActions.openActivityDetails}
+                onCopyActivity={(activity) => {
+                    void activityActions.copyActivityToPlannedSession(activity);
+                }}
+                onRequestDeleteActivity={activityActions.requestDeleteActivity}
+                onOpenActivityLinkFlow={activityActions.openActivityLinkFlow}
+                onUnlinkActivity={(activity) => {
+                    void activityActions.unlinkActivity(activity);
+                }}
+                isActivityActionLoading={activityActions.isActivityProcessing}
                 onOpenCalendarEntry={selection.openEditCalendarEntryModal}
                 onOpenGoal={selection.openGoalModal}
                 onOpenProgressForWeek={(weekStartsAt) => {
@@ -964,6 +1116,54 @@ export default function CalendarPage({
                     );
                 }}
             />
+
+            <Dialog
+                open={activityActions.pendingDeleteActivity !== null}
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                        activityActions.cancelDeleteActivity();
+                    }
+                }}
+            >
+                <DialogContent
+                    size="sm"
+                    className="border-border bg-surface text-zinc-200"
+                >
+                    <DialogHeader>
+                        <DialogTitle className="text-zinc-100">
+                            Delete activity
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            {activityActions.pendingDeleteActivity?.linkedSessionId !==
+                            null
+                                ? 'This activity is linked to a session. Deleting it will also delete the linked session.'
+                                : 'This activity will be removed from your calendar.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={activityActions.cancelDeleteActivity}
+                            disabled={activityActions.isDeleteProcessing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => {
+                                void activityActions.confirmDeleteActivity();
+                            }}
+                            disabled={activityActions.isDeleteProcessing}
+                        >
+                            {activityActions.isDeleteProcessing
+                                ? 'Deleting...'
+                                : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </section>
     );
 }

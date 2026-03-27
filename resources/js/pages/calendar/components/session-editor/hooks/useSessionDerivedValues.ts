@@ -12,6 +12,8 @@ import type {
 type UseSessionDerivedValuesParams = {
     context: SessionEditorContext | null;
     sessionDetails: import('@/types/training-plans').TrainingSessionView | null;
+    sport: string;
+    trainingTargets: import('../../workout-structure-builder').AthleteTrainingTargets | null;
     plannedStructure: WorkoutStructure | null;
     activeEditorTab: 'details' | 'structure';
     canManageSessionWrites: boolean;
@@ -27,6 +29,8 @@ type UseSessionDerivedValuesParams = {
 export function useSessionDerivedValues({
     context,
     sessionDetails,
+    sport,
+    trainingTargets,
     plannedStructure,
     activeEditorTab,
     canManageSessionWrites,
@@ -92,12 +96,20 @@ export function useSessionDerivedValues({
         plannedStructure !== null && plannedStructure.steps.length > 0;
 
     const derivedStructureDurationMinutes = useMemo(() => {
-        return calculateWorkoutStructureDurationMinutes(plannedStructure);
-    }, [plannedStructure]);
+        return calculateWorkoutStructureDurationMinutes(
+            plannedStructure,
+            sport,
+            trainingTargets,
+        );
+    }, [plannedStructure, sport, trainingTargets]);
 
     const derivedStructureTss = useMemo(() => {
-        return estimateWorkoutStructureTss(plannedStructure);
-    }, [plannedStructure]);
+        return estimateWorkoutStructureTss(
+            plannedStructure,
+            sport,
+            trainingTargets,
+        );
+    }, [plannedStructure, sport, trainingTargets]);
 
     return {
         isEditMode,

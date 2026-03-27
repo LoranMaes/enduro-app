@@ -44,20 +44,76 @@ export const mapTrainingSession = (
                       steps: session.planned_structure.steps.map((step) => ({
                           id: step.id ?? null,
                           type: step.type,
-                          durationMinutes: step.duration_minutes,
+                          durationSeconds: Math.max(
+                              60,
+                              Math.round(
+                                  step.duration_seconds ??
+                                      step.duration_minutes * 60,
+                              ),
+                          ),
+                          durationMinutes: Math.max(
+                              1,
+                              Math.round(
+                                  (
+                                      step.duration_seconds ??
+                                      step.duration_minutes * 60
+                                  ) / 60,
+                              ),
+                          ),
+                          durationType:
+                              step.duration_type === 'distance'
+                                  ? 'distance'
+                                  : 'time',
+                          distanceMeters:
+                              step.duration_type === 'distance'
+                                  ? Math.max(
+                                        1,
+                                        Math.round(step.distance_meters ?? 1000),
+                                    )
+                                  : null,
                           target: step.target ?? null,
                           rangeMin: step.range_min ?? null,
                           rangeMax: step.range_max ?? null,
+                          zoneLabel: step.zone_label ?? null,
                           repeatCount: step.repeat_count ?? null,
                           note: step.note ?? null,
                           items:
                               step.items?.map((item) => ({
                                   id: item.id ?? null,
                                   label: item.label ?? null,
-                                  durationMinutes: item.duration_minutes,
+                                  durationSeconds: Math.max(
+                                      60,
+                                      Math.round(
+                                          item.duration_seconds ??
+                                              item.duration_minutes * 60,
+                                      ),
+                                  ),
+                                  durationMinutes: Math.max(
+                                      1,
+                                      Math.round(
+                                          (
+                                              item.duration_seconds ??
+                                              item.duration_minutes * 60
+                                          ) / 60,
+                                      ),
+                                  ),
+                                  durationType:
+                                      item.duration_type === 'distance'
+                                          ? 'distance'
+                                          : 'time',
+                                  distanceMeters:
+                                      item.duration_type === 'distance'
+                                          ? Math.max(
+                                                1,
+                                                Math.round(
+                                                    item.distance_meters ?? 1000,
+                                                ),
+                                            )
+                                          : null,
                                   target: item.target ?? null,
                                   rangeMin: item.range_min ?? null,
                                   rangeMax: item.range_max ?? null,
+                                  zoneLabel: item.zone_label ?? null,
                               })) ?? null,
                       })),
                   }

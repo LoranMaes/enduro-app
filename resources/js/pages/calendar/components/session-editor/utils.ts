@@ -60,6 +60,12 @@ function normalizePlannedStructureForRequest(
                 id: step.id,
                 type: step.type,
                 duration_minutes: Math.max(1, Math.round(step.durationMinutes)),
+                duration_seconds: Math.max(60, Math.round(step.durationSeconds)),
+                duration_type: step.durationType,
+                distance_meters:
+                    step.durationType === 'distance'
+                        ? Math.max(1, Math.round(step.distanceMeters ?? 1000))
+                        : null,
                 target:
                     step.target === null || Number.isNaN(step.target)
                         ? null
@@ -72,6 +78,7 @@ function normalizePlannedStructureForRequest(
                     step.rangeMax === null || Number.isNaN(step.rangeMax)
                         ? null
                         : step.rangeMax,
+                zone_label: step.zoneLabel ?? null,
                 repeat_count: Math.max(1, Math.round(step.repeatCount)),
                 note: normalizedNote === '' ? null : normalizedNote,
                 items:
@@ -83,6 +90,18 @@ function normalizePlannedStructureForRequest(
                                 1,
                                 Math.round(item.durationMinutes),
                             ),
+                            duration_seconds: Math.max(
+                                60,
+                                Math.round(item.durationSeconds),
+                            ),
+                            duration_type: item.durationType,
+                            distance_meters:
+                                item.durationType === 'distance'
+                                    ? Math.max(
+                                          1,
+                                          Math.round(item.distanceMeters ?? 1000),
+                                      )
+                                    : null,
                             target:
                                 item.target === null || Number.isNaN(item.target)
                                     ? null
@@ -95,6 +114,7 @@ function normalizePlannedStructureForRequest(
                                 item.rangeMax === null || Number.isNaN(item.rangeMax)
                                     ? null
                                     : item.rangeMax,
+                            zone_label: item.zoneLabel ?? null,
                         };
                     }) ?? null,
             };
@@ -182,10 +202,37 @@ export function mapSessionFromApi(
                       steps: session.planned_structure.steps.map((step) => ({
                           id: step.id ?? `step-${session.id}-${step.type}`,
                           type: step.type as WorkoutStructureStep['type'],
-                          durationMinutes: step.duration_minutes,
+                          durationSeconds: Math.max(
+                              60,
+                              Math.round(
+                                  step.duration_seconds ??
+                                      step.duration_minutes * 60,
+                              ),
+                          ),
+                          durationMinutes: Math.max(
+                              1,
+                              Math.round(
+                                  (
+                                      step.duration_seconds ??
+                                      step.duration_minutes * 60
+                                  ) / 60,
+                              ),
+                          ),
+                          durationType:
+                              step.duration_type === 'distance'
+                                  ? 'distance'
+                                  : 'time',
+                          distanceMeters:
+                              step.duration_type === 'distance'
+                                  ? Math.max(
+                                        1,
+                                        Math.round(step.distance_meters ?? 1000),
+                                    )
+                                  : null,
                           target: step.target ?? null,
                           rangeMin: step.range_min ?? null,
                           rangeMax: step.range_max ?? null,
+                          zoneLabel: step.zone_label ?? null,
                           repeatCount: step.repeat_count ?? 1,
                           note: step.note ?? '',
                           items:
@@ -194,10 +241,39 @@ export function mapSessionFromApi(
                                       item.id ??
                                       `item-${session.id}-${step.type}-${itemIndex}`,
                                   label: item.label ?? `Step ${itemIndex + 1}`,
-                                  durationMinutes: item.duration_minutes,
+                                  durationSeconds: Math.max(
+                                      60,
+                                      Math.round(
+                                          item.duration_seconds ??
+                                              item.duration_minutes * 60,
+                                      ),
+                                  ),
+                                  durationMinutes: Math.max(
+                                      1,
+                                      Math.round(
+                                          (
+                                              item.duration_seconds ??
+                                              item.duration_minutes * 60
+                                          ) / 60,
+                                      ),
+                                  ),
+                                  durationType:
+                                      item.duration_type === 'distance'
+                                          ? 'distance'
+                                          : 'time',
+                                  distanceMeters:
+                                      item.duration_type === 'distance'
+                                          ? Math.max(
+                                                1,
+                                                Math.round(
+                                                    item.distance_meters ?? 1000,
+                                                ),
+                                            )
+                                          : null,
                                   target: item.target ?? null,
                                   rangeMin: item.range_min ?? null,
                                   rangeMax: item.range_max ?? null,
+                                  zoneLabel: item.zone_label ?? null,
                               })) ?? null,
                       })),
                   }

@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
-import type { PreviewGroup, WorkoutStructure } from '../types';
+import type {
+    AthleteTrainingTargets,
+    PreviewGroup,
+    WorkoutStructure,
+} from '../types';
 import {
     buildPreviewSegments,
     calculateWorkoutStructureDurationMinutes,
@@ -18,6 +22,8 @@ type StructureTotals = {
 
 export function useStructureTotals(
     structure: WorkoutStructure | null,
+    sport: string,
+    trainingTargets: AthleteTrainingTargets | null,
 ): StructureTotals {
     const previewGroups = useMemo(() => {
         if (structure === null) {
@@ -25,7 +31,13 @@ export function useStructureTotals(
         }
 
         return structure.steps.map((step, stepIndex) => {
-            const segments = buildPreviewSegments(step, structure.mode, structure.unit);
+            const segments = buildPreviewSegments(
+                step,
+                structure.mode,
+                structure.unit,
+                sport,
+                trainingTargets,
+            );
             const totalDurationMinutes = segments.reduce(
                 (carry, segment) => carry + Math.max(1, segment.durationMinutes),
                 0,
@@ -39,15 +51,19 @@ export function useStructureTotals(
                 segments,
             };
         });
-    }, [structure]);
+    }, [sport, structure, trainingTargets]);
 
     const totalDuration = useMemo(() => {
-        return calculateWorkoutStructureDurationMinutes(structure);
-    }, [structure]);
+        return calculateWorkoutStructureDurationMinutes(
+            structure,
+            sport,
+            trainingTargets,
+        );
+    }, [sport, structure, trainingTargets]);
 
     const estimatedTss = useMemo(() => {
-        return estimateWorkoutStructureTss(structure);
-    }, [structure]);
+        return estimateWorkoutStructureTss(structure, sport, trainingTargets);
+    }, [sport, structure, trainingTargets]);
 
     const previewScaleMax = useMemo(() => {
         if (structure === null) {

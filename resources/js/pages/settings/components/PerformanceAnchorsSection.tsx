@@ -37,6 +37,42 @@ export function PerformanceAnchorsSection({
                 </div>
 
                 <div className="space-y-1.5">
+                    <label htmlFor="training-lt1-power" className="text-xs text-zinc-500">
+                        LT1 Power (watts)
+                    </label>
+                    <input
+                        id="training-lt1-power"
+                        type="number"
+                        min={50}
+                        max={1000}
+                        value={trainingForm.data.lt1_power_watts ?? ''}
+                        onChange={(event) => {
+                            setNullableNumberField('lt1_power_watts', event.target.value);
+                        }}
+                        className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                    <InputError message={trainingForm.errors.lt1_power_watts} />
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="training-lt2-power" className="text-xs text-zinc-500">
+                        LT2 Power (watts)
+                    </label>
+                    <input
+                        id="training-lt2-power"
+                        type="number"
+                        min={50}
+                        max={1000}
+                        value={trainingForm.data.lt2_power_watts ?? ''}
+                        onChange={(event) => {
+                            setNullableNumberField('lt2_power_watts', event.target.value);
+                        }}
+                        className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                    <InputError message={trainingForm.errors.lt2_power_watts} />
+                </div>
+
+                <div className="space-y-1.5">
                     <label htmlFor="training-max-hr" className="text-xs text-zinc-500">
                         Max Heart Rate (bpm)
                     </label>
@@ -52,6 +88,48 @@ export function PerformanceAnchorsSection({
                         className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
                     />
                     <InputError message={trainingForm.errors.max_heart_rate_bpm} />
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="training-lt1-hr" className="text-xs text-zinc-500">
+                        LT1 Heart Rate (bpm)
+                    </label>
+                    <input
+                        id="training-lt1-hr"
+                        type="number"
+                        min={100}
+                        max={230}
+                        value={trainingForm.data.lt1_heart_rate_bpm ?? ''}
+                        onChange={(event) => {
+                            setNullableNumberField(
+                                'lt1_heart_rate_bpm',
+                                event.target.value,
+                            );
+                        }}
+                        className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                    <InputError message={trainingForm.errors.lt1_heart_rate_bpm} />
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="training-lt2-hr" className="text-xs text-zinc-500">
+                        LT2 Heart Rate (bpm)
+                    </label>
+                    <input
+                        id="training-lt2-hr"
+                        type="number"
+                        min={100}
+                        max={230}
+                        value={trainingForm.data.lt2_heart_rate_bpm ?? ''}
+                        onChange={(event) => {
+                            setNullableNumberField(
+                                'lt2_heart_rate_bpm',
+                                event.target.value,
+                            );
+                        }}
+                        className="w-full rounded-md border border-border bg-zinc-900/50 px-3 py-2 font-mono text-sm text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                    <InputError message={trainingForm.errors.lt2_heart_rate_bpm} />
                 </div>
 
                 <div className="space-y-1.5">

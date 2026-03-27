@@ -45,7 +45,11 @@ export type SettingsOverviewProps = {
             | 'mixed'
             | string;
         ftp_watts: number | null;
+        lt1_power_watts: number | null;
+        lt2_power_watts: number | null;
         max_heart_rate_bpm: number | null;
+        lt1_heart_rate_bpm: number | null;
+        lt2_heart_rate_bpm: number | null;
         threshold_heart_rate_bpm: number | null;
         threshold_pace_minutes_per_km: number | null;
         power_zones: ZoneRange[];

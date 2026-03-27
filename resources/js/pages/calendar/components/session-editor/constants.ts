@@ -9,7 +9,10 @@ import {
     MoonStar,
 } from 'lucide-react';
 import type { ValidationField, Sport } from './types';
-import type { WorkoutStructureStep, WorkoutStructureUnit } from './types';
+import type {
+    WorkoutStructureStep,
+    WorkoutStructureUnit,
+} from './types';
 
 export const sportOptions: Array<{
     value: Sport;
@@ -47,6 +50,24 @@ export const workoutStructureUnits: WorkoutStructureUnit[] = [
     'threshold_speed_percent',
     'rpe',
 ];
+
+const sportUnitMatrix: Record<Sport, WorkoutStructureUnit[]> = {
+    swim: ['max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    bike: ['ftp_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    run: ['threshold_speed_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    day_off: ['rpe'],
+    mtn_bike: ['ftp_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    custom: ['rpe', 'max_hr_percent'],
+    walk: ['threshold_speed_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    gym: ['rpe'],
+    other: ['rpe', 'max_hr_percent'],
+};
+
+export function resolveAllowedWorkoutStructureUnitsForSport(
+    sport: Sport,
+): WorkoutStructureUnit[] {
+    return sportUnitMatrix[sport] ?? ['rpe'];
+}
 
 export const workoutStructureBlockTypes: WorkoutStructureStep['type'][] = [
     'warmup',

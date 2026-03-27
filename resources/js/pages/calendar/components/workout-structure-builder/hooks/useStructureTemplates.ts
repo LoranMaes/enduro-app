@@ -1,12 +1,13 @@
-import { blockDefinitions } from '../constants';
+import { blockDefinitions, resolveAllowedUnitsForSport } from '../constants';
 import type {
     WorkoutStructure,
     WorkoutStructureBlockType,
+    WorkoutStructureDurationType,
     WorkoutStructureItem,
     WorkoutStructureStep,
     WorkoutStructureUnit,
 } from '../types';
-import { stepUsesItems } from '../utils';
+import { minutesToSeconds, secondsToRoundedMinutes, stepUsesItems } from '../utils';
 
 type IntensityDefaults = {
     durationMinutes: number;
@@ -16,65 +17,14 @@ type IntensityDefaults = {
 };
 
 export function createDefaultStructureForSport(sport: string): WorkoutStructure {
-    if (sport === 'bike' || sport === 'run') {
-        const unit: WorkoutStructureUnit =
-            sport === 'bike' ? 'ftp_percent' : 'threshold_hr_percent';
-
-        return {
-            unit,
-            mode: 'range',
-            steps: [
-                createStep({
-                    type: 'warmup',
-                    durationMinutes: 12,
-                    unit,
-                    index: 0,
-                }),
-                createStep({
-                    type: 'active',
-                    durationMinutes: 8,
-                    unit,
-                    index: 1,
-                }),
-                createStep({
-                    type: 'recovery',
-                    durationMinutes: 4,
-                    unit,
-                    index: 2,
-                }),
-                createStep({
-                    type: 'two_step_repeats',
-                    durationMinutes: 8,
-                    unit,
-                    index: 3,
-                }),
-                createStep({
-                    type: 'ramp_down',
-                    durationMinutes: 8,
-                    unit,
-                    index: 4,
-                }),
-                createStep({
-                    type: 'cooldown',
-                    durationMinutes: 10,
-                    unit,
-                    index: 5,
-                }),
-            ],
-        };
-    }
+    const allowedUnits = resolveAllowedUnitsForSport(sport);
+    const unit: WorkoutStructureUnit = allowedUnits[0] ?? 'rpe';
+    const mode = unit === 'rpe' ? 'target' : 'range';
 
     return {
-        unit: 'rpe',
-        mode: 'target',
-        steps: [
-            createStep({
-                type: 'active',
-                durationMinutes: 45,
-                unit: 'rpe',
-                index: 0,
-            }),
-        ],
+        unit,
+        mode,
+        steps: [],
     };
 }
 
@@ -84,7 +34,7 @@ export function resetStepForType(
     index: number,
     currentStep?: WorkoutStructureStep,
 ): WorkoutStructureStep {
-    return createStep({
+    const createdStep = createStep({
         type,
         durationMinutes:
             currentStep?.durationMinutes ??
@@ -92,7 +42,23 @@ export function resetStepForType(
             8,
         unit,
         index,
+        durationType: currentStep?.durationType ?? 'time',
     });
+
+    if (currentStep === undefined) {
+        return createdStep;
+    }
+
+    return {
+        ...createdStep,
+        durationType: currentStep.durationType,
+        durationSeconds: currentStep.durationSeconds,
+        durationMinutes: currentStep.durationMinutes,
+        distanceMeters:
+            currentStep.durationType === 'distance'
+                ? currentStep.distanceMeters
+                : null,
+    };
 }
 
 export function createStep({
@@ -100,22 +66,29 @@ export function createStep({
     durationMinutes,
     unit,
     index,
+    durationType = 'time',
 }: {
     type: WorkoutStructureBlockType;
     durationMinutes: number;
     unit: WorkoutStructureUnit;
     index: number;
+    durationType?: WorkoutStructureDurationType;
 }): WorkoutStructureStep {
     const defaults = defaultIntensityForType(type, unit);
     const items = createDefaultItemsForType(type, unit);
+    const durationSeconds = minutesToSeconds(durationMinutes);
 
     return {
         id: `step-${Date.now()}-${index}`,
         type,
-        durationMinutes,
+        durationType,
+        durationSeconds,
+        durationMinutes: secondsToRoundedMinutes(durationSeconds),
+        distanceMeters: durationType === 'distance' ? 1000 : null,
         target: defaults.target,
         rangeMin: defaults.rangeMin,
         rangeMax: defaults.rangeMax,
+        zoneLabel: null,
         repeatCount: type === 'repeats' ? 3 : 1,
         items,
         note: '',
@@ -176,14 +149,20 @@ export function defaultItemDefinition(
     unit: WorkoutStructureUnit,
 ): WorkoutStructureItem {
     const defaults = defaultIntensityForType(type, unit, index);
+    const durationMinutes = Math.max(1, defaults.durationMinutes);
+    const durationSeconds = minutesToSeconds(durationMinutes);
 
     return {
         id: `item-${Date.now()}-${type}-${index}`,
         label,
-        durationMinutes: Math.max(1, defaults.durationMinutes),
+        durationType: 'time',
+        durationSeconds,
+        durationMinutes: secondsToRoundedMinutes(durationSeconds),
+        distanceMeters: null,
         target: defaults.target,
         rangeMin: defaults.rangeMin,
         rangeMax: defaults.rangeMax,
+        zoneLabel: null,
     };
 }
 

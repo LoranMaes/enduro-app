@@ -45,7 +45,7 @@ export function GoalEditorModal({
     onOpenChange,
     onSaved,
 }: GoalEditorModalProps) {
-    const [type, setType] = useState('text');
+    const [type, setType] = useState('race');
     const [sport, setSport] = useState('other');
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -70,7 +70,7 @@ export function GoalEditorModal({
             setPriority(context.goal.priority ?? 'normal');
             setStatus(context.goal.status ?? 'active');
         } else {
-            setType('text');
+            setType('race');
             setSport('other');
             setTitle('');
             setDescription('');
@@ -106,7 +106,7 @@ export function GoalEditorModal({
         try {
             const route =
                 context.mode === 'edit'
-                    ? updateGoal(context.goal.id)
+                    ? updateGoal(String(context.goal.id))
                     : storeGoal();
             const response = await fetch(route.url, {
                 method: route.method.toUpperCase(),

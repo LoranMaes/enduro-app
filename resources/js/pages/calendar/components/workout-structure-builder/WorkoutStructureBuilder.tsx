@@ -1,4 +1,5 @@
 import { Plus, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import {
     Select,
     SelectContent,
@@ -16,7 +17,11 @@ import { DropSeparator } from './components/StructureDragOverlay';
 import { StructureOverviewTiles } from './components/StructureOverviewTiles';
 import { StructurePreview } from './components/StructurePreview';
 import { WarmupBlockCard } from './components/WarmupBlockCard';
-import { blockDefinitions, unitLabels } from './constants';
+import {
+    blockDefinitions,
+    resolveAllowedUnitsForSport,
+    unitLabels,
+} from './constants';
 import { useStructureDrag } from './hooks/useStructureDrag';
 import { useStructureState } from './hooks/useStructureState';
 import { createDefaultStructureForSport, createStep, resetStepForType } from './hooks/useStructureTemplates';
@@ -71,7 +76,11 @@ export function WorkoutStructureBuilder({
         previewScaleMax,
         axisTicks,
         insertionOffsets,
-    } = useStructureTotals(structure);
+    } = useStructureTotals(structure, sport, trainingTargets);
+
+    const allowedUnits = useMemo(() => {
+        return resolveAllowedUnitsForSport(sport);
+    }, [sport]);
 
     const drag = useStructureDrag({
         disabled,
@@ -98,6 +107,26 @@ export function WorkoutStructureBuilder({
             });
         });
     };
+
+    useEffect(() => {
+        if (structure === null || allowedUnits.length === 0) {
+            return;
+        }
+
+        if (allowedUnits.includes(structure.unit)) {
+            return;
+        }
+
+        const nextUnit = allowedUnits[0] ?? 'rpe';
+
+        updateStructure((current) => ({
+            ...current,
+            unit: nextUnit,
+            steps: current.steps.map((step, stepIndex) => {
+                return resetStepForType(step.type, nextUnit, stepIndex, step);
+            }),
+        }));
+    }, [allowedUnits, structure, updateStructure]);
 
     const baseCardProps = (
         step: WorkoutStructureStep,
@@ -207,9 +236,9 @@ export function WorkoutStructureBuilder({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {Object.entries(unitLabels).map(([unit, label]) => (
+                                    {allowedUnits.map((unit) => (
                                         <SelectItem key={unit} value={unit}>
-                                            {label}
+                                            {unitLabels[unit]}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

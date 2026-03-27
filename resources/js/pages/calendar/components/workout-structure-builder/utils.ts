@@ -4,10 +4,30 @@ import type {
     PreviewSegment,
     WorkoutStructure,
     WorkoutStructureBlockType,
+    WorkoutStructureItem,
     WorkoutStructureMode,
     WorkoutStructureStep,
     WorkoutStructureUnit,
+    WorkoutStructureZoneLabel,
 } from './types';
+
+const DEFAULT_MINIMUM_DURATION_SECONDS = 60;
+
+type IntensitySource = {
+    target: number | null;
+    rangeMin: number | null;
+    rangeMax: number | null;
+};
+
+type DurationSource = {
+    durationType: 'time' | 'distance';
+    durationSeconds: number;
+    durationMinutes: number;
+    distanceMeters: number | null;
+    target: number | null;
+    rangeMin: number | null;
+    rangeMax: number | null;
+};
 
 export function stepUsesItems(type: WorkoutStructureBlockType): boolean {
     return itemBasedBlockTypes.includes(type);
@@ -68,11 +88,7 @@ export function patternLabelForStep(step: WorkoutStructureStep): string | null {
 }
 
 export function resolveIntensityBounds(
-    source: {
-        target: number | null;
-        rangeMin: number | null;
-        rangeMax: number | null;
-    },
+    source: IntensitySource,
     mode: WorkoutStructureMode,
 ): [number, number] {
     if (mode === 'target') {
@@ -98,20 +114,163 @@ export function clampIntensity(
     return Math.max(0, Math.min(200, value));
 }
 
+export function normalizeDurationSeconds(value: number): number {
+    return Math.max(DEFAULT_MINIMUM_DURATION_SECONDS, Math.round(value) || DEFAULT_MINIMUM_DURATION_SECONDS);
+}
+
+export function minutesToSeconds(durationMinutes: number): number {
+    return normalizeDurationSeconds(Math.max(1, Math.round(durationMinutes)) * 60);
+}
+
+export function secondsToRoundedMinutes(durationSeconds: number): number {
+    return Math.max(1, Math.round(normalizeDurationSeconds(durationSeconds) / 60));
+}
+
+export function resolveZoneOptionsForUnit(
+    unit: WorkoutStructureUnit,
+    trainingTargets: AthleteTrainingTargets | null,
+): Array<{ label: WorkoutStructureZoneLabel; min: number; max: number }> {
+    if (trainingTargets === null) {
+        return [];
+    }
+
+    if (unit === 'ftp_percent') {
+        return trainingTargets.power_zones
+            .filter(isZoneLabel)
+            .map((zone) => ({
+                label: zone.label,
+                min: zone.min,
+                max: zone.max,
+            }));
+    }
+
+    if (
+        unit === 'max_hr_percent' ||
+        unit === 'threshold_hr_percent' ||
+        unit === 'threshold_speed_percent'
+    ) {
+        return trainingTargets.heart_rate_zones
+            .filter(isZoneLabel)
+            .map((zone) => ({
+                label: zone.label,
+                min: zone.min,
+                max: zone.max,
+            }));
+    }
+
+    return [];
+}
+
+function isZoneLabel(zone: {
+    label: string;
+    min: number;
+    max: number;
+}): zone is {
+    label: WorkoutStructureZoneLabel;
+    min: number;
+    max: number;
+} {
+    return ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].includes(zone.label);
+}
+
+export function applyZoneToSource(
+    source: WorkoutStructureStep | WorkoutStructureItem,
+    mode: WorkoutStructureMode,
+    zone: { label: WorkoutStructureZoneLabel; min: number; max: number },
+): WorkoutStructureStep | WorkoutStructureItem {
+    if (mode === 'target') {
+        return {
+            ...source,
+            zoneLabel: zone.label,
+            target: Math.round((zone.min + zone.max) / 2),
+            rangeMin: zone.min,
+            rangeMax: zone.max,
+        };
+    }
+
+    return {
+        ...source,
+        zoneLabel: zone.label,
+        rangeMin: zone.min,
+        rangeMax: zone.max,
+        target: Math.round((zone.min + zone.max) / 2),
+    };
+}
+
+function resolveDurationSecondsFromSource(
+    source: DurationSource,
+    mode: WorkoutStructureMode,
+    unit: WorkoutStructureUnit,
+    sport: string,
+    trainingTargets: AthleteTrainingTargets | null,
+): number {
+    if (source.durationType === 'time') {
+        if (source.durationSeconds > 0) {
+            return normalizeDurationSeconds(source.durationSeconds);
+        }
+
+        return minutesToSeconds(source.durationMinutes);
+    }
+
+    const distanceMeters = Math.max(0, Math.round(source.distanceMeters ?? 0));
+
+    if (distanceMeters <= 0) {
+        return normalizeDurationSeconds(source.durationSeconds);
+    }
+
+    const [min, max] = resolveIntensityBounds(source, mode);
+    const midpoint = (min + max) / 2;
+    const intensityFactor =
+        unit === 'rpe' ? Math.max(0.4, midpoint / 10) : Math.max(0.4, midpoint / 100);
+
+    if (sport === 'run' || sport === 'walk') {
+        const fallbackPaceSeconds = sport === 'walk' ? 720 : 330;
+        const thresholdPace = trainingTargets?.threshold_pace_minutes_per_km ?? fallbackPaceSeconds;
+        const normalizedThresholdPace = Math.max(120, thresholdPace);
+        const adjustedPaceSeconds = normalizedThresholdPace / Math.max(0.5, Math.min(1.6, intensityFactor));
+
+        return normalizeDurationSeconds((distanceMeters / 1000) * adjustedPaceSeconds);
+    }
+
+    if (sport === 'bike' || sport === 'mtn_bike') {
+        const baseMetersPerSecond = sport === 'mtn_bike' ? 5.5 : 8.33;
+        const adjustedSpeed = baseMetersPerSecond * Math.max(0.55, Math.min(1.45, intensityFactor));
+
+        return normalizeDurationSeconds(distanceMeters / adjustedSpeed);
+    }
+
+    if (sport === 'swim') {
+        const baseMetersPerSecond = 1.67;
+        const adjustedSpeed = baseMetersPerSecond * Math.max(0.65, Math.min(1.4, intensityFactor));
+
+        return normalizeDurationSeconds(distanceMeters / adjustedSpeed);
+    }
+
+    const fallbackMetersPerSecond = 3.2 * Math.max(0.5, Math.min(1.3, intensityFactor));
+
+    return normalizeDurationSeconds(distanceMeters / fallbackMetersPerSecond);
+}
+
 export function buildPreviewSegments(
     step: WorkoutStructureStep,
     mode: WorkoutStructureMode,
     unit: WorkoutStructureUnit,
+    sport = 'other',
+    trainingTargets: AthleteTrainingTargets | null = null,
 ): PreviewSegment[] {
     const cycles = step.type === 'repeats' ? Math.max(2, step.repeatCount) : 1;
     const sourceItems = step.items ?? [
         {
             id: `${step.id}-base`,
             label: blockLabel(step.type),
+            durationType: step.durationType,
+            durationSeconds: step.durationSeconds,
             durationMinutes: step.durationMinutes,
+            distanceMeters: step.distanceMeters,
             target: step.target,
             rangeMin: step.rangeMin,
             rangeMax: step.rangeMax,
+            zoneLabel: step.zoneLabel,
         },
     ];
 
@@ -120,10 +279,18 @@ export function buildPreviewSegments(
     for (let cycleIndex = 0; cycleIndex < cycles; cycleIndex += 1) {
         sourceItems.forEach((item, itemIndex) => {
             const [min, max] = resolveIntensityBounds(item, mode);
+            const durationSeconds = resolveDurationSecondsFromSource(
+                item,
+                mode,
+                unit,
+                sport,
+                trainingTargets,
+            );
 
             segments.push({
                 id: `${step.id}-${cycleIndex}-${item.id}-${itemIndex}`,
-                durationMinutes: Math.max(1, item.durationMinutes),
+                durationSeconds,
+                durationMinutes: secondsToRoundedMinutes(durationSeconds),
                 type: step.type,
                 intensityMin: clampIntensity(min, unit),
                 intensityMax: clampIntensity(max, unit),
@@ -136,38 +303,58 @@ export function buildPreviewSegments(
 
 export function calculateWorkoutStructureDurationMinutes(
     structure: WorkoutStructure | null,
+    sport = 'other',
+    trainingTargets: AthleteTrainingTargets | null = null,
 ): number {
     if (structure === null) {
         return 0;
     }
 
-    return structure.steps.reduce((carry, step) => {
-        const segments = buildPreviewSegments(step, structure.mode, structure.unit);
-        const segmentDuration = segments.reduce(
-            (segmentCarry, segment) =>
-                segmentCarry + Math.max(1, segment.durationMinutes),
-            0,
+    const totalSeconds = structure.steps.reduce((carry, step) => {
+        const segments = buildPreviewSegments(
+            step,
+            structure.mode,
+            structure.unit,
+            sport,
+            trainingTargets,
         );
+        const segmentDuration = segments.reduce((segmentCarry, segment) => {
+            return segmentCarry + normalizeDurationSeconds(segment.durationSeconds);
+        }, 0);
 
         return carry + segmentDuration;
     }, 0);
+
+    if (totalSeconds <= 0) {
+        return 0;
+    }
+
+    return Math.max(1, Math.round(totalSeconds / 60));
 }
 
 export function estimateWorkoutStructureTss(
     structure: WorkoutStructure | null,
+    sport = 'other',
+    trainingTargets: AthleteTrainingTargets | null = null,
 ): number | null {
     if (structure === null) {
         return null;
     }
 
     const total = structure.steps.reduce((carry, step) => {
-        const segments = buildPreviewSegments(step, structure.mode, structure.unit);
+        const segments = buildPreviewSegments(
+            step,
+            structure.mode,
+            structure.unit,
+            sport,
+            trainingTargets,
+        );
 
         const segmentTotal = segments.reduce((segmentCarry, segment) => {
             const midpoint = (segment.intensityMin + segment.intensityMax) / 2;
             const intensityFactor =
                 structure.unit === 'rpe' ? midpoint / 10 : midpoint / 100;
-            const durationHours = Math.max(1, segment.durationMinutes) / 60;
+            const durationHours = normalizeDurationSeconds(segment.durationSeconds) / 3600;
 
             return (
                 segmentCarry +
@@ -195,6 +382,20 @@ export function formatDurationMinutes(durationMinutes: number): string {
     }
 
     return `${minutes}m`;
+}
+
+export function formatDurationSecondsHuman(durationSeconds: number): string {
+    const safeSeconds = Math.max(0, Math.round(durationSeconds));
+    const hours = Math.floor(safeSeconds / 3600);
+    const remainingAfterHours = safeSeconds % 3600;
+    const minutes = Math.floor(remainingAfterHours / 60);
+    const seconds = remainingAfterHours % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    return `${minutes}m ${seconds}s`;
 }
 
 export function formatAxisTickLabel(
@@ -323,3 +524,4 @@ export function formatPace(totalSeconds: number): string {
 
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
+

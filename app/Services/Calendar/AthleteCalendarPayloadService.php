@@ -362,7 +362,11 @@ class AthleteCalendarPayloadService
     /**
      * @return array{
      *     ftp_watts: int|null,
+     *     lt1_power_watts: int|null,
+     *     lt2_power_watts: int|null,
      *     max_heart_rate_bpm: int|null,
+     *     lt1_heart_rate_bpm: int|null,
+     *     lt2_heart_rate_bpm: int|null,
      *     threshold_heart_rate_bpm: int|null,
      *     threshold_pace_minutes_per_km: int|null,
      *     power_zones: array<int, array{label: string, min: int, max: int}>,
@@ -379,7 +383,11 @@ class AthleteCalendarPayloadService
 
         return [
             'ftp_watts' => $athlete->athleteProfile?->ftp_watts,
+            'lt1_power_watts' => $athlete->athleteProfile?->lt1_power_watts,
+            'lt2_power_watts' => $athlete->athleteProfile?->lt2_power_watts,
             'max_heart_rate_bpm' => $athlete->athleteProfile?->max_heart_rate_bpm,
+            'lt1_heart_rate_bpm' => $athlete->athleteProfile?->lt1_heart_rate_bpm,
+            'lt2_heart_rate_bpm' => $athlete->athleteProfile?->lt2_heart_rate_bpm,
             'threshold_heart_rate_bpm' => $athlete->athleteProfile?->threshold_heart_rate_bpm,
             'threshold_pace_minutes_per_km' => $athlete->athleteProfile?->threshold_pace_minutes_per_km,
             'power_zones' => $this->defaultPowerZones($athlete->athleteProfile?->power_zones),

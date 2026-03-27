@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Activities\CopyActivityToPlannedSessionAction;
+use App\Actions\Activities\DeleteActivityWithLinkedSessionAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\CopyActivityRequest;
+use App\Http\Requests\Api\DeleteActivityRequest;
 use App\Http\Requests\Api\ListActivityRequest;
 use App\Http\Resources\ActivityResource;
+use App\Http\Resources\TrainingSessionResource;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\Calendar\HistoryWindowLimiter;
@@ -17,6 +22,8 @@ class ActivityController extends Controller
 {
     public function __construct(
         private readonly HistoryWindowLimiter $historyWindowLimiter,
+        private readonly DeleteActivityWithLinkedSessionAction $deleteActivityWithLinkedSessionAction,
+        private readonly CopyActivityToPlannedSessionAction $copyActivityToPlannedSessionAction,
     ) {}
 
     /**
@@ -74,5 +81,49 @@ class ActivityController extends Controller
         $activity->loadMissing('trainingSession');
 
         return new ActivityResource($activity);
+    }
+
+    public function destroy(
+        DeleteActivityRequest $request,
+        Activity $activity,
+    ): \Illuminate\Http\JsonResponse {
+        $this->authorize('delete', $activity);
+
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $result = $this->deleteActivityWithLinkedSessionAction->execute(
+            $activity,
+            $user,
+        );
+
+        return response()->json([
+            'status' => 'deleted',
+            'activity_id' => $activity->getRouteKey(),
+            'linked_session_deleted' => $result['linked_session_deleted'],
+        ]);
+    }
+
+    public function copy(
+        CopyActivityRequest $request,
+        Activity $activity,
+    ): \Illuminate\Http\JsonResponse {
+        $this->authorize('create', Activity::class);
+        $this->authorize('view', $activity);
+
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $trainingSession = $this->copyActivityToPlannedSessionAction->execute(
+            $activity,
+            $user,
+        );
+
+        return (new TrainingSessionResource($trainingSession->loadMissing([
+            'trainingWeek',
+            'activity',
+        ])))
+            ->response()
+            ->setStatusCode(\Symfony\Component\HttpFoundation\Response::HTTP_CREATED);
     }
 }

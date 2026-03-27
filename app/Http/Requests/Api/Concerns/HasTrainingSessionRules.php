@@ -48,19 +48,27 @@ trait HasTrainingSessionRules
                 'ramp_up',
                 'ramp_down',
             ])],
-            'planned_structure.steps.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
+            'planned_structure.steps.*.duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'planned_structure.steps.*.duration_seconds' => ['nullable', 'integer', 'min:30', 'max:43200'],
+            'planned_structure.steps.*.duration_type' => ['nullable', Rule::in(['time', 'distance'])],
+            'planned_structure.steps.*.distance_meters' => ['nullable', 'integer', 'min:1', 'max:500000'],
             'planned_structure.steps.*.target' => ['nullable', 'numeric', 'min:0', 'max:300'],
             'planned_structure.steps.*.range_min' => ['nullable', 'numeric', 'min:0', 'max:300'],
             'planned_structure.steps.*.range_max' => ['nullable', 'numeric', 'min:0', 'max:300'],
+            'planned_structure.steps.*.zone_label' => ['nullable', Rule::in(['Z1', 'Z2', 'Z3', 'Z4', 'Z5'])],
             'planned_structure.steps.*.repeat_count' => ['nullable', 'integer', 'min:1', 'max:20'],
             'planned_structure.steps.*.note' => ['nullable', 'string', 'max:500'],
             'planned_structure.steps.*.items' => ['nullable', 'array', 'min:1'],
             'planned_structure.steps.*.items.*.id' => ['nullable', 'string', 'max:64'],
             'planned_structure.steps.*.items.*.label' => ['nullable', 'string', 'max:80'],
-            'planned_structure.steps.*.items.*.duration_minutes' => ['required_with:planned_structure.steps.*.items', 'integer', 'min:1', 'max:600'],
+            'planned_structure.steps.*.items.*.duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
+            'planned_structure.steps.*.items.*.duration_seconds' => ['nullable', 'integer', 'min:30', 'max:43200'],
+            'planned_structure.steps.*.items.*.duration_type' => ['nullable', Rule::in(['time', 'distance'])],
+            'planned_structure.steps.*.items.*.distance_meters' => ['nullable', 'integer', 'min:1', 'max:500000'],
             'planned_structure.steps.*.items.*.target' => ['nullable', 'numeric', 'min:0', 'max:300'],
             'planned_structure.steps.*.items.*.range_min' => ['nullable', 'numeric', 'min:0', 'max:300'],
             'planned_structure.steps.*.items.*.range_max' => ['nullable', 'numeric', 'min:0', 'max:300'],
+            'planned_structure.steps.*.items.*.zone_label' => ['nullable', Rule::in(['Z1', 'Z2', 'Z3', 'Z4', 'Z5'])],
         ];
     }
 
@@ -119,13 +127,22 @@ trait HasTrainingSessionRules
             }
 
             $plannedStructure = $this->input('planned_structure');
+            $sessionSport = (string) $this->input('sport');
 
             if (! is_array($plannedStructure)) {
                 return;
             }
 
             $mode = $plannedStructure['mode'] ?? null;
+            $unit = $plannedStructure['unit'] ?? null;
             $steps = $plannedStructure['steps'] ?? [];
+
+            if (is_string($unit) && ! in_array($unit, $this->allowedUnitsForSport($sessionSport), true)) {
+                $validator->errors()->add(
+                    'planned_structure.unit',
+                    'The selected structure unit is invalid for this sport.',
+                );
+            }
 
             if (! is_array($steps)) {
                 return;
@@ -148,6 +165,33 @@ trait HasTrainingSessionRules
                     $prefix = is_array($step['items'] ?? null) && ($step['items'] ?? []) !== []
                         ? "planned_structure.steps.{$index}.items.{$sourceIndex}"
                         : "planned_structure.steps.{$index}";
+                    $durationType = ($source['duration_type'] ?? 'time') === 'distance'
+                        ? 'distance'
+                        : 'time';
+                    $durationMinutes = $source['duration_minutes'] ?? null;
+                    $durationSeconds = $source['duration_seconds'] ?? null;
+                    $distanceMeters = $source['distance_meters'] ?? null;
+
+                    if ($durationType === 'distance') {
+                        if (! is_numeric($distanceMeters) || (int) $distanceMeters <= 0) {
+                            $validator->errors()->add(
+                                "{$prefix}.distance_meters",
+                                'Distance duration requires a distance value.',
+                            );
+                        }
+                    }
+
+                    if ($durationType === 'time') {
+                        if (
+                            (! is_numeric($durationMinutes) || (int) $durationMinutes <= 0)
+                            && (! is_numeric($durationSeconds) || (int) $durationSeconds <= 0)
+                        ) {
+                            $validator->errors()->add(
+                                "{$prefix}.duration_seconds",
+                                'Time duration requires minutes or seconds.',
+                            );
+                        }
+                    }
 
                     if ($mode === 'range') {
                         if (
@@ -211,5 +255,20 @@ trait HasTrainingSessionRules
         }
 
         return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedUnitsForSport(string $sport): array
+    {
+        return match ($sport) {
+            'bike', 'mtn_bike' => ['ftp_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+            'run', 'walk' => ['threshold_speed_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+            'swim' => ['max_hr_percent', 'threshold_hr_percent', 'rpe'],
+            'gym', 'day_off' => ['rpe'],
+            'custom', 'other' => ['rpe', 'max_hr_percent'],
+            default => ['rpe'],
+        };
     }
 }

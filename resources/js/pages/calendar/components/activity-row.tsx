@@ -1,12 +1,24 @@
 import {
     Activity,
     Bike,
+    Copy,
     Clock3,
     Droplets,
     Dumbbell,
+    ExternalLink,
     Footprints,
     Link2,
+    Link2Off,
+    Trash2,
 } from 'lucide-react';
+import { type MouseEvent, useState } from 'react';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
 import type { ActivityView } from '@/types/training-plans';
 
@@ -54,15 +66,27 @@ const sportConfig: Record<
 type ActivityRowProps = {
     activity: ActivityView;
     isInteractive?: boolean;
+    canManageQuickActions?: boolean;
+    isActionLoading?: boolean;
     showPossibleMatch?: boolean;
     onClick?: () => void;
+    onCopyActivity?: () => void;
+    onRequestDeleteActivity?: () => void;
+    onOpenLinkFlow?: () => void;
+    onUnlinkActivity?: () => void;
 };
 
 export function ActivityRow({
     activity,
     isInteractive = false,
+    canManageQuickActions = false,
+    isActionLoading = false,
     showPossibleMatch = false,
     onClick,
+    onCopyActivity,
+    onRequestDeleteActivity,
+    onOpenLinkFlow,
+    onUnlinkActivity,
 }: ActivityRowProps) {
     const config = sportConfig[activity.sport] ?? sportConfig.other;
     const SportIcon = config.icon;
@@ -70,6 +94,9 @@ export function ActivityRow({
     const durationLabel = formatDuration(activity.durationSeconds);
     const distanceLabel = formatDistance(activity.distanceMeters);
     const isLinked = activity.linkedSessionId !== null;
+    const [contextMenuOpen, setContextMenuOpen] = useState(false);
+    const canOpenDetails = isInteractive && typeof onClick === 'function';
+    const hasMenuActions = canOpenDetails || canManageQuickActions;
 
     const activate = (): void => {
         if (!isInteractive) {
@@ -81,7 +108,25 @@ export function ActivityRow({
 
     const Container = isInteractive ? 'button' : 'div';
 
-    return (
+    const openContextMenu = (): void => {
+        if (!hasMenuActions) {
+            return;
+        }
+
+        setContextMenuOpen(true);
+    };
+
+    const handleContextMenu = (event: MouseEvent<HTMLElement>): void => {
+        if (!hasMenuActions) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        openContextMenu();
+    };
+
+    const content = (
         <Container
             {...(isInteractive
                 ? {
@@ -148,6 +193,106 @@ export function ActivityRow({
                 </span>
             </div>
         </Container>
+    );
+
+    const wrapper = (
+        <div
+            onContextMenu={handleContextMenu}
+            onKeyDown={(event) => {
+                if (!hasMenuActions) {
+                    return;
+                }
+
+                if (
+                    event.key !== 'ContextMenu' &&
+                    !(event.shiftKey && event.key === 'F10')
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+                openContextMenu();
+            }}
+        >
+            {content}
+        </div>
+    );
+
+    if (!hasMenuActions) {
+        return wrapper;
+    }
+
+    return (
+        <ContextMenu
+            open={contextMenuOpen}
+            onOpenChange={setContextMenuOpen}
+            modal={false}
+        >
+            <ContextMenuTrigger asChild>{wrapper}</ContextMenuTrigger>
+            <ContextMenuContent
+                align="start"
+                sideOffset={6}
+                className="w-52 border-border bg-surface p-1 text-zinc-200"
+            >
+                {canOpenDetails ? (
+                    <ContextMenuItem
+                        onSelect={() => {
+                            onClick?.();
+                        }}
+                    >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open details
+                    </ContextMenuItem>
+                ) : null}
+
+                {canManageQuickActions ? (
+                    <>
+                        {canOpenDetails ? <ContextMenuSeparator /> : null}
+                        <ContextMenuItem
+                            disabled={isActionLoading}
+                            onSelect={() => {
+                                onCopyActivity?.();
+                            }}
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy activity
+                        </ContextMenuItem>
+                        {!isLinked ? (
+                            <ContextMenuItem
+                                disabled={isActionLoading}
+                                onSelect={() => {
+                                    onOpenLinkFlow?.();
+                                }}
+                            >
+                                <Link2 className="h-3.5 w-3.5" />
+                                Link activity
+                            </ContextMenuItem>
+                        ) : (
+                            <ContextMenuItem
+                                disabled={isActionLoading}
+                                onSelect={() => {
+                                    onUnlinkActivity?.();
+                                }}
+                            >
+                                <Link2Off className="h-3.5 w-3.5" />
+                                Unlink activity
+                            </ContextMenuItem>
+                        )}
+                        <ContextMenuSeparator />
+                        <ContextMenuItem
+                            variant="destructive"
+                            disabled={isActionLoading}
+                            onSelect={() => {
+                                onRequestDeleteActivity?.();
+                            }}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete activity
+                        </ContextMenuItem>
+                    </>
+                ) : null}
+            </ContextMenuContent>
+        </ContextMenu>
     );
 }
 

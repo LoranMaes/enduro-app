@@ -16,8 +16,9 @@ import type {
     WorkoutStructureStep,
     WorkoutStructureUnit,
 } from '../types';
-import { patternLabelForStep } from '../utils';
+import { patternLabelForStep, secondsToRoundedMinutes } from '../utils';
 import { IntensityEditor } from './BlockCard';
+import { DurationControl } from './DurationControl';
 
 type RepeatBlockCardProps = {
     step: WorkoutStructureStep;
@@ -42,6 +43,27 @@ type RepeatBlockCardProps = {
     onAddItem: () => void;
     onRemoveItem: (itemIndex: number) => void;
 };
+
+function toItemStep(
+    parent: WorkoutStructureStep,
+    item: WorkoutStructureItem,
+): WorkoutStructureStep {
+    return {
+        ...parent,
+        id: item.id,
+        durationType: item.durationType,
+        durationSeconds: item.durationSeconds,
+        durationMinutes: item.durationMinutes,
+        distanceMeters: item.distanceMeters,
+        target: item.target,
+        rangeMin: item.rangeMin,
+        rangeMax: item.rangeMax,
+        zoneLabel: item.zoneLabel,
+        repeatCount: 1,
+        items: null,
+        note: '',
+    };
+}
 
 export function RepeatBlockCard({
     step,
@@ -97,9 +119,7 @@ export function RepeatBlockCard({
                         onTypeChange(value as WorkoutStructureBlockType);
                     }}
                 >
-                    <SelectTrigger
-                        className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200"
-                    >
+                    <SelectTrigger className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -148,7 +168,7 @@ export function RepeatBlockCard({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-[10rem_1fr]">
                 <div className="space-y-1">
                     <label className="text-[0.625rem] text-zinc-500 uppercase">
                         Repeats
@@ -234,38 +254,26 @@ export function RepeatBlockCard({
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                            <div className="space-y-1">
-                                <label className="text-[0.625rem] text-zinc-500 uppercase">
-                                    Duration
-                                </label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={600}
-                                    value={item.durationMinutes}
-                                    disabled={disabled}
-                                    onChange={(event) => {
-                                        onUpdateItem(itemIndex, {
-                                            ...item,
-                                            durationMinutes: Math.max(
-                                                1,
-                                                Number(event.target.value) || 1,
-                                            ),
-                                        });
-                                    }}
-                                    className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <DurationControl
+                                durationType={item.durationType}
+                                durationSeconds={item.durationSeconds}
+                                distanceMeters={item.distanceMeters}
+                                disabled={disabled}
+                                onChange={(nextDuration) => {
+                                    onUpdateItem(itemIndex, {
+                                        ...item,
+                                        ...nextDuration,
+                                        durationMinutes: secondsToRoundedMinutes(
+                                            nextDuration.durationSeconds,
+                                        ),
+                                    });
+                                }}
+                            />
 
                             <IntensityEditor
                                 mode={mode}
-                                step={{
-                                    ...step,
-                                    target: item.target,
-                                    rangeMin: item.rangeMin,
-                                    rangeMax: item.rangeMax,
-                                }}
+                                step={toItemStep(step, item)}
                                 disabled={disabled}
                                 trainingTargets={trainingTargets}
                                 unit={unit}
@@ -275,6 +283,7 @@ export function RepeatBlockCard({
                                         target: nextStep.target,
                                         rangeMin: nextStep.rangeMin,
                                         rangeMax: nextStep.rangeMax,
+                                        zoneLabel: nextStep.zoneLabel,
                                     });
                                 }}
                             />

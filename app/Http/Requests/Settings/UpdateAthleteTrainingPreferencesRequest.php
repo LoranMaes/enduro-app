@@ -62,7 +62,11 @@ class UpdateAthleteTrainingPreferencesRequest extends FormRequest
                 'mixed',
             ])],
             'ftp_watts' => ['nullable', 'integer', 'between:50,1000'],
+            'lt1_power_watts' => ['nullable', 'integer', 'between:50,1000'],
+            'lt2_power_watts' => ['nullable', 'integer', 'between:50,1000'],
             'max_heart_rate_bpm' => ['nullable', 'integer', 'between:120,240'],
+            'lt1_heart_rate_bpm' => ['nullable', 'integer', 'between:100,230'],
+            'lt2_heart_rate_bpm' => ['nullable', 'integer', 'between:100,230'],
             'threshold_heart_rate_bpm' => ['nullable', 'integer', 'between:100,230'],
             'threshold_pace_minutes_per_km' => ['nullable', 'integer', 'between:120,1200'],
             'power_zones' => ['nullable', 'array', 'size:5'],
@@ -81,6 +85,10 @@ class UpdateAthleteTrainingPreferencesRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $maxHeartRate = $this->integer('max_heart_rate_bpm');
             $thresholdHeartRate = $this->integer('threshold_heart_rate_bpm');
+            $lt1Power = $this->integer('lt1_power_watts');
+            $lt2Power = $this->integer('lt2_power_watts');
+            $lt1HeartRate = $this->integer('lt1_heart_rate_bpm');
+            $lt2HeartRate = $this->integer('lt2_heart_rate_bpm');
 
             if (
                 $maxHeartRate > 0
@@ -90,6 +98,28 @@ class UpdateAthleteTrainingPreferencesRequest extends FormRequest
                 $validator->errors()->add(
                     'threshold_heart_rate_bpm',
                     'Threshold heart rate must be less than or equal to max heart rate.',
+                );
+            }
+
+            if (
+                $lt1Power > 0 &&
+                $lt2Power > 0 &&
+                $lt2Power < $lt1Power
+            ) {
+                $validator->errors()->add(
+                    'lt2_power_watts',
+                    'LT2 power must be greater than or equal to LT1 power.',
+                );
+            }
+
+            if (
+                $lt1HeartRate > 0 &&
+                $lt2HeartRate > 0 &&
+                $lt2HeartRate < $lt1HeartRate
+            ) {
+                $validator->errors()->add(
+                    'lt2_heart_rate_bpm',
+                    'LT2 heart rate must be greater than or equal to LT1 heart rate.',
                 );
             }
 

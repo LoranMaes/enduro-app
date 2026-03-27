@@ -15,7 +15,14 @@ import type {
     WorkoutStructureStep,
     WorkoutStructureUnit,
 } from '../types';
-import { formatResolvedTarget, patternLabelForStep } from '../utils';
+import {
+    applyZoneToSource,
+    formatResolvedTarget,
+    patternLabelForStep,
+    resolveZoneOptionsForUnit,
+    secondsToRoundedMinutes,
+} from '../utils';
+import { DurationControl } from './DurationControl';
 
 export type BlockCardProps = {
     step: WorkoutStructureStep;
@@ -53,41 +60,20 @@ export function IntensityEditor({
     unit: WorkoutStructureUnit;
     onChange: (nextStep: WorkoutStructureStep) => void;
 }) {
-    return mode === 'target' ? (
-        <div className="space-y-1 md:col-span-2">
-            <label className="text-[0.625rem] text-zinc-500 uppercase">Target</label>
-            <input
-                type="number"
-                min={0}
-                max={300}
-                value={step.target ?? ''}
-                disabled={disabled}
-                onChange={(event) => {
-                    const numericValue =
-                        event.target.value.trim() === ''
-                            ? null
-                            : Number(event.target.value);
+    const zoneOptions = resolveZoneOptionsForUnit(unit, trainingTargets);
 
-                    onChange({
-                        ...step,
-                        target: numericValue === null ? null : Math.max(0, numericValue),
-                    });
-                }}
-                className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
-            />
-            <p className="text-[0.625rem] text-zinc-500">
-                {formatResolvedTarget(unit, step, mode, trainingTargets)}
-            </p>
-        </div>
-    ) : (
-        <div className="space-y-1 md:col-span-2">
-            <label className="text-[0.625rem] text-zinc-500 uppercase">Range</label>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+    return (
+        <div className="space-y-1">
+            <label className="text-[0.625rem] text-zinc-500 uppercase">
+                {mode === 'target' ? 'Target' : 'Range'}
+            </label>
+
+            {mode === 'target' ? (
                 <input
                     type="number"
                     min={0}
                     max={300}
-                    value={step.rangeMin ?? ''}
+                    value={step.target ?? ''}
                     disabled={disabled}
                     onChange={(event) => {
                         const numericValue =
@@ -97,34 +83,91 @@ export function IntensityEditor({
 
                         onChange({
                             ...step,
-                            rangeMin:
-                                numericValue === null ? null : Math.max(0, numericValue),
+                            zoneLabel: null,
+                            target:
+                                numericValue === null
+                                    ? null
+                                    : Math.max(0, numericValue),
                         });
                     }}
                     className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
                 />
-                <span className="text-[0.625rem] text-zinc-500">-</span>
-                <input
-                    type="number"
-                    min={0}
-                    max={300}
-                    value={step.rangeMax ?? ''}
-                    disabled={disabled}
-                    onChange={(event) => {
-                        const numericValue =
-                            event.target.value.trim() === ''
-                                ? null
-                                : Number(event.target.value);
+            ) : (
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+                    <input
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={step.rangeMin ?? ''}
+                        disabled={disabled}
+                        onChange={(event) => {
+                            const numericValue =
+                                event.target.value.trim() === ''
+                                    ? null
+                                    : Number(event.target.value);
 
-                        onChange({
-                            ...step,
-                            rangeMax:
-                                numericValue === null ? null : Math.max(0, numericValue),
-                        });
-                    }}
-                    className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
-                />
-            </div>
+                            onChange({
+                                ...step,
+                                zoneLabel: null,
+                                rangeMin:
+                                    numericValue === null
+                                        ? null
+                                        : Math.max(0, numericValue),
+                            });
+                        }}
+                        className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                    <span className="text-[0.625rem] text-zinc-500">-</span>
+                    <input
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={step.rangeMax ?? ''}
+                        disabled={disabled}
+                        onChange={(event) => {
+                            const numericValue =
+                                event.target.value.trim() === ''
+                                    ? null
+                                    : Number(event.target.value);
+
+                            onChange({
+                                ...step,
+                                zoneLabel: null,
+                                rangeMax:
+                                    numericValue === null
+                                        ? null
+                                        : Math.max(0, numericValue),
+                            });
+                        }}
+                        className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
+                    />
+                </div>
+            )}
+
+            {zoneOptions.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                    {zoneOptions.map((zone) => (
+                        <button
+                            key={zone.label}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                                onChange(
+                                    applyZoneToSource(step, mode, zone) as WorkoutStructureStep,
+                                );
+                            }}
+                            className={`rounded border px-1.5 py-0.5 text-[0.625rem] transition-colors ${
+                                step.zoneLabel === zone.label
+                                    ? 'border-sky-500/70 bg-sky-500/20 text-sky-100'
+                                    : 'border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800'
+                            } disabled:opacity-50`}
+                        >
+                            {zone.label}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
+
             <p className="text-[0.625rem] text-zinc-500">
                 {formatResolvedTarget(unit, step, mode, trainingTargets)}
             </p>
@@ -153,6 +196,7 @@ export function BlockCard({
     onUpdateStep,
 }: BlockCardProps) {
     const definition = blockDefinitions.find((item) => item.type === step.type);
+    const roundedMinutes = secondsToRoundedMinutes(step.durationSeconds);
 
     return (
         <div
@@ -183,9 +227,7 @@ export function BlockCard({
                         onTypeChange(value as WorkoutStructureBlockType);
                     }}
                 >
-                    <SelectTrigger
-                        className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200"
-                    >
+                    <SelectTrigger className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -234,29 +276,22 @@ export function BlockCard({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <div className="space-y-1">
-                    <label className="text-[0.625rem] text-zinc-500 uppercase">
-                        Duration (min)
-                    </label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={600}
-                        value={step.durationMinutes}
-                        disabled={disabled}
-                        onChange={(event) => {
-                            onUpdateStep({
-                                ...step,
-                                durationMinutes: Math.max(
-                                    1,
-                                    Number(event.target.value) || 1,
-                                ),
-                            });
-                        }}
-                        className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
-                    />
-                </div>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <DurationControl
+                    durationType={step.durationType}
+                    durationSeconds={step.durationSeconds}
+                    distanceMeters={step.distanceMeters}
+                    disabled={disabled}
+                    onChange={(nextDuration) => {
+                        onUpdateStep({
+                            ...step,
+                            ...nextDuration,
+                            durationMinutes: secondsToRoundedMinutes(
+                                nextDuration.durationSeconds,
+                            ),
+                        });
+                    }}
+                />
 
                 <IntensityEditor
                     mode={mode}
@@ -269,7 +304,9 @@ export function BlockCard({
             </div>
 
             <div className="mt-2 space-y-1">
-                <p className="text-[0.625rem] text-zinc-500">{definition?.helperText}</p>
+                <p className="text-[0.625rem] text-zinc-500">
+                    {definition?.helperText} • {roundedMinutes}m
+                </p>
                 <input
                     type="text"
                     value={step.note}

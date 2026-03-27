@@ -24,7 +24,9 @@ it('requires authentication for training session write endpoints', function () {
 });
 
 it('allows athletes to create update and delete their own sessions', function () {
-    $athlete = User::factory()->athlete()->create();
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+    ]);
     $plan = TrainingPlan::factory()->for($athlete)->create();
     $week = TrainingWeek::factory()->for($plan)->create([
         'starts_at' => '2026-07-01',
@@ -358,4 +360,103 @@ it('validates training session write payloads', function () {
             'sport',
             'planned_duration_minutes',
         ]);
+});
+
+it('accepts planned structure seconds and distance payload fields', function () {
+    $athlete = User::factory()->athlete()->create([
+        'is_subscribed' => true,
+    ]);
+    $plan = TrainingPlan::factory()->for($athlete)->create();
+    $week = TrainingWeek::factory()->for($plan)->create([
+        'starts_at' => '2026-11-08',
+        'ends_at' => '2026-11-14',
+    ]);
+
+    $this
+        ->actingAs($athlete)
+        ->postJson('/api/training-sessions', [
+            'training_week_id' => $week->id,
+            'date' => '2026-11-10',
+            'sport' => 'run',
+            'title' => 'Mixed session',
+            'planned_duration_minutes' => 50,
+            'planned_tss' => 48,
+            'planned_structure' => [
+                'unit' => 'threshold_speed_percent',
+                'mode' => 'range',
+                'steps' => [
+                    [
+                        'id' => 'step-1',
+                        'type' => 'active',
+                        'duration_minutes' => 10,
+                        'duration_seconds' => 620,
+                        'duration_type' => 'time',
+                        'distance_meters' => null,
+                        'target' => null,
+                        'range_min' => 90,
+                        'range_max' => 96,
+                        'zone_label' => 'Z3',
+                        'repeat_count' => 1,
+                        'note' => null,
+                    ],
+                    [
+                        'id' => 'step-2',
+                        'type' => 'active',
+                        'duration_minutes' => 8,
+                        'duration_seconds' => 480,
+                        'duration_type' => 'distance',
+                        'distance_meters' => 2500,
+                        'target' => null,
+                        'range_min' => 85,
+                        'range_max' => 92,
+                        'zone_label' => 'Z2',
+                        'repeat_count' => 1,
+                        'note' => null,
+                    ],
+                ],
+            ],
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.planned_structure.steps.0.duration_seconds', 620)
+        ->assertJsonPath('data.planned_structure.steps.1.duration_type', 'distance')
+        ->assertJsonPath('data.planned_structure.steps.1.distance_meters', 2500);
+});
+
+it('rejects invalid structure units for sport', function () {
+    $athlete = User::factory()->athlete()->create();
+    $plan = TrainingPlan::factory()->for($athlete)->create();
+    $week = TrainingWeek::factory()->for($plan)->create([
+        'starts_at' => '2026-11-15',
+        'ends_at' => '2026-11-21',
+    ]);
+
+    $this
+        ->actingAs($athlete)
+        ->postJson('/api/training-sessions', [
+            'training_week_id' => $week->id,
+            'date' => '2026-11-16',
+            'sport' => 'run',
+            'planned_duration_minutes' => 50,
+            'planned_tss' => 40,
+            'planned_structure' => [
+                'unit' => 'ftp_percent',
+                'mode' => 'target',
+                'steps' => [
+                    [
+                        'id' => 'step-1',
+                        'type' => 'active',
+                        'duration_minutes' => 8,
+                        'duration_seconds' => 480,
+                        'duration_type' => 'time',
+                        'target' => 90,
+                        'range_min' => null,
+                        'range_max' => null,
+                        'repeat_count' => 1,
+                        'note' => null,
+                    ],
+                ],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['planned_structure.unit']);
 });

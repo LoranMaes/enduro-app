@@ -1,5 +1,7 @@
 import type {
+    WorkoutStructureDurationType,
     BlockDefinition,
+    WorkoutStructureZoneLabel,
     WorkoutStructureBlockType,
     WorkoutStructureUnit,
 } from './types';
@@ -65,7 +67,7 @@ export const unitLabels: Record<WorkoutStructureUnit, string> = {
     ftp_percent: '% Functional Threshold Power',
     max_hr_percent: '% Maximum Heart Rate',
     threshold_hr_percent: '% Threshold Heart Rate',
-    threshold_speed_percent: '% Threshold Speed',
+    threshold_speed_percent: '% Threshold Pace',
     rpe: 'RPE',
 };
 
@@ -73,7 +75,7 @@ export const unitDisplayLabels: Record<WorkoutStructureUnit, string> = {
     ftp_percent: 'FTP%',
     max_hr_percent: 'Max HR%',
     threshold_hr_percent: 'THR%',
-    threshold_speed_percent: 'Threshold Speed%',
+    threshold_speed_percent: 'Threshold Pace%',
     rpe: 'RPE',
 };
 
@@ -84,3 +86,26 @@ export const itemBasedBlockTypes: WorkoutStructureBlockType[] = [
     'ramp_up',
     'ramp_down',
 ];
+
+export const durationTypeLabels: Record<WorkoutStructureDurationType, string> = {
+    time: 'Time',
+    distance: 'Distance',
+};
+
+export const zoneLabels: WorkoutStructureZoneLabel[] = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+
+const sportUnitMatrix: Record<string, WorkoutStructureUnit[]> = {
+    bike: ['ftp_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    mtn_bike: ['ftp_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    run: ['threshold_speed_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    walk: ['threshold_speed_percent', 'max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    swim: ['max_hr_percent', 'threshold_hr_percent', 'rpe'],
+    gym: ['rpe'],
+    day_off: ['rpe'],
+    custom: ['rpe', 'max_hr_percent'],
+    other: ['rpe', 'max_hr_percent'],
+};
+
+export function resolveAllowedUnitsForSport(sport: string): WorkoutStructureUnit[] {
+    return sportUnitMatrix[sport] ?? ['rpe'];
+}

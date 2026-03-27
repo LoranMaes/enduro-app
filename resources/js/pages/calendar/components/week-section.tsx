@@ -30,6 +30,11 @@ type WeekSectionProps = {
     draggingSessionId: number | null;
     isDayDropTarget: (date: string) => boolean;
     onOpenActivity: (activity: ActivityView) => void;
+    onCopyActivity: (activity: ActivityView) => void;
+    onRequestDeleteActivity: (activity: ActivityView) => void;
+    onOpenActivityLinkFlow: (activity: ActivityView) => void;
+    onUnlinkActivity: (activity: ActivityView) => void;
+    isActivityActionLoading: (activity: ActivityView) => boolean;
     onOpenCalendarEntry: (entry: CalendarEntryView) => void;
     onOpenGoal: (goal: GoalView) => void;
     onOpenProgressForWeek: (weekStartsAt: string) => void;
@@ -75,6 +80,11 @@ export function WeekSection({
     draggingSessionId,
     isDayDropTarget,
     onOpenActivity,
+    onCopyActivity,
+    onRequestDeleteActivity,
+    onOpenActivityLinkFlow,
+    onUnlinkActivity,
+    isActivityActionLoading,
     onOpenCalendarEntry,
     onOpenGoal,
     onOpenProgressForWeek,
@@ -367,6 +377,11 @@ export function WeekSection({
                                 onDayDragOver={onDayDragOver}
                                 onDayDrop={onDayDrop}
                                 onOpenActivity={onOpenActivity}
+                                onCopyActivity={onCopyActivity}
+                                onRequestDeleteActivity={onRequestDeleteActivity}
+                                onOpenActivityLinkFlow={onOpenActivityLinkFlow}
+                                onUnlinkActivity={onUnlinkActivity}
+                                isActivityActionLoading={isActivityActionLoading}
                                 onOpenCalendarEntry={onOpenCalendarEntry}
                                 onOpenGoal={onOpenGoal}
                             />

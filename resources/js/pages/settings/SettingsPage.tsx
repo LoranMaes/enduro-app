@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppearanceTabs from '@/components/appearance-tabs';
 import AppLayout from '@/layouts/app-layout';
 import { initializeEcho } from '@/lib/echo';
@@ -30,6 +30,12 @@ import {
     resolveSyncStatusMessage,
 } from './utils';
 
+const PROVIDER_SYNC_POLLING_STATUSES = new Set([
+    'queued',
+    'running',
+    'rate_limited',
+]);
+
 export function SettingsPage({
     activeTab,
     role,
@@ -58,6 +64,7 @@ export function SettingsPage({
 
     const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
     const [billingState, setBillingState] = useState(billing);
+    const [realtimeAvailable, setRealtimeAvailable] = useState(false);
     const [syncMessageByProvider, setSyncMessageByProvider] =
         useState<SyncMessagesByProvider>({});
     const [syncErrorByProvider, setSyncErrorByProvider] =
@@ -69,14 +76,18 @@ export function SettingsPage({
 
     useEffect(() => {
         if (auth.user?.id === undefined) {
+            setRealtimeAvailable(false);
             return;
         }
 
         const echo = initializeEcho();
 
         if (echo === null) {
+            setRealtimeAvailable(false);
             return;
         }
+
+        setRealtimeAvailable(true);
 
         const channelName = `App.Models.User.${auth.user.id}`;
         const providerSyncEventName = '.activity-provider.sync-status-updated';
@@ -155,6 +166,64 @@ export function SettingsPage({
             echo.leave(channelName);
         };
     }, [auth.user?.id, canManageConnections]);
+
+    const hasProviderSyncInFlight = useMemo(() => {
+        if (!canManageConnections) {
+            return false;
+        }
+
+        return providers.some((provider) =>
+            PROVIDER_SYNC_POLLING_STATUSES.has(
+                provider.last_sync_status?.toLowerCase() ?? '',
+            ),
+        );
+    }, [canManageConnections, providers]);
+
+    useEffect(() => {
+        if (realtimeAvailable || selectedTab !== 'billing') {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            router.reload({
+                only: ['billing'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 15000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [realtimeAvailable, selectedTab]);
+
+    useEffect(() => {
+        if (
+            realtimeAvailable ||
+            !canManageConnections ||
+            selectedTab !== 'integrations' ||
+            !hasProviderSyncInFlight
+        ) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            router.reload({
+                only: ['providers'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [
+        canManageConnections,
+        hasProviderSyncInFlight,
+        realtimeAvailable,
+        selectedTab,
+    ]);
 
     const syncNow = async (provider: string): Promise<void> => {
         if (!canManageConnections || syncingProvider !== null) {

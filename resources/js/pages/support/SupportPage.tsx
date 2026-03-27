@@ -42,6 +42,7 @@ export function SupportPage({
         setActiveTab,
         visibleTickets,
         loading,
+        refreshTickets,
         upsertTicket,
     } = useSupportTicketsData({
         initialTickets,
@@ -101,6 +102,42 @@ export function SupportPage({
             cancelled = true;
         };
     }, [fetchTicket, isLocked, selectedTicketId, upsertTicket]);
+
+    useEffect(() => {
+        if (isLocked) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+
+            void refreshTickets();
+
+            if (selectedTicketId === null) {
+                return;
+            }
+
+            void fetchTicket(selectedTicketId).then((ticket) => {
+                if (ticket === null) {
+                    return;
+                }
+
+                upsertTicket(ticket);
+            });
+        }, 15000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [
+        fetchTicket,
+        isLocked,
+        refreshTickets,
+        selectedTicketId,
+        upsertTicket,
+    ]);
 
     const handleCreateTicket = useCallback(async (): Promise<void> => {
         if (isLocked) {

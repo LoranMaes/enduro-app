@@ -51,18 +51,26 @@ export type SessionWritePayload = {
             id: string;
             type: WorkoutStructureStep['type'];
             duration_minutes: number;
+            duration_seconds?: number;
+            duration_type?: 'time' | 'distance';
+            distance_meters?: number | null;
             target: number | null;
             range_min: number | null;
             range_max: number | null;
+            zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
             repeat_count: number;
             note: string | null;
             items: Array<{
                 id: string;
                 label: string;
                 duration_minutes: number;
+                duration_seconds?: number;
+                duration_type?: 'time' | 'distance';
+                distance_meters?: number | null;
                 target: number | null;
                 range_min: number | null;
                 range_max: number | null;
+                zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
             }> | null;
         }>;
     } | null;

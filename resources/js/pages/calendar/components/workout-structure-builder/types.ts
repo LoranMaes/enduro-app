@@ -5,6 +5,8 @@ export type WorkoutStructureUnit =
     | 'threshold_hr_percent'
     | 'threshold_speed_percent'
     | 'rpe';
+export type WorkoutStructureDurationType = 'time' | 'distance';
+export type WorkoutStructureZoneLabel = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
 export type WorkoutStructureBlockType =
     | 'warmup'
     | 'active'
@@ -19,19 +21,27 @@ export type WorkoutStructureBlockType =
 export type WorkoutStructureItem = {
     id: string;
     label: string;
+    durationType: WorkoutStructureDurationType;
+    durationSeconds: number;
     durationMinutes: number;
+    distanceMeters: number | null;
     target: number | null;
     rangeMin: number | null;
     rangeMax: number | null;
+    zoneLabel: WorkoutStructureZoneLabel | null;
 };
 
 export type WorkoutStructureStep = {
     id: string;
     type: WorkoutStructureBlockType;
+    durationType: WorkoutStructureDurationType;
+    durationSeconds: number;
     durationMinutes: number;
+    distanceMeters: number | null;
     target: number | null;
     rangeMin: number | null;
     rangeMax: number | null;
+    zoneLabel: WorkoutStructureZoneLabel | null;
     repeatCount: number;
     items: WorkoutStructureItem[] | null;
     note: string;
@@ -45,7 +55,11 @@ export type WorkoutStructure = {
 
 export type AthleteTrainingTargets = {
     ftp_watts: number | null;
+    lt1_power_watts: number | null;
+    lt2_power_watts: number | null;
     max_heart_rate_bpm: number | null;
+    lt1_heart_rate_bpm: number | null;
+    lt2_heart_rate_bpm: number | null;
     threshold_heart_rate_bpm: number | null;
     threshold_pace_minutes_per_km: number | null;
     power_zones: Array<{
@@ -77,6 +91,7 @@ export type BlockDefinition = {
 
 export type PreviewSegment = {
     id: string;
+    durationSeconds: number;
     durationMinutes: number;
     type: WorkoutStructureBlockType;
     intensityMin: number;

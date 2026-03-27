@@ -159,18 +159,26 @@ export function serializePlannedStructureForRequest(
         id: string | null;
         type: string;
         duration_minutes: number;
+        duration_seconds?: number;
+        duration_type?: 'time' | 'distance';
+        distance_meters?: number | null;
         target: number | null;
         range_min: number | null;
         range_max: number | null;
+        zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
         repeat_count: number | null;
         note: string | null;
         items: Array<{
             id: string | null;
             label: string | null;
             duration_minutes: number;
+            duration_seconds?: number;
+            duration_type?: 'time' | 'distance';
+            distance_meters?: number | null;
             target: number | null;
             range_min: number | null;
             range_max: number | null;
+            zone_label?: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | null;
         }> | null;
     }>;
 } | null {
@@ -185,9 +193,19 @@ export function serializePlannedStructureForRequest(
             id: step.id ?? null,
             type: step.type,
             duration_minutes: Math.max(1, Math.round(step.durationMinutes)),
+            duration_seconds: Math.max(
+                60,
+                Math.round(step.durationSeconds ?? step.durationMinutes * 60),
+            ),
+            duration_type: step.durationType ?? 'time',
+            distance_meters:
+                step.durationType === 'distance'
+                    ? Math.max(1, Math.round(step.distanceMeters ?? 1000))
+                    : null,
             target: step.target ?? null,
             range_min: step.rangeMin ?? null,
             range_max: step.rangeMax ?? null,
+            zone_label: step.zoneLabel ?? null,
             repeat_count: step.repeatCount ?? null,
             note: step.note ?? null,
             items:
@@ -198,9 +216,24 @@ export function serializePlannedStructureForRequest(
                         1,
                         Math.round(item.durationMinutes),
                     ),
+                    duration_seconds: Math.max(
+                        60,
+                        Math.round(
+                            item.durationSeconds ?? item.durationMinutes * 60,
+                        ),
+                    ),
+                    duration_type: item.durationType ?? 'time',
+                    distance_meters:
+                        item.durationType === 'distance'
+                            ? Math.max(
+                                  1,
+                                  Math.round(item.distanceMeters ?? 1000),
+                              )
+                            : null,
                     target: item.target ?? null,
                     range_min: item.rangeMin ?? null,
                     range_max: item.rangeMax ?? null,
+                    zone_label: item.zoneLabel ?? null,
                 })) ?? null,
         })),
     };

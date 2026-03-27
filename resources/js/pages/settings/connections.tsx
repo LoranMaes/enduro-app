@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Link2, Link2Off, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -42,6 +42,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+const PROVIDER_SYNC_POLLING_STATUSES = new Set([
+    'queued',
+    'running',
+    'rate_limited',
+]);
+
 export default function Connections({
     providers,
     canManageConnections,
@@ -49,6 +55,7 @@ export default function Connections({
 }: ConnectionsPageProps) {
     const { auth } = usePage<SharedData>().props;
     const [syncingProvider, setSyncingProvider] = useState<string | null>(null);
+    const [realtimeAvailable, setRealtimeAvailable] = useState(false);
     const [syncMessageByProvider, setSyncMessageByProvider] = useState<
         Record<string, string>
     >({});
@@ -60,14 +67,18 @@ export default function Connections({
 
     useEffect(() => {
         if (!canManageConnections || auth.user?.id === undefined) {
+            setRealtimeAvailable(false);
             return;
         }
 
         const echo = initializeEcho();
 
         if (echo === null) {
+            setRealtimeAvailable(false);
             return;
         }
+
+        setRealtimeAvailable(true);
 
         const channelName = `App.Models.User.${auth.user.id}`;
         const eventName = '.activity-provider.sync-status-updated';
@@ -141,6 +152,32 @@ export default function Connections({
             echo.leave(channelName);
         };
     }, [auth.user?.id, canManageConnections]);
+
+    const hasSyncInFlight = useMemo(() => {
+        return providers.some((providerConnection) =>
+            PROVIDER_SYNC_POLLING_STATUSES.has(
+                providerConnection.last_sync_status?.toLowerCase() ?? '',
+            ),
+        );
+    }, [providers]);
+
+    useEffect(() => {
+        if (!canManageConnections || realtimeAvailable || !hasSyncInFlight) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            router.reload({
+                only: ['providers'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [canManageConnections, hasSyncInFlight, realtimeAvailable]);
 
     const syncNow = async (provider: string): Promise<void> => {
         if (!canManageConnections || syncingProvider !== null) {

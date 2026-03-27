@@ -16,8 +16,9 @@ import type {
     WorkoutStructureStep,
     WorkoutStructureUnit,
 } from '../types';
-import { patternLabelForStep } from '../utils';
+import { patternLabelForStep, secondsToRoundedMinutes } from '../utils';
 import { IntensityEditor } from './BlockCard';
+import { DurationControl } from './DurationControl';
 
 type RampBlockCardProps = {
     step: WorkoutStructureStep;
@@ -40,6 +41,27 @@ type RampBlockCardProps = {
     onUpdateStep: (nextStep: WorkoutStructureStep) => void;
     onUpdateItem: (itemIndex: number, nextItem: WorkoutStructureItem) => void;
 };
+
+function toItemStep(
+    parent: WorkoutStructureStep,
+    item: WorkoutStructureItem,
+): WorkoutStructureStep {
+    return {
+        ...parent,
+        id: item.id,
+        durationType: item.durationType,
+        durationSeconds: item.durationSeconds,
+        durationMinutes: item.durationMinutes,
+        distanceMeters: item.distanceMeters,
+        target: item.target,
+        rangeMin: item.rangeMin,
+        rangeMax: item.rangeMax,
+        zoneLabel: item.zoneLabel,
+        repeatCount: 1,
+        items: null,
+        note: '',
+    };
+}
 
 export function RampBlockCard({
     step,
@@ -93,9 +115,7 @@ export function RampBlockCard({
                         onTypeChange(value as WorkoutStructureBlockType);
                     }}
                 >
-                    <SelectTrigger
-                        className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200"
-                    >
+                    <SelectTrigger className="h-7 rounded border-zinc-700 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-200">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -165,38 +185,26 @@ export function RampBlockCard({
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                            <div className="space-y-1">
-                                <label className="text-[0.625rem] text-zinc-500 uppercase">
-                                    Duration
-                                </label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={600}
-                                    value={item.durationMinutes}
-                                    disabled={disabled}
-                                    onChange={(event) => {
-                                        onUpdateItem(itemIndex, {
-                                            ...item,
-                                            durationMinutes: Math.max(
-                                                1,
-                                                Number(event.target.value) || 1,
-                                            ),
-                                        });
-                                    }}
-                                    className="w-full rounded border border-zinc-700 bg-zinc-900/80 px-2 py-1 font-mono text-xs text-zinc-200 focus:border-zinc-600 focus:outline-none"
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <DurationControl
+                                durationType={item.durationType}
+                                durationSeconds={item.durationSeconds}
+                                distanceMeters={item.distanceMeters}
+                                disabled={disabled}
+                                onChange={(nextDuration) => {
+                                    onUpdateItem(itemIndex, {
+                                        ...item,
+                                        ...nextDuration,
+                                        durationMinutes: secondsToRoundedMinutes(
+                                            nextDuration.durationSeconds,
+                                        ),
+                                    });
+                                }}
+                            />
 
                             <IntensityEditor
                                 mode={mode}
-                                step={{
-                                    ...step,
-                                    target: item.target,
-                                    rangeMin: item.rangeMin,
-                                    rangeMax: item.rangeMax,
-                                }}
+                                step={toItemStep(step, item)}
                                 disabled={disabled}
                                 trainingTargets={trainingTargets}
                                 unit={unit}
@@ -206,6 +214,7 @@ export function RampBlockCard({
                                         target: nextStep.target,
                                         rangeMin: nextStep.rangeMin,
                                         rangeMax: nextStep.rangeMax,
+                                        zoneLabel: nextStep.zoneLabel,
                                     });
                                 }}
                             />
@@ -215,7 +224,9 @@ export function RampBlockCard({
             </div>
 
             <div className="mt-2 space-y-1">
-                <p className="text-[0.625rem] text-zinc-500">{definition?.helperText}</p>
+                <p className="text-[0.625rem] text-zinc-500">
+                    {definition?.helperText}
+                </p>
                 <input
                     type="text"
                     value={step.note}

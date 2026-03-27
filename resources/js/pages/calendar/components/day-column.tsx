@@ -33,6 +33,11 @@ type DayColumnProps = {
     onDayDragOver: (date: string) => void;
     onDayDrop: (date: string, targetWeekId: number) => void;
     onOpenActivity: (activity: ActivityView) => void;
+    onCopyActivity: (activity: ActivityView) => void;
+    onRequestDeleteActivity: (activity: ActivityView) => void;
+    onOpenActivityLinkFlow: (activity: ActivityView) => void;
+    onUnlinkActivity: (activity: ActivityView) => void;
+    isActivityActionLoading: (activity: ActivityView) => boolean;
     onOpenCalendarEntry: (entry: CalendarEntryView) => void;
     onOpenGoal: (goal: GoalView) => void;
 };
@@ -59,6 +64,11 @@ export function DayColumn({
     onDayDragOver,
     onDayDrop,
     onOpenActivity,
+    onCopyActivity,
+    onRequestDeleteActivity,
+    onOpenActivityLinkFlow,
+    onUnlinkActivity,
+    isActivityActionLoading,
     onOpenCalendarEntry,
     onOpenGoal,
 }: DayColumnProps) {
@@ -75,16 +85,26 @@ export function DayColumn({
         .filter((activity) => activity.linkedSessionId === null)
         .slice()
         .sort((left, right) => {
-        if (left.startedAt === right.startedAt) {
-            return left.id - right.id;
-        }
+            if (left.startedAt === right.startedAt) {
+                return String(left.id).localeCompare(String(right.id), undefined, {
+                    numeric: true,
+                });
+            }
 
-        return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
+            return (left.startedAt ?? '').localeCompare(right.startedAt ?? '');
         });
     const sortedCalendarEntries = calendarEntries
         .slice()
-        .sort((left, right) => left.id - right.id);
-    const sortedGoals = goals.slice().sort((left, right) => left.id - right.id);
+        .sort((left, right) =>
+            String(left.id).localeCompare(String(right.id), undefined, {
+                numeric: true,
+            }),
+        );
+    const sortedGoals = goals.slice().sort((left, right) =>
+        String(left.id).localeCompare(String(right.id), undefined, {
+            numeric: true,
+        }),
+    );
     const unlinkedSessionCountBySport = sessions.reduce<Record<string, number>>(
         (carry, session) => {
             if (session.linkedActivityId !== null || session.status === 'completed') {
@@ -256,6 +276,8 @@ export function DayColumn({
                     <ActivityRow
                         key={activity.id}
                         activity={activity}
+                        canManageQuickActions={canManageSessions}
+                        isActionLoading={isActivityActionLoading(activity)}
                         showPossibleMatch={
                             (unlinkedSessionCountBySport[activity.sport] ?? 0) > 0
                         }
@@ -264,6 +286,18 @@ export function DayColumn({
                             if (canOpenActivityDetails) {
                                 onOpenActivity(activity);
                             }
+                        }}
+                        onCopyActivity={() => {
+                            onCopyActivity(activity);
+                        }}
+                        onRequestDeleteActivity={() => {
+                            onRequestDeleteActivity(activity);
+                        }}
+                        onOpenLinkFlow={() => {
+                            onOpenActivityLinkFlow(activity);
+                        }}
+                        onUnlinkActivity={() => {
+                            onUnlinkActivity(activity);
                         }}
                     />
                 ))}

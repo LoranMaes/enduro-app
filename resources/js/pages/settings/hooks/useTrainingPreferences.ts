@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import AthleteTrainingPreferencesController from '@/actions/App/Http/Controllers/Settings/AthleteTrainingPreferencesController';
 import type { SettingsOverviewProps } from '../types';
 import { parseNullableInteger } from '../utils';
 
@@ -15,7 +16,11 @@ export function useTrainingPreferences({
         preferred_rest_day: trainingPreferences.preferred_rest_day,
         intensity_distribution: trainingPreferences.intensity_distribution,
         ftp_watts: trainingPreferences.ftp_watts,
+        lt1_power_watts: trainingPreferences.lt1_power_watts,
+        lt2_power_watts: trainingPreferences.lt2_power_watts,
         max_heart_rate_bpm: trainingPreferences.max_heart_rate_bpm,
+        lt1_heart_rate_bpm: trainingPreferences.lt1_heart_rate_bpm,
+        lt2_heart_rate_bpm: trainingPreferences.lt2_heart_rate_bpm,
         threshold_heart_rate_bpm: trainingPreferences.threshold_heart_rate_bpm,
         threshold_pace_minutes_per_km:
             trainingPreferences.threshold_pace_minutes_per_km,
@@ -68,7 +73,11 @@ export function useTrainingPreferences({
     const setNullableNumberField = (
         field:
             | 'ftp_watts'
+            | 'lt1_power_watts'
+            | 'lt2_power_watts'
             | 'max_heart_rate_bpm'
+            | 'lt1_heart_rate_bpm'
+            | 'lt2_heart_rate_bpm'
             | 'threshold_heart_rate_bpm'
             | 'threshold_pace_minutes_per_km',
         value: string,
@@ -78,7 +87,9 @@ export function useTrainingPreferences({
     };
 
     const submitTrainingPreferences = (): void => {
-        trainingForm.patch('/settings/overview/training-preferences', {
+        const route = AthleteTrainingPreferencesController();
+
+        trainingForm.patch(route.url, {
             preserveScroll: true,
         });
     };

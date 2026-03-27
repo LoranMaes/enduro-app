@@ -72,7 +72,10 @@ Route::middleware([
     Route::apiResource('activities', ActivityController::class)->only([
         'index',
         'show',
+        'destroy',
     ]);
+    Route::post('activities/{activity}/copy', [ActivityController::class, 'copy'])
+        ->name('activities.copy');
     Route::apiResource('calendar-entries', CalendarEntryController::class)
         ->only([
             'index',

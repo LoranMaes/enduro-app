@@ -9,7 +9,11 @@ class AthletePerformanceProfileResolver
     /**
      * @return array{
      *     ftp_watts: int|null,
+     *     lt1_power_watts: int|null,
+     *     lt2_power_watts: int|null,
      *     max_heart_rate_bpm: int|null,
+     *     lt1_heart_rate_bpm: int|null,
+     *     lt2_heart_rate_bpm: int|null,
      *     threshold_heart_rate_bpm: int|null,
      *     threshold_pace_minutes_per_km: int|null,
      *     power_zones: array<int, array{label: string, min: int, max: int}>,
@@ -19,7 +23,11 @@ class AthletePerformanceProfileResolver
     public function resolve(?AthleteProfile $athleteProfile): array
     {
         $ftpWatts = null;
+        $lt1PowerWatts = null;
+        $lt2PowerWatts = null;
         $maxHeartRate = null;
+        $lt1HeartRate = null;
+        $lt2HeartRate = null;
         $thresholdHeartRate = null;
         $thresholdPace = null;
 
@@ -29,6 +37,18 @@ class AthletePerformanceProfileResolver
                 : null;
             $maxHeartRate = is_int($athleteProfile->max_heart_rate_bpm) && $athleteProfile->max_heart_rate_bpm > 0
                 ? $athleteProfile->max_heart_rate_bpm
+                : null;
+            $lt1PowerWatts = is_int($athleteProfile->lt1_power_watts) && $athleteProfile->lt1_power_watts > 0
+                ? $athleteProfile->lt1_power_watts
+                : null;
+            $lt2PowerWatts = is_int($athleteProfile->lt2_power_watts) && $athleteProfile->lt2_power_watts > 0
+                ? $athleteProfile->lt2_power_watts
+                : null;
+            $lt1HeartRate = is_int($athleteProfile->lt1_heart_rate_bpm) && $athleteProfile->lt1_heart_rate_bpm > 0
+                ? $athleteProfile->lt1_heart_rate_bpm
+                : null;
+            $lt2HeartRate = is_int($athleteProfile->lt2_heart_rate_bpm) && $athleteProfile->lt2_heart_rate_bpm > 0
+                ? $athleteProfile->lt2_heart_rate_bpm
                 : null;
             $thresholdHeartRate = is_int($athleteProfile->threshold_heart_rate_bpm)
                 && $athleteProfile->threshold_heart_rate_bpm > 0
@@ -46,7 +66,11 @@ class AthletePerformanceProfileResolver
 
         return [
             'ftp_watts' => $ftpWatts,
+            'lt1_power_watts' => $lt1PowerWatts,
+            'lt2_power_watts' => $lt2PowerWatts,
             'max_heart_rate_bpm' => $maxHeartRate,
+            'lt1_heart_rate_bpm' => $lt1HeartRate,
+            'lt2_heart_rate_bpm' => $lt2HeartRate,
             'threshold_heart_rate_bpm' => $thresholdHeartRate,
             'threshold_pace_minutes_per_km' => $thresholdPace,
             'power_zones' => $this->normalizeZones(

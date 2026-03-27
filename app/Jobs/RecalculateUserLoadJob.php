@@ -5,13 +5,14 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Services\Load\TrainingLoadCalculator;
 use Carbon\Carbon;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RecalculateUserLoadJob implements ShouldQueue
+class RecalculateUserLoadJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -19,6 +20,7 @@ class RecalculateUserLoadJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries = 3;
+    public int $uniqueFor = 300;
 
     public function __construct(
         public readonly User $user,
@@ -39,6 +41,16 @@ class RecalculateUserLoadJob implements ShouldQueue
             $this->from->copy(),
             $this->to->copy(),
         );
+    }
+
+    public function uniqueId(): string
+    {
+        return implode(':', [
+            'recalculate-user-load',
+            (string) $this->user->id,
+            $this->from->copy()->startOfDay()->format('Y-m-d'),
+            $this->to->copy()->endOfDay()->format('Y-m-d'),
+        ]);
     }
 
     public static function dispatchRecentDays(User $user, int $days = 60): void
